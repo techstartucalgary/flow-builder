@@ -22,7 +22,6 @@ A simple app built with Next.js 14, TypeScript, Tailwind CSS, and Supabase.
 ### Prerequisites
 
 - Node.js 18+ installed
-- A Supabase account (free tier works fine)
 
 ### 1. Clone and Install
 
