@@ -3,10 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts';
-import { Button, Input, Card, CardHeader, CardContent, CardTitle } from '@/components/ui';
-import { Alert } from '@/components/ui/Alert';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -50,119 +47,94 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1016] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <Card className="bg-[#111827]/90 border border-[#1f2937] text-slate-100 shadow-xl backdrop-blur">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold tracking-tight text-slate-100 text-center">
-              Create your FlowBuildr account
-            </CardTitle>
-            <p className="text-xs text-slate-400 tracking-wide uppercase text-center">
+    <div className="min-h-screen bg-[#030712] text-white selection:bg-blue-500/30 font-sans">
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+        
+        {/* Background Gradients  */}
+        <div className="absolute top-0 left-1/2 w-full -translate-x-1/2 h-full z-0 pointer-events-none">
+           <div className="absolute top-1/4 right-10 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] opacity-50"></div>
+           <div className="absolute bottom-1/4 left-10 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] opacity-50"></div>
+        </div>
+
+        <div className="w-full max-w-md p-8 bg-[#0b1120]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl relative z-10 mx-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Create Your FlowBuildr Account</h2>
+            <p className="text-gray-400 text-sm">
               Takeoffs powered by FlowBuildr
             </p>
-          </CardHeader>
+          </div>
 
-          <CardContent className="pt-2">
-            {localError && (
-              <div className="mb-4">
-                <Alert variant="error" message={localError} />
-              </div>
-            )}
+          {localError && (
+            <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+              {localError}
+            </div>
+          )}
 
-            {success && (
-              <div className="mb-4">
-                <Alert
-                  variant="success"
-                  message="Account created successfully! Redirecting..."
-                />
-              </div>
-            )}
+          {success && (
+            <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm text-center">
+              Account created successfully! Redirecting...
+            </div>
+          )}
 
-            <form onSubmit={handleSignUp} className="space-y-4 text-white">
-              {/* Email */}
-              <div className="space-y-1">
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-slate-100"
-                >
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
+          <form onSubmit={handleSignUp} className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.com" 
+                className="w-full bg-[#030712] border border-gray-800 focus:border-blue-500 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" 
+                required 
+              />
+            </div>
 
-              {/* Password */}
-              <div className="space-y-1">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-slate-100"
-                >
-                  Password
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Password</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••" 
+                className="w-full bg-[#030712] border border-gray-800 focus:border-blue-500 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" 
+                required 
+              />
+            </div>
 
-              {/* Confirm Password */}
-              <div className="space-y-1">
-                <label
-                  htmlFor="confirmPassword"
-                  className="block text-sm font-medium text-slate-100"
-                >
-                  Confirm Password
-                </label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Confirm Password</label>
+              <input 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••" 
+                className="w-full bg-[#030712] border border-gray-800 focus:border-blue-500 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" 
+                required 
+              />
+            </div>
 
-              <Button
-                type="submit"
-                variant="primary"
-                className="w-full !bg-[#297fd7] !hover:bg-[#2f8af0] !border-0"
-                isLoading={isLoading}
-              >
-                Sign Up
-              </Button>
-            </form>
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full px-6 py-3.5 rounded-lg font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition-all shadow-lg shadow-blue-500/20 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Creating Account...' : 'Sign Up'}
+            </button>
+          </form>
 
-            <p className="mt-6 text-center text-sm text-slate-400">
-              Already have an account?{' '}
-              <Link
-                href="/auth/signin"
-                className="text-[#4fa2ff] hover:text-[#76b7ff] font-medium"
-              >
-                Sign In
-              </Link>
-            </p>
-
-            <p className="mt-3 text-center">
-              <Link
-                href="/"
-                className="text-xs text-slate-500 hover:text-slate-300"
-              >
-                ← Back to home
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+          <div className="mt-8 text-center text-sm text-gray-400">
+            Already have an account?{' '}
+            <Link href="/auth/signin" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
+              Sign In
+            </Link>
+          </div>
+          
+          <div className="mt-4 text-center">
+             <Link href="/" className="text-xs text-gray-500 hover:text-white transition-colors">
+               ← Back to home
+             </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
