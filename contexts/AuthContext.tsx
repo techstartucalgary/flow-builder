@@ -36,10 +36,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     );
 
-    return () => {
+  return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, []);  
 
   const checkUser = async () => {
     try {

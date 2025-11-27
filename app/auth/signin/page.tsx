@@ -31,60 +31,93 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign In</CardTitle>
-        </CardHeader>
-
-        <CardContent>
-          {localError && <Alert variant="error" message={localError} />}
-
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <Input
-              id="email"
-              type="email"
-              label="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-
-            <Input
-              id="password"
-              type="password"
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={isLoading}
-            >
+    <div className="min-h-screen bg-[#0b1016] flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <Card className="bg-[#111827]/90 border border-[#1f2937] text-slate-100 shadow-xl backdrop-blur">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold tracking-tight text-slate-100 text-center">
               Sign In
-            </Button>
-          </form>
+            </CardTitle>
+            <p className="text-xs text-slate-400 tracking-wide uppercase text-center">
+              Welcome back to FlowBuildr
+            </p>
+          </CardHeader>
 
-          <p className="mt-6 text-center text-gray-600">
-            Don't have an account?{' '}
-            <Link href="/auth/signup" className="text-indigo-600 hover:text-indigo-800 font-medium">
-              Sign Up
-            </Link>
-          </p>
+          <CardContent className="pt-2">
+            {localError && (
+              <div className="mb-4">
+                <Alert variant="error" message={localError} />
+              </div>
+            )}
 
-          <p className="mt-2 text-center">
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
-              ← Back to home
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+            <form onSubmit={handleSignIn} className="space-y-4 text-white">
+              {/* Email */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-slate-100"
+                >
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-slate-100"
+                >
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full !bg-[#297fd7] !hover:bg-[#2f8af0] !border-0"
+                isLoading={isLoading}
+              >
+                Sign In
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-slate-400">
+              Don&apos;t have an account?{' '}
+              <Link
+                href="/auth/signup"
+                className="text-[#4fa2ff] hover:text-[#76b7ff] font-medium"
+              >
+                Sign Up
+              </Link>
+            </p>
+
+            <p className="mt-3 text-center">
+              <Link
+                href="/"
+                className="text-xs text-slate-500 hover:text-slate-300"
+              >
+                ← Back to home
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

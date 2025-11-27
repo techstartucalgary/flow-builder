@@ -71,15 +71,7 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-green-900 mb-2">
-                🎉 Success!
-              </h3>
-              <p className="text-gray-700">
-                You're successfully authenticated with Supabase. This is a protected page
-                that only authenticated users can access.
-              </p>
-            </div>
+            
           </CardContent>
         </Card>
       </main>

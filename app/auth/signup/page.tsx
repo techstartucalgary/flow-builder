@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts';
 import { Button, Input, Card, CardHeader, CardContent, CardTitle } from '@/components/ui';
 import { Alert } from '@/components/ui/Alert';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -23,7 +24,6 @@ export default function SignUp() {
     setIsLoading(true);
     setSuccess(false);
 
-    // Validation
     if (password !== confirmPassword) {
       setLocalError('Passwords do not match');
       setIsLoading(false);
@@ -50,73 +50,120 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign Up</CardTitle>
-        </CardHeader>
+    <div className="min-h-screen bg-[#0b1016] flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <Card className="bg-[#111827]/90 border border-[#1f2937] text-slate-100 shadow-xl backdrop-blur">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold tracking-tight text-slate-100 text-center">
+              Create your FlowBuildr account
+            </CardTitle>
+            <p className="text-xs text-slate-400 tracking-wide uppercase text-center">
+              Takeoffs powered by FlowBuildr
+            </p>
+          </CardHeader>
 
-        <CardContent>
-          {localError && <Alert variant="error" message={localError} />}
-          {success && (
-            <Alert variant="success" message="Account created successfully! Redirecting..." />
-          )}
+          <CardContent className="pt-2">
+            {localError && (
+              <div className="mb-4">
+                <Alert variant="error" message={localError} />
+              </div>
+            )}
 
-          <form onSubmit={handleSignUp} className="space-y-4">
-            <Input
-              id="email"
-              type="email"
-              label="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
+            {success && (
+              <div className="mb-4">
+                <Alert
+                  variant="success"
+                  message="Account created successfully! Redirecting..."
+                />
+              </div>
+            )}
 
-            <Input
-              id="password"
-              type="password"
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+            <form onSubmit={handleSignUp} className="space-y-4 text-white">
+              {/* Email */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-slate-100"
+                >
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
 
-            <Input
-              id="confirmPassword"
-              type="password"
-              label="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+              {/* Password */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-slate-100"
+                >
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={isLoading}
-            >
-              Sign Up
-            </Button>
-          </form>
+              {/* Confirm Password */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-slate-100"
+                >
+                  Confirm Password
+                </label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
 
-          <p className="mt-6 text-center text-gray-600">
-            Already have an account?{' '}
-            <Link href="/auth/signin" className="text-indigo-600 hover:text-indigo-800 font-medium">
-              Sign In
-            </Link>
-          </p>
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full !bg-[#297fd7] !hover:bg-[#2f8af0] !border-0"
+                isLoading={isLoading}
+              >
+                Sign Up
+              </Button>
+            </form>
 
-          <p className="mt-2 text-center">
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
-              ← Back to home
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+            <p className="mt-6 text-center text-sm text-slate-400">
+              Already have an account?{' '}
+              <Link
+                href="/auth/signin"
+                className="text-[#4fa2ff] hover:text-[#76b7ff] font-medium"
+              >
+                Sign In
+              </Link>
+            </p>
+
+            <p className="mt-3 text-center">
+              <Link
+                href="/"
+                className="text-xs text-slate-500 hover:text-slate-300"
+              >
+                ← Back to home
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
