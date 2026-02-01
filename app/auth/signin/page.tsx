@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts';
 import Link from 'next/link';
+import Image from 'next/image';
 
 
 export default function SignIn() {
@@ -30,76 +31,84 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white selection:bg-blue-500/30 font-sans">
-     
-      
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        
-        
+    <div className="min-h-screen bg-[#030712] text-white selection:bg-blue-500/30">
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-6">
         <div className="absolute top-0 left-1/2 w-full -translate-x-1/2 h-full z-0 pointer-events-none">
-           <div className="absolute top-1/4 left-10 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] opacity-50"></div>
-           <div className="absolute bottom-1/4 right-10 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] opacity-50"></div>
+          <div className="absolute top-1/4 left-10 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] opacity-50"></div>
+          <div className="absolute bottom-1/4 right-10 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] opacity-50"></div>
         </div>
 
-        <div className="w-full max-w-md p-8 bg-[#0b1120]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl relative z-10 mx-4">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Welcome Back</h2>
-            <p className="text-gray-400 text-sm">
-              Enter your credentials to access your workspace.
-            </p>
+        <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-[500px_300px] gap-12 items-center justify-center">
+          <div className="w-full">
+            <div className="w-full h-[400px] bg-[#d9d9d9] rounded-xl relative">
+              <div className="absolute left-[50px] top-[75px] text-[#192027] text-xl font-semibold">
+                Start designing
+              </div>
+              <div className="absolute left-0 right-0 top-[200px] h-[200px] bg-[#b91c1c] rounded-b-xl flex items-center justify-center">
+                <Image
+                  src="/images/FlowBuildr%20Icon.png"
+                  alt="FlowBuildr icon"
+                  width={120}
+                  height={120}
+                  className="h-24 w-24"
+                />
+              </div>
+            </div>
           </div>
 
-          {localError && (
-            <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
-              {localError}
+          <div className="w-full h-[400px] bg-white text-black rounded-xl border border-[#d9d9d9] p-6 flex flex-col">
+            <h2 className="text-2xl font-bold mb-6">Login</h2>
+
+            {localError && (
+              <div className="mb-4 p-3 rounded-md bg-red-100 border border-red-200 text-red-700 text-sm text-center">
+                {localError}
+              </div>
+            )}
+
+            <form onSubmit={handleSignIn} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="designerOne@flowbuildr.com"
+                  className="w-full h-10 border border-[#d9d9d9] rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0099FC]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="*******"
+                  className="w-full h-10 border border-[#d9d9d9] rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0099FC]"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="mt-4 inline-flex rounded-md bg-gradient-to-r from-[#4DD0FF] to-[#118CD9] p-[1px] disabled:opacity-60"
+              >
+                <span className="flex h-10 w-full items-center justify-center rounded-md bg-[#0099FC] text-sm font-semibold text-white">
+                  {isLoading ? 'Signing In...' : 'Login'}
+                </span>
+              </button>
+            </form>
+
+            <button className="mt-3 text-sm text-[#0099FC]">Forgot password?</button>
+
+            <div className="mt-auto pt-6 text-sm">
+              <span className="text-black/60">Need an account?</span>{' '}
+              <Link href="/auth/signup" className="text-[#0099FC] font-semibold">
+                Sign Up
+              </Link>
             </div>
-          )}
-
-          <form onSubmit={handleSignIn} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
-              <input 
-                type="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com" 
-                className="w-full bg-[#030712] border border-gray-800 focus:border-blue-500 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" 
-                required 
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Password</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-                className="w-full bg-[#030712] border border-gray-800 focus:border-blue-500 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" 
-                required 
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full px-6 py-3.5 rounded-lg font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition-all shadow-lg shadow-blue-500/20 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </button>
-          </form>
-
-          <div className="mt-8 text-center text-sm text-gray-400">
-            Don't have an account?{' '}
-            <Link href="/auth/signup" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-              Sign Up
-            </Link>
-          </div>
-          
-          <div className="mt-4 text-center">
-             <Link href="/" className="text-xs text-gray-500 hover:text-white transition-colors">
-               ← Back to home
-             </Link>
           </div>
         </div>
       </div>
