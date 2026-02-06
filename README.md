@@ -1,18 +1,50 @@
-# FlowBuildr
+"Flow Builder 
 
-## Overview
+A simple app built with Next.js 14, TypeScript, Tailwind CSS, and Supabase.
 
-FlowBuildr project structure.
+## Features
 
-## Setup
+- ✅ User Sign Up
+- ✅ User Sign In
+- ✅ User Sign Out
+- ✅ Supabase for authentication backend
 
-1. Copy `.env.example` to `.env` and fill in your environment variables.
-2. See `docs/` for product and technical notes.
-3. See `scripts/` for development scripts (seed, migrate, run workers).
+## Tech Stack
 
-## Structure
+- **Frontend Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Authentication**: Supabase Auth
+- **Package Manager**: npm
 
-- `backend/` — Backend application code
-- `frontend/` — Frontend application code
-- `docs/` — Product + tech notes (prompts, assumptions, security)
-- `scripts/` — Dev scripts (seed, migrate, run workers)
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ installed
+
+### 1. Clone and Install
+
+```bash
+# Install dependencies
+npm install
+```
+
+### 4. Run the Development Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+For my cute devs: 
+By default, Supabase requires email confirmation. To disable this for development:
+
+1. Go to your Supabase project
+2. Navigate to Authentication → Settings
+3. Disable "Enable email confirmations"
+
+## License
+
+MIT" 
