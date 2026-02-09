@@ -1,15 +1,8 @@
-"""
-Interior Partition Extraction Route
-====================================
-API endpoint for extracting interior partitions with V/H orientation.
-"""
+"""Interior partition extraction route."""
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form
-from typing import List, Literal, Optional
+from typing import List, Literal
 from pydantic import BaseModel
-
-import sys
-sys.path.insert(0, '/Users/hamzakhurram/Desktop/FlowBuildr-Test1/backend')
 
 from src.vision.providers.gemini_vision import analyze_with_gemini
 from src.vision.prompts.partition_extraction import COMBINED_PARTITION_AND_DIMENSION_PROMPT

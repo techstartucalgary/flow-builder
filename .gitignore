@@ -16,6 +16,8 @@ env/
 *.iam.gserviceaccount.com*.json
 
 # Build outputs
+.next/
+out/
 dist/
 build/
 *.egg-info/
@@ -40,3 +42,8 @@ logs/
 # Google Cloud SDK
 google-cloud-sdk/
 google-cloud-cli-*.tar.gz
+
+# ML model binaries
+*.keras
+*.h5
+*.pkl
