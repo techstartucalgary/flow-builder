@@ -4,18 +4,29 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load .env from backend directory
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from src.api.routes import vision, floorplan, partitions
+from src.api.routes import vision, floorplan, partitions, takeoff
 from src.core.config import get_settings
 
 app = FastAPI(title="FlowBuildr API", version="0.1.0")
 
+# Allow the Next.js frontend to call our API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(vision.router)
 app.include_router(floorplan.router)
 app.include_router(partitions.router)
+app.include_router(takeoff.router)
 
 
 @app.get("/health")

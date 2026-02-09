@@ -6,7 +6,9 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts';
 import { supabase } from '@/lib/supabase';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { ChevronLeft, ChevronRight, Minus, Plus, Loader2, FileText, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, Loader2, FileText, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 const PdfViewerClient = dynamic(() => import('@/components/pdf/PdfViewer'), {
   ssr: false,
@@ -34,6 +36,11 @@ export default function ProjectViewerPage() {
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
+
+  // Analysis state
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -75,6 +82,36 @@ export default function ProjectViewerPage() {
     }
   }
 
+  async function handleAnalyze() {
+    if (!fileUrl || !project) return;
+    setAnalyzing(true);
+    setAnalysisError(null);
+    setAnalysisResult(null);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/takeoff/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_url: fileUrl,
+          file_mime: project.file_mime,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || `Server error ${res.status}`);
+      }
+
+      const data = await res.json();
+      setAnalysisResult(data.analysis);
+    } catch (e: any) {
+      setAnalysisError(e.message || 'Analysis failed');
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   const isPdf = useMemo(() => project?.file_mime === 'application/pdf', [project?.file_mime]);
   const isImage = useMemo(() => project?.file_mime?.startsWith('image/'), [project?.file_mime]);
 
@@ -110,7 +147,7 @@ export default function ProjectViewerPage() {
         </div>
 
         {/* 3-panel layout */}
-        <div className="min-h-0 h-full w-full grid gap-3 grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_220px]">
+        <div className="min-h-0 h-full w-full grid gap-3 grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_320px]">
           {/* Left */}
           <aside className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
@@ -209,14 +246,50 @@ export default function ProjectViewerPage() {
             </div>
           </section>
 
-          {/* Right */}
+          {/* Right — Analysis Panel */}
           <aside className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col min-h-0">
-            <div className="text-white font-semibold mb-2 text-sm">Tools</div>
-            <div className="space-y-2 text-sm">
-              <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-300">Scale (coming soon)</div>
-              <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-300">Auto measure (coming soon)</div>
-              <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-300">Rooms/Walls (coming soon)</div>
-            </div>
+            <div className="text-white font-semibold mb-3 text-sm">AI Takeoff</div>
+
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzing}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 text-white text-sm font-medium transition mb-3 shrink-0"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Analyzing…
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} />
+                  Analyze Plan
+                </>
+              )}
+            </button>
+
+            {analysisError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3 shrink-0">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+                  <p className="text-red-300 text-xs">{analysisError}</p>
+                </div>
+              </div>
+            )}
+
+            {analysisResult ? (
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
+                <div className="text-gray-300 text-xs whitespace-pre-wrap leading-relaxed font-mono">
+                  {analysisResult}
+                </div>
+              </div>
+            ) : !analyzing && (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-gray-500 text-xs text-center px-2">
+                  Click &quot;Analyze Plan&quot; to extract rooms, walls, doors, windows, and get a material estimate.
+                </p>
+              </div>
+            )}
           </aside>
         </div>
       </div>
