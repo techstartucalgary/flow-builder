@@ -1,0 +1,29 @@
+---
+description: FlowBuildr product context and anti-hallucination guardrails
+alwaysApply: true
+---
+
+# FlowBuildr Context (Always Apply)
+
+Read `FLOWBUILDR_CONTEXT.md` before making product-level decisions.
+
+## Scope
+Applies to all files and conversations in this repo.
+
+## Guardrails
+- Do not invent domain facts or requirements.
+- If a detail is missing, ask a clarifying question or mark it as an assumption.
+- Align all logic to the MVP roadmap and defaults in `FLOWBUILDR_CONTEXT.md`.
+- Favor traceable calculations and explicit inputs over heuristics.
+
+## Defaults (authoritative)
+- GLOBAL_CEILING_HEIGHT=9.0
+- DEFAULT_WASTE_FACTOR=0.15
+- DRY_WALL_SHEET_SIZE=48_144 (sq inches, 4'x12')
+
+## MVP Milestones (authoritative)
+1. Vision Detection Engine
+2. Scale & Schedule Parser
+3. Entity Logic Engine
+4. Takeoff Review Dashboard
+5. Material Reporting
