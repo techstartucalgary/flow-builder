@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app\\\\dashboard\\\\projects\\\\[projectId]\\\\page.tsx -> @/components/pdf/PdfViewer\":{\"id\":\"app\\\\dashboard\\\\projects\\\\[projectId]\\\\page.tsx -> @/components/pdf/PdfViewer\",\"files\":[\"static/chunks/_app-pages-browser_components_pdf_PdfViewer_tsx.js\"]}}"
