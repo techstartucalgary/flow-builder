@@ -1,8 +1,8 @@
-// File: D:\flow-builder\app\auth\signup\page.tsx
-import * as entry from '../../../../../app/auth/signup/page.js'
+// File: D:\flow-builder\app\dashboard\projects\[projectId]\page.tsx
+import * as entry from '../../../../../../app/dashboard/projects/[projectId]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
-type TEntry = typeof import('../../../../../app/auth/signup/page.js')
+type TEntry = typeof import('../../../../../../app/dashboard/projects/[projectId]/page.js')
 
 // Check that the entry is a valid entry
 checkFields<Diff<{

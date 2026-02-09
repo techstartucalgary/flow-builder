@@ -26,7 +26,7 @@ export default function PdfViewer({
     const el = wrapRef.current;
     const ro = new ResizeObserver(() => {
       const w = el.clientWidth;
-      // subtract a bit so it doesn’t touch edges
+      // subtract a bit so it doesn't touch edges
       setPageWidth(Math.max(320, w - 12));
     });
 
