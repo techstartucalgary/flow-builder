@@ -18,7 +18,12 @@ app = FastAPI(title="FlowBuildr API", version="0.1.0")
 # Use explicit allow_headers (not *) so preflight works with allow_credentials=True.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://127.0.0.1:3000"],
+    # Allow both localhost and 127.0.0.1 for the Next.js dev server
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],

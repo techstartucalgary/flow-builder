@@ -25,3 +25,44 @@ body {
   padding: 0;
   box-sizing: border-box;
 }
+
+/* ── Takeoff Analyzing Overlay ── */
+
+/* Scanline: a thin gradient band sweeping top-to-bottom */
+.takeoff-scanline {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    transparent 45%,
+    rgba(99, 102, 241, 0.25) 49%,
+    rgba(99, 102, 241, 0.45) 50%,
+    rgba(99, 102, 241, 0.25) 51%,
+    transparent 55%,
+    transparent 100%
+  );
+  background-size: 100% 200%;
+  animation: takeoff-scan 2.4s ease-in-out infinite;
+}
+
+@keyframes takeoff-scan {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+
+/* Focus boxes: dashed border with pulsing glow */
+.takeoff-focus-box {
+  border: 1.5px dashed rgba(129, 140, 248, 0.5);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.15), inset 0 0 8px rgba(99, 102, 241, 0.08);
+  animation: takeoff-pulse 2s ease-in-out infinite;
+}
+
+@keyframes takeoff-pulse {
+  0%, 100% {
+    border-color: rgba(129, 140, 248, 0.3);
+    box-shadow: 0 0 6px rgba(99, 102, 241, 0.1), inset 0 0 6px rgba(99, 102, 241, 0.05);
+  }
+  50% {
+    border-color: rgba(129, 140, 248, 0.7);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.3), inset 0 0 14px rgba(99, 102, 241, 0.12);
+  }
+}
