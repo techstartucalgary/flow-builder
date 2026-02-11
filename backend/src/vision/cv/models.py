@@ -34,7 +34,11 @@ class WallSegment(BaseModel):
     orientation: Orientation
     start: tuple[int, int] = Field(description="(x, y) start point in px")
     end: tuple[int, int] = Field(description="(x, y) end point in px")
-    thickness: int = Field(description="Wall thickness in px")
+    thickness: int = Field(description="Morphological face thickness in px")
+    visual_thickness: int = Field(
+        default=0,
+        description="Full visual wall width (both faces) in px — used for annotation",
+    )
     length_px: int = Field(description="Pixel length of this segment")
     length_ft: Optional[float] = Field(
         default=None,

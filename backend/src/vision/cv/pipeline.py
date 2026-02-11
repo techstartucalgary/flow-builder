@@ -37,6 +37,7 @@ GAP_TAG_MATCH_RADIUS_PX = 200   # max distance to correlate a gap with a tag
                                  # (tags are often offset from the gap via leader lines)
 TAG_WALL_SPLIT_DIST_PX = 80     # max perpendicular distance from tag to wall to split
 TAG_SPLIT_HALF_WIDTH_PX = 60    # half-width of the gap inserted at each tag
+VISUAL_THICKNESS_SEARCH_PX = 30 # perpendicular search radius for visual thickness
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +46,62 @@ TAG_SPLIT_HALF_WIDTH_PX = 60    # half-width of the gap inserted at each tag
 
 def _euclidean(a: tuple[int, int], b: tuple[int, int]) -> float:
     return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def _measure_visual_thickness(
+    walls: list[WallSegment],
+    combined_mask: np.ndarray,
+    search_radius: int = VISUAL_THICKNESS_SEARCH_PX,
+) -> None:
+    """
+    For each wall, scan the combined morphological mask perpendicular to the
+    wall at multiple points and set ``visual_thickness`` to the median extent
+    (first wall pixel to last wall pixel).  This captures both parallel faces
+    of an architectural wall, unlike the single-face ``thickness`` attribute.
+    """
+    h, w = combined_mask.shape[:2]
+
+    for wall in walls:
+        widths: list[int] = []
+
+        if wall.orientation == Orientation.HORIZONTAL:
+            y_mid = wall.start[1]
+            x_lo, x_hi = wall.start[0], wall.end[0]
+            num = min(20, max(5, (x_hi - x_lo) // 50))
+            step = max(1, (x_hi - x_lo) // (num + 1))
+
+            for i in range(1, num + 1):
+                x = x_lo + i * step
+                if x >= x_hi:
+                    break
+                y0 = max(0, y_mid - search_radius)
+                y1 = min(h, y_mid + search_radius + 1)
+                col = combined_mask[y0:y1, x]
+                nz = np.nonzero(col)[0]
+                if len(nz) >= 2:
+                    widths.append(int(nz[-1] - nz[0]) + 1)
+        else:
+            x_mid = wall.start[0]
+            y_lo, y_hi = wall.start[1], wall.end[1]
+            num = min(20, max(5, (y_hi - y_lo) // 50))
+            step = max(1, (y_hi - y_lo) // (num + 1))
+
+            for i in range(1, num + 1):
+                y = y_lo + i * step
+                if y >= y_hi:
+                    break
+                x0 = max(0, x_mid - search_radius)
+                x1 = min(w, x_mid + search_radius + 1)
+                row = combined_mask[y, x0:x1]
+                nz = np.nonzero(row)[0]
+                if len(nz) >= 2:
+                    widths.append(int(nz[-1] - nz[0]) + 1)
+
+        if widths:
+            widths.sort()
+            wall.visual_thickness = widths[len(widths) // 2]  # median
+        else:
+            wall.visual_thickness = wall.thickness
 
 
 def _point_to_segment_dist(px: int, py: int, seg: WallSegment) -> float:
@@ -358,6 +415,9 @@ def run(
     # ── 4b. Split walls at tag positions ───────────────────────────────
     #        Guarantees walls don't visually cross door/window openings.
     walls = _split_walls_at_tags(walls, tags)
+
+    # ── 4c. Measure visual thickness (both faces) ────────────────────
+    _measure_visual_thickness(walls, combined_wall_mask)
 
     # ── 5. Double-door pair grouping ───────────────────────────────────
     double_pairs = _mark_double_doors(tags)

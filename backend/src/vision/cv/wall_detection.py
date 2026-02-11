@@ -32,11 +32,11 @@ from src.vision.cv.models import Orientation, WallSegment
 
 # At 200 DPI with 1/4"=1' scale → 1 foot ≈ 50 px.
 MIN_WALL_THICKNESS_PX = 5       # drops dim lines / hatch lines
-MIN_WALL_LENGTH_PX = 200        # ~4 ft — filters short stubs & dimension ticks
-MIN_FILL_RATIO = 0.55           # drops sparse dimension/construction lines
+MIN_WALL_LENGTH_PX = 100        # ~2 ft — catches short inner partitions & closet walls
+MIN_FILL_RATIO = 0.50           # slightly lenient to catch inner walls with annotations
 
 # Midline scanning
-MIN_OPENING_GAP_PX = 20         # pixel gaps smaller than this are noise
+MIN_OPENING_GAP_PX = 25         # pixel gaps smaller than this are bridged (handles T-junctions)
 
 # Merge tunables
 MERGE_CROSS_AXIS_TOL = 30       # max cross-axis offset to cluster wall faces
@@ -116,11 +116,12 @@ def _contours_to_segments(
         if bbox_area > 0 and (area / bbox_area) < MIN_FILL_RATIO:
             continue
 
-        # Midline scan — sample a few rows/cols for robustness
+        # Midline scan — sample several rows/cols for robustness at
+        # wall intersections where a perpendicular wall may break the midline.
         if orientation == Orientation.HORIZONTAL:
             mid_y = y + h // 2
-            y_lo = max(0, mid_y - 1)
-            y_hi = min(mask.shape[0], mid_y + 2)
+            y_lo = max(0, mid_y - 2)
+            y_hi = min(mask.shape[0], mid_y + 3)
             strip = np.max(mask[y_lo:y_hi, x:x + w], axis=0)
 
             for run_start, run_end in _find_pixel_runs(strip):
@@ -138,8 +139,8 @@ def _contours_to_segments(
                 idx += 1
         else:
             mid_x = x + w // 2
-            x_lo = max(0, mid_x - 1)
-            x_hi = min(mask.shape[1], mid_x + 2)
+            x_lo = max(0, mid_x - 2)
+            x_hi = min(mask.shape[1], mid_x + 3)
             strip = np.max(mask[y:y + h, x_lo:x_hi], axis=1)
 
             for run_start, run_end in _find_pixel_runs(strip):

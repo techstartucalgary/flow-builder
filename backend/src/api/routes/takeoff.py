@@ -137,9 +137,22 @@ def _generate_annotated_image(file_bytes: bytes, mime_type: str, cv_result, page
     bgr = crop_drawing_area(bgr)
     annotated = bgr.copy()
 
-    # Draw walls
+    # Draw walls (full-thickness semi-transparent fill)
+    wall_overlay = annotated.copy()
     for w in cv_result.walls:
-        cv2.line(annotated, w.start, w.end, WALL_COLOR, 3)
+        vt = w.visual_thickness if w.visual_thickness > 0 else w.thickness
+        half_t = max(vt // 2, 3)
+        if w.orientation.value == "H":
+            pt1 = (w.start[0], w.start[1] - half_t)
+            pt2 = (w.end[0],   w.end[1]   + half_t)
+        else:
+            pt1 = (w.start[0] - half_t, w.start[1])
+            pt2 = (w.end[0]   + half_t, w.end[1])
+        cv2.rectangle(wall_overlay, pt1, pt2, WALL_COLOR, -1)
+    cv2.addWeighted(wall_overlay, 0.4, annotated, 0.6, 0, annotated)
+
+    # Wall labels on top
+    for w in cv_result.walls:
         mx = (w.start[0] + w.end[0]) // 2
         my = (w.start[1] + w.end[1]) // 2
         cv2.putText(annotated, w.id, (mx - 20, my - 8), FONT, 0.45, WALL_COLOR, 1, cv2.LINE_AA)
@@ -173,7 +186,7 @@ def _generate_annotated_image(file_bytes: bytes, mime_type: str, cv_result, page
     cv2.rectangle(annotated, (10, 10), (320, 110), (255, 255, 255), -1)
     cv2.rectangle(annotated, (10, 10), (320, 110), (0, 0, 0), 1)
     cv2.putText(annotated, "LEGEND", (lx, ly), FONT, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-    cv2.line(annotated, (lx, ly + 12), (lx + 30, ly + 12), WALL_COLOR, 3)
+    cv2.rectangle(annotated, (lx, ly + 8), (lx + 30, ly + 16), WALL_COLOR, -1)
     cv2.putText(annotated, f"Walls ({len(cv_result.walls)})", (lx + 40, ly + 16), FONT, 0.4, WALL_COLOR, 1, cv2.LINE_AA)
     ly += 28
     cv2.circle(annotated, (lx + 12, ly + 4), 8, DOOR_COLOR, 2)
