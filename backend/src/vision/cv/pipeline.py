@@ -35,6 +35,8 @@ from src.vision.cv.wall_detection import Gap, detect_gaps, extract_wall_segments
 DOUBLE_DOOR_RADIUS_PX = 50      # max distance between paired door tags
 GAP_TAG_MATCH_RADIUS_PX = 200   # max distance to correlate a gap with a tag
                                  # (tags are often offset from the gap via leader lines)
+TAG_WALL_SPLIT_DIST_PX = 80     # max perpendicular distance from tag to wall to split
+TAG_SPLIT_HALF_WIDTH_PX = 60    # half-width of the gap inserted at each tag
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +45,153 @@ GAP_TAG_MATCH_RADIUS_PX = 200   # max distance to correlate a gap with a tag
 
 def _euclidean(a: tuple[int, int], b: tuple[int, int]) -> float:
     return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def _point_to_segment_dist(px: int, py: int, seg: WallSegment) -> float:
+    """Perpendicular distance from a point to a wall segment."""
+    x1, y1 = seg.start
+    x2, y2 = seg.end
+    dx, dy = x2 - x1, y2 - y1
+    if dx == 0 and dy == 0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
+    return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+
+def _split_walls_at_tags(
+    walls: list[WallSegment],
+    tags: list[TagAnchor],
+) -> list[WallSegment]:
+    """
+    Post-processing: for each door/window tag near a wall, split that
+    wall segment at the tag position, inserting a gap.
+
+    This guarantees that walls don't visually cross door/window openings,
+    even if the morphological mask didn't produce clean breaks.
+    """
+    result: list[WallSegment] = []
+
+    for wall in walls:
+        # Collect tags that are close to this wall
+        nearby_tags: list[TagAnchor] = []
+        for tag in tags:
+            dist = _point_to_segment_dist(tag.center[0], tag.center[1], wall)
+            if dist <= TAG_WALL_SPLIT_DIST_PX:
+                # Also check the tag is within the wall's along-axis range
+                if wall.orientation == Orientation.HORIZONTAL:
+                    lo = min(wall.start[0], wall.end[0])
+                    hi = max(wall.start[0], wall.end[0])
+                    if lo + TAG_SPLIT_HALF_WIDTH_PX < tag.center[0] < hi - TAG_SPLIT_HALF_WIDTH_PX:
+                        nearby_tags.append(tag)
+                else:
+                    lo = min(wall.start[1], wall.end[1])
+                    hi = max(wall.start[1], wall.end[1])
+                    if lo + TAG_SPLIT_HALF_WIDTH_PX < tag.center[1] < hi - TAG_SPLIT_HALF_WIDTH_PX:
+                        nearby_tags.append(tag)
+
+        if not nearby_tags:
+            result.append(wall)
+            continue
+
+        # Sort tags by along-axis position
+        if wall.orientation == Orientation.HORIZONTAL:
+            nearby_tags.sort(key=lambda t: t.center[0])
+        else:
+            nearby_tags.sort(key=lambda t: t.center[1])
+
+        # Split the wall at each tag position
+        segments_to_split = [wall]
+        for tag in nearby_tags:
+            new_segments: list[WallSegment] = []
+            for seg in segments_to_split:
+                split = _split_one_wall(seg, tag)
+                new_segments.extend(split)
+            segments_to_split = new_segments
+
+        result.extend(segments_to_split)
+
+    # Re-number
+    h_idx = v_idx = 1
+    for seg in result:
+        if seg.orientation == Orientation.HORIZONTAL:
+            seg.id = f"H-{h_idx:02d}"
+            h_idx += 1
+        else:
+            seg.id = f"V-{v_idx:02d}"
+            v_idx += 1
+
+    return result
+
+
+def _split_one_wall(
+    wall: WallSegment,
+    tag: TagAnchor,
+) -> list[WallSegment]:
+    """Split a single wall segment at a tag position, returning 1 or 2 pieces."""
+    half = TAG_SPLIT_HALF_WIDTH_PX
+
+    if wall.orientation == Orientation.HORIZONTAL:
+        tag_pos = tag.center[0]
+        lo = wall.start[0]
+        hi = wall.end[0]
+        y = wall.start[1]
+
+        left_end = tag_pos - half
+        right_start = tag_pos + half
+
+        pieces: list[WallSegment] = []
+        if left_end - lo >= MIN_PIECE_LENGTH:
+            pieces.append(WallSegment(
+                id=wall.id,
+                orientation=wall.orientation,
+                start=(lo, y),
+                end=(left_end, y),
+                thickness=wall.thickness,
+                length_px=left_end - lo,
+            ))
+        if hi - right_start >= MIN_PIECE_LENGTH:
+            pieces.append(WallSegment(
+                id=wall.id,
+                orientation=wall.orientation,
+                start=(right_start, y),
+                end=(hi, y),
+                thickness=wall.thickness,
+                length_px=hi - right_start,
+            ))
+        return pieces if pieces else [wall]
+    else:
+        tag_pos = tag.center[1]
+        lo = wall.start[1]
+        hi = wall.end[1]
+        x = wall.start[0]
+
+        top_end = tag_pos - half
+        bottom_start = tag_pos + half
+
+        pieces = []
+        if top_end - lo >= MIN_PIECE_LENGTH:
+            pieces.append(WallSegment(
+                id=wall.id,
+                orientation=wall.orientation,
+                start=(x, lo),
+                end=(x, top_end),
+                thickness=wall.thickness,
+                length_px=top_end - lo,
+            ))
+        if hi - bottom_start >= MIN_PIECE_LENGTH:
+            pieces.append(WallSegment(
+                id=wall.id,
+                orientation=wall.orientation,
+                start=(x, bottom_start),
+                end=(x, hi),
+                thickness=wall.thickness,
+                length_px=hi - bottom_start,
+            ))
+        return pieces if pieces else [wall]
+
+
+# Minimum length for a wall piece after splitting (avoid tiny stubs)
+MIN_PIECE_LENGTH = 50
 
 
 def _mark_double_doors(tags: list[TagAnchor]) -> int:
@@ -204,6 +353,10 @@ def run(
     # ── 4. Detect tags (circles → doors, hexagons → windows) ──────────
     #       Tags are filtered to only those near a detected wall segment.
     tags = detect_tags(gray, binary, combined_wall_mask, walls)
+
+    # ── 4b. Split walls at tag positions ───────────────────────────────
+    #        Guarantees walls don't visually cross door/window openings.
+    walls = _split_walls_at_tags(walls, tags)
 
     # ── 5. Double-door pair grouping ───────────────────────────────────
     double_pairs = _mark_double_doors(tags)
