@@ -55,6 +55,8 @@ export default function ProjectViewerPage() {
   const [takeoff, setTakeoff] = useState<TakeoffData>(EMPTY_TAKEOFF);
   const [generated, setGenerated] = useState(false);
   const [takeoffError, setTakeoffError] = useState<string | null>(null);
+  // CV pipeline annotated image (base64 PNG, displayed over PDF)
+  const [annotatedImage, setAnnotatedImage] = useState<string | null>(null);
 
   // Overlay stepper
   const ANALYSIS_STEPS = [
@@ -141,6 +143,7 @@ export default function ProjectViewerPage() {
         body: JSON.stringify({
           file_url: fileUrl,
           file_mime: project.file_mime,
+          page_number: pageNumber,
         }),
       });
 
@@ -153,8 +156,27 @@ export default function ProjectViewerPage() {
       console.log('[handleGenerate] raw analysis length:', data.analysis?.length);
       console.log('[handleGenerate] raw analysis preview:', data.analysis?.substring(0, 500));
       const parsed = parseTakeoff(data.analysis || '');
+
+      // Override doors & windows with CV pipeline counts (more accurate)
+      if (data.cv_doors > 0 || data.cv_windows > 0) {
+        parsed.doors = data.cv_doors;
+        parsed.windows = data.cv_windows;
+        // Recalculate drywall deduction with CV counts
+        const openingDeduction = parsed.doors * 21 + parsed.windows * 12;
+        if (parsed.netDrywall > 0) {
+          parsed.netDrywall = Math.max(0, parsed.netDrywall + openingDeduction -
+            (data.cv_doors * 21 + data.cv_windows * 12));
+        }
+        console.log('[handleGenerate] CV overrides: doors=', data.cv_doors, 'windows=', data.cv_windows, 'walls=', data.cv_walls);
+      }
+
       setTakeoff(parsed);
       setGenerated(true);
+
+      // Store annotated image for overlay (no Supabase)
+      if (data.annotated_image) {
+        setAnnotatedImage(`data:image/png;base64,${data.annotated_image}`);
+      }
     } catch (e: any) {
       setTakeoffError(e.message || 'Generation failed');
     } finally {
@@ -244,9 +266,19 @@ export default function ProjectViewerPage() {
             </button>
           </div>
 
-          {/* PDF / Image */}
+          {/* PDF / Image — or annotated overlay after takeoff */}
           <div className="flex-1 min-h-0 overflow-auto relative">
-            {isPdf ? (
+            {annotatedImage && generated ? (
+              /* Show CV-annotated floor plan after takeoff */
+              <div className="w-full h-full flex items-center justify-center p-2">
+                <img
+                  src={annotatedImage}
+                  alt="Annotated floor plan"
+                  className="max-h-full max-w-full object-contain"
+                  style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                />
+              </div>
+            ) : isPdf ? (
               <PdfViewerClient
                 fileUrl={fileUrl}
                 pageNumber={pageNumber}

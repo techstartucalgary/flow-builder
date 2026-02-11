@@ -26,12 +26,20 @@ ADAPTIVE_C = 12              # constant subtracted from mean
 # PDF → image (requires pymupdf / fitz)
 # ---------------------------------------------------------------------------
 
-def _pdf_bytes_to_image(data: bytes, dpi: int = 200) -> np.ndarray:
-    """Render the first page of a PDF to a BGR numpy array."""
+def _pdf_bytes_to_image(data: bytes, dpi: int = 200, page_number: int = 0) -> np.ndarray:
+    """Render a specific page of a PDF to a BGR numpy array.
+
+    Parameters
+    ----------
+    page_number : 0-indexed page to render (default 0 = first page).
+    """
     import fitz  # PyMuPDF
 
     doc = fitz.open(stream=data, filetype="pdf")
-    page = doc[0]
+    print(f"[preprocessing] PDF has {len(doc)} pages, rendering page {page_number}")
+    if page_number >= len(doc):
+        page_number = 0
+    page = doc[page_number]
     zoom = dpi / 72.0
     mat = fitz.Matrix(zoom, zoom)
     pix = page.get_pixmap(matrix=mat, alpha=False)
@@ -47,15 +55,19 @@ def _pdf_bytes_to_image(data: bytes, dpi: int = 200) -> np.ndarray:
 # Public functions
 # ---------------------------------------------------------------------------
 
-def load_image(file_bytes: bytes, mime_type: str, dpi: int = 200) -> np.ndarray:
+def load_image(file_bytes: bytes, mime_type: str, dpi: int = 200, page_number: int = 0) -> np.ndarray:
     """
     Convert raw file bytes into a BGR ``np.ndarray``.
 
     Supports JPEG, PNG, WebP, GIF (first frame) via OpenCV,
-    and PDF (first page) via PyMuPDF.
+    and PDF (specific page) via PyMuPDF.
+
+    Parameters
+    ----------
+    page_number : 0-indexed page for PDFs (default 0).
     """
     if mime_type == "application/pdf":
-        return _pdf_bytes_to_image(file_bytes, dpi=dpi)
+        return _pdf_bytes_to_image(file_bytes, dpi=dpi, page_number=page_number)
 
     arr = np.frombuffer(file_bytes, dtype=np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)

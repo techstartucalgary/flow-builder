@@ -302,6 +302,7 @@ def run(
     mime_type: str,
     *,
     dpi: int = 200,
+    page_number: int = 0,
     h_kernel: int = 50,
     v_kernel: int = 50,
     crop_left: float = 0.02,
@@ -337,7 +338,7 @@ def run(
     """
 
     # ── 1. Load & preprocess ───────────────────────────────────────────
-    bgr = load_image(file_bytes, mime_type, dpi=dpi)
+    bgr = load_image(file_bytes, mime_type, dpi=dpi, page_number=page_number)
     bgr = crop_drawing_area(bgr, crop_left, crop_top, crop_right, crop_bottom)
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     binary = binarise(gray)

@@ -5,22 +5,23 @@ Accepts a signed URL pointing to a PDF/image, downloads it,
 sends it to Gemini using a Spatial Verification Protocol that
 eliminates hallucinated counts, and returns structured results.
 
-The protocol forces the model to:
-  1. Read the legend FIRST to learn symbol definitions
-  2. Divide the plan into a 3×3 spatial grid
-  3. Scan each grid cell and log every tag with its room/location
-  4. Detect double-door pairs (2 tags ≤ 24″ apart = 1 opening)
-  5. Build a Verification Log before any totals are computed
-  6. Derive material estimates ONLY from Verification Log counts
+Also runs the deterministic CV pipeline to extract accurate
+door/window counts and an annotated floor plan image.
 """
 
+import base64
 import httpx
+import cv2
+import numpy as np
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from src.core.config import get_settings
 from src.vision.providers.gemini_vision import DEFAULT_MODEL, analyze_image
+from src.vision.cv import pipeline as cv_pipeline
+from src.vision.cv.preprocessing import load_image, crop_drawing_area
+from src.vision.cv.models import TagClass
 
 router = APIRouter(prefix="/api/takeoff", tags=["takeoff"])
 
@@ -98,6 +99,10 @@ class TakeoffRequest(BaseModel):
         default="application/pdf",
         description="MIME type of the file",
     )
+    page_number: int = Field(
+        default=1,
+        description="1-indexed page number to analyze (for multi-page PDFs)",
+    )
 
 
 class TakeoffResult(BaseModel):
@@ -106,6 +111,80 @@ class TakeoffResult(BaseModel):
     model: str = ""
     analysis: str = ""
     error: Optional[str] = None
+    # CV pipeline outputs — accurate door/window counts
+    cv_doors: int = 0
+    cv_windows: int = 0
+    cv_walls: int = 0
+    # Annotated image as base64-encoded PNG (no Supabase storage)
+    annotated_image: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# CV annotation helper
+# ---------------------------------------------------------------------------
+
+WALL_COLOR   = (0, 180, 0)    # green (BGR)
+DOOR_COLOR   = (0, 0, 255)    # red
+WINDOW_COLOR = (255, 150, 0)  # blue
+FONT         = cv2.FONT_HERSHEY_SIMPLEX
+
+
+def _generate_annotated_image(file_bytes: bytes, mime_type: str, cv_result, page_number: int = 0) -> str:
+    """
+    Draw CV detections on the floor plan and return as a base64 PNG string.
+    """
+    bgr = load_image(file_bytes, mime_type, dpi=200, page_number=page_number)
+    bgr = crop_drawing_area(bgr)
+    annotated = bgr.copy()
+
+    # Draw walls
+    for w in cv_result.walls:
+        cv2.line(annotated, w.start, w.end, WALL_COLOR, 3)
+        mx = (w.start[0] + w.end[0]) // 2
+        my = (w.start[1] + w.end[1]) // 2
+        cv2.putText(annotated, w.id, (mx - 20, my - 8), FONT, 0.45, WALL_COLOR, 1, cv2.LINE_AA)
+
+    # Draw door tags
+    for t in cv_result.tags:
+        if t.tag_class == TagClass.DOOR:
+            cv2.circle(annotated, t.center, t.radius + 6, DOOR_COLOR, 2)
+            cv2.putText(annotated, t.id, (t.center[0] - 15, t.center[1] - t.radius - 10),
+                        FONT, 0.4, DOOR_COLOR, 1, cv2.LINE_AA)
+
+    # Draw window tags (hexagon outline)
+    for t in cv_result.tags:
+        if t.tag_class == TagClass.WINDOW:
+            r = t.radius + 8
+            pts = []
+            for i in range(6):
+                angle = i * np.pi / 3
+                px = int(t.center[0] + r * np.cos(angle))
+                py = int(t.center[1] + r * np.sin(angle))
+                pts.append([px, py])
+            pts_arr = np.array(pts, np.int32).reshape((-1, 1, 2))
+            cv2.polylines(annotated, [pts_arr], True, WINDOW_COLOR, 2)
+            cv2.putText(annotated, t.id, (t.center[0] - 15, t.center[1] - t.radius - 12),
+                        FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
+
+    # Draw legend
+    doors = [t for t in cv_result.tags if t.tag_class == TagClass.DOOR]
+    wins  = [t for t in cv_result.tags if t.tag_class == TagClass.WINDOW]
+    lx, ly = 20, 30
+    cv2.rectangle(annotated, (10, 10), (320, 110), (255, 255, 255), -1)
+    cv2.rectangle(annotated, (10, 10), (320, 110), (0, 0, 0), 1)
+    cv2.putText(annotated, "LEGEND", (lx, ly), FONT, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+    cv2.line(annotated, (lx, ly + 12), (lx + 30, ly + 12), WALL_COLOR, 3)
+    cv2.putText(annotated, f"Walls ({len(cv_result.walls)})", (lx + 40, ly + 16), FONT, 0.4, WALL_COLOR, 1, cv2.LINE_AA)
+    ly += 28
+    cv2.circle(annotated, (lx + 12, ly + 4), 8, DOOR_COLOR, 2)
+    cv2.putText(annotated, f"Door tags ({len(doors)})", (lx + 40, ly + 8), FONT, 0.4, DOOR_COLOR, 1, cv2.LINE_AA)
+    ly += 28
+    cv2.circle(annotated, (lx + 12, ly + 4), 8, WINDOW_COLOR, 2)
+    cv2.putText(annotated, f"Window tags ({len(wins)})", (lx + 40, ly + 8), FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
+
+    # Encode to PNG → base64
+    _, buf = cv2.imencode('.png', annotated)
+    return base64.b64encode(buf.tobytes()).decode('utf-8')
 
 
 # ---------------------------------------------------------------------------
@@ -117,9 +196,11 @@ async def analyze_takeoff(req: TakeoffRequest):
     """
     Analyze a floor plan for material takeoff.
 
-    Downloads the file from *file_url*, sends it to Gemini with the
-    Spatial Verification Protocol prompt, and returns the structured
-    extraction + material estimate.
+    1. Downloads the file from *file_url*.
+    2. Sends it to Gemini for full text extraction.
+    3. Runs the deterministic CV pipeline for accurate door/window counts
+       and generates an annotated floor plan image.
+    4. Returns both: Gemini analysis text + CV counts/annotated image.
     """
     settings = get_settings()
     if not settings.gemini_configured and not settings.vertex_configured:
@@ -143,7 +224,7 @@ async def analyze_takeoff(req: TakeoffRequest):
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Downloaded file is empty")
 
-    # ------ send to Gemini with Spatial Verification Protocol ------
+    # ------ send to Gemini ------
     try:
         analysis = analyze_image(
             image_bytes=file_bytes,
@@ -157,8 +238,36 @@ async def analyze_takeoff(req: TakeoffRequest):
             detail=f"Gemini API error: {str(e)}",
         )
 
+    # ------ run CV pipeline for doors/windows/walls + annotated image ------
+    cv_doors = 0
+    cv_windows = 0
+    cv_walls = 0
+    annotated_b64: Optional[str] = None
+
+    try:
+        # page_number in the request is 1-indexed; pipeline uses 0-indexed
+        cv_page = max(0, req.page_number - 1)
+        print(f"[takeoff/cv] file size={len(file_bytes)} bytes, mime={req.file_mime}, page={cv_page}")
+        cv_result = cv_pipeline.run(file_bytes, req.file_mime, page_number=cv_page)
+        cv_doors = sum(1 for t in cv_result.tags if t.tag_class == TagClass.DOOR)
+        cv_windows = sum(1 for t in cv_result.tags if t.tag_class == TagClass.WINDOW)
+        cv_walls = len(cv_result.walls)
+        print(f"[takeoff/cv] walls={cv_walls} doors={cv_doors} windows={cv_windows}")
+        print(f"[takeoff/cv] debug: {cv_result.debug}")
+        annotated_b64 = _generate_annotated_image(file_bytes, req.file_mime, cv_result, page_number=cv_page)
+        print(f"[takeoff/cv] annotated image size={len(annotated_b64)} chars (base64)")
+    except Exception as e:
+        # CV pipeline failure is non-fatal; Gemini results still return
+        import traceback
+        print(f"[takeoff] CV pipeline error (non-fatal): {e}")
+        traceback.print_exc()
+
     return TakeoffResult(
         status="ok",
         model=DEFAULT_MODEL,
         analysis=analysis.strip(),
+        cv_doors=cv_doors,
+        cv_windows=cv_windows,
+        cv_walls=cv_walls,
+        annotated_image=annotated_b64,
     )
