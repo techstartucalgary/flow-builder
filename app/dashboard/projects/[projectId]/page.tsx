@@ -6,7 +6,15 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts';
 import { supabase } from '@/lib/supabase';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { ChevronLeft, ChevronRight, Minus, Plus, Loader2, FileText, Image as ImageIcon } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  Plus,
+  Loader2,
+  FileText,
+  Image as ImageIcon,
+} from 'lucide-react';
 
 const PdfViewerClient = dynamic(() => import('@/components/pdf/PdfViewer'), {
   ssr: false,
@@ -22,6 +30,11 @@ type ProjectRow = {
   created_at: string;
 };
 
+type CalcResult = {
+  extract: any;
+  legendCheck: any;
+};
+
 export default function ProjectViewerPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -34,6 +47,11 @@ export default function ProjectViewerPage() {
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
+
+  // NEW: calculate state
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
+  const [calcResult, setCalcResult] = useState<CalcResult | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -78,6 +96,74 @@ export default function ProjectViewerPage() {
   const isPdf = useMemo(() => project?.file_mime === 'application/pdf', [project?.file_mime]);
   const isImage = useMemo(() => project?.file_mime?.startsWith('image/'), [project?.file_mime]);
 
+  // NEW: helper to convert signed URL -> File
+  async function signedUrlToFile(url: string, filename: string, mimeFallback?: string): Promise<File> {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch project file (${res.status})`);
+    const blob = await res.blob();
+    const mime = blob.type || mimeFallback || 'application/octet-stream';
+    return new File([blob], filename, { type: mime });
+  }
+
+  // NEW: call backend endpoints
+  async function handleCalculate() {
+    if (!project || !fileUrl) return;
+
+    setCalcLoading(true);
+    setCalcError(null);
+    setCalcResult(null);
+
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_FLOORPLAN_API_BASE_URL || ''; 
+      // Example:
+      // NEXT_PUBLIC_FLOORPLAN_API_BASE_URL="http://localhost:8000"
+      // If same-origin reverse proxy, you can leave it empty.
+
+      const file = await signedUrlToFile(fileUrl, project.name || 'floorplan', project.file_mime);
+
+      const postMultipart = async (path: string, extraForm?: Record<string, string>) => {
+        const form = new FormData();
+        form.append('file', file);
+
+        if (extraForm) {
+          for (const [k, v] of Object.entries(extraForm)) form.append(k, v);
+        }
+
+        const resp = await fetch(`${apiBase}${path}`, {
+          method: 'POST',
+          body: form,
+        });
+
+        const text = await resp.text();
+        let json: any;
+        try {
+          json = text ? JSON.parse(text) : null;
+        } catch {
+          json = { raw: text };
+        }
+
+        if (!resp.ok) {
+          const detail = json?.detail || resp.statusText || 'Request failed';
+          throw new Error(`${path} failed: ${detail}`);
+        }
+        return json;
+      };
+
+      // Your backend router uses prefix="/api/floorplan"
+      const [extract, legendCheck] = await Promise.all([
+        postMultipart('/api/floorplan/extract', { include_dimensions: 'true' }),
+        postMultipart('/api/floorplan/legend-check'),
+      ]);
+
+      setCalcResult({ extract, legendCheck });
+    } catch (e: any) {
+      console.error(e);
+      setCalcError(e?.message || 'Failed to calculate');
+    } finally {
+      setCalcLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center gap-3 text-gray-400 p-3">
@@ -119,7 +205,11 @@ export default function ProjectViewerPage() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 flex items-center gap-3">
-              {isPdf ? <FileText size={18} className="text-gray-300" /> : <ImageIcon size={18} className="text-gray-300" />}
+              {isPdf ? (
+                <FileText size={18} className="text-gray-300" />
+              ) : (
+                <ImageIcon size={18} className="text-gray-300" />
+              )}
               <div className="min-w-0">
                 <div className="text-sm text-white truncate">{project.name}</div>
                 <div className="text-xs text-gray-500 truncate">{project.file_mime}</div>
@@ -137,7 +227,8 @@ export default function ProjectViewerPage() {
                 </button>
 
                 <div className="text-xs">
-                  Page <span className="text-white">{pageNumber}</span> / <span className="text-white">{numPages || '-'}</span>
+                  Page <span className="text-white">{pageNumber}</span> /{' '}
+                  <span className="text-white">{numPages || '-'}</span>
                 </div>
 
                 <button
@@ -212,10 +303,46 @@ export default function ProjectViewerPage() {
           {/* Right */}
           <aside className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col min-h-0">
             <div className="text-white font-semibold mb-2 text-sm">Tools</div>
+
             <div className="space-y-2 text-sm">
               <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-300">Scale (coming soon)</div>
-              <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-300">Auto measure (coming soon)</div>
+              <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-300">
+                Auto measure (coming soon)
+              </div>
               <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-300">Rooms/Walls (coming soon)</div>
+
+              <div className="pt-2" />
+
+              {/* NEW: Calculate button */}
+              <button
+                onClick={handleCalculate}
+                disabled={calcLoading}
+                className="w-full rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-200 hover:bg-white/10 transition flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {calcLoading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    Calculating...
+                  </>
+                ) : (
+                  'Calculate'
+                )}
+              </button>
+
+              {/* NEW: Show error/result */}
+              {calcError && (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-red-200 text-xs whitespace-pre-wrap">
+                  {calcError}
+                </div>
+              )}
+
+              {calcResult && (
+                <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 text-gray-200 text-xs overflow-auto max-h-[40vh]">
+                  <pre className="whitespace-pre-wrap break-words">
+                    {JSON.stringify(calcResult, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           </aside>
         </div>
