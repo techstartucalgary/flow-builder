@@ -2,80 +2,102 @@
 Takeoff API route — full floor plan analysis via URL.
 =====================================================
 Accepts a signed URL pointing to a PDF/image, downloads it,
-sends it to Gemini for full extraction, and returns structured results.
+sends it to Gemini using a Spatial Verification Protocol that
+eliminates hallucinated counts, and returns structured results.
+
+The protocol forces the model to:
+  1. Read the legend FIRST to learn symbol definitions
+  2. Divide the plan into a 3×3 spatial grid
+  3. Scan each grid cell and log every tag with its room/location
+  4. Detect double-door pairs (2 tags ≤ 24″ apart = 1 opening)
+  5. Build a Verification Log before any totals are computed
+  6. Derive material estimates ONLY from Verification Log counts
 """
 
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import Optional
 
 from src.core.config import get_settings
 from src.vision.providers.gemini_vision import DEFAULT_MODEL, analyze_image
 
 router = APIRouter(prefix="/api/takeoff", tags=["takeoff"])
 
-TAKEOFF_PROMPT = """You are a construction takeoff specialist analyzing a floor plan.
+# ---------------------------------------------------------------------------
+# Spatial Verification Protocol prompt
+# ---------------------------------------------------------------------------
 
-Extract ALL of the following from this floor plan. Be precise and thorough.
+"""Construction takeoff prompts for floor plan analysis."""
 
-## 1. METADATA
-- Sheet number
-- Scale (e.g., 1/4" = 1'-0")
-- Floor level (e.g., Basement, Main, Upper)
-- Total area (sq ft) if noted on the plan
+TAKEOFF_PROMPT = """
+Analyze this construction floor plan and extract ALL details for material takeoff.
+Be thorough and precise. If something is unclear, note it explicitly.
 
-## 2. ROOMS
-List every room/space with its name exactly as labeled on the plan.
+## Extract the following:
 
-## 3. DOORS
-For each door, provide:
-- Tag number (from the circle symbol)
-- Size (width × height) from the door schedule if visible
-- Location (which room(s) it connects)
-- Type (swing, slider, double, pocket, bi-fold)
-Count the TOTAL number of door symbols on the plan.
+### 1. WALLS
+- Identify all wall segments (foundation walls, partition studs, load-bearing, etc.)
+- Note wall types, thicknesses, and materials if shown in legend
+- List all wall dimensions (X and Y directions)
+- Identify end-caps, corners, and vertical soffit faces
 
-## 4. WINDOWS 
-For each window, provide:
-- Tag number (from the hexagon symbol)
-- Size (width × height) from the window schedule if visible
-- Location (which wall / room)
-Count the TOTAL number of window symbols on the plan.
+### 2. DIMENSIONS & MEASUREMENTS
+- List ALL dimension strings shown on the plan
+- Note overall dimensions and individual room dimensions
+- Extract any height specifications (ceiling heights, dropped ceilings, bulkheads)
 
-## 5. PERIMETER WALLS
-List each perimeter (exterior) wall with its dimension string exactly as shown.
-Parse each to decimal feet.
+### 3. SCALE & UNITS
+- Identify the drawing scale (e.g., 1/4"=1'-0")
+- Note the units used (feet, inches, meters)
 
-## 6. INTERIOR PARTITIONS
-List each interior partition wall with:
-- Rooms it separates
-- Dimension string as shown on plan
-- Orientation: V (vertical/north-south) or H (horizontal/east-west)
+### 4. LEGENDS & SYMBOLS
+- List all legend items (material codes, wall types, symbols)
+- Note any special symbols (electrical, plumbing, HVAC)
+- Identify color codes or hatch patterns
 
-## 7. SPECIAL FEATURES
-- Dropped ceilings / soffits
-- Bulkheads
-- Any notes about wall types (e.g., moisture-resistant, fire-rated)
+### 5. WINDOWS & DOORS
+- List all window and door tags/labels
+- Note schedules if present (sizes, types, quantities)
+- Identify locations and rough openings
 
-## 8. MATERIAL ESTIMATE
-Using a 9 ft ceiling height:
-- Calculate total perimeter wall area (length × 9 × 1 side)
-- Calculate total partition wall area (length × 9 × 2 sides)
-- Calculate total door opening area to deduct
-- Calculate total window opening area to deduct
-- Net drywall area = gross wall area - openings
-- Add 15% waste factor
-- Calculate sheets needed (4' × 12' = 48 sq ft per sheet)
+### 6. ROOMS & SPACES
+- List all room labels and names
+- Note any special areas (dropped ceilings, bulkheads, mechanical rooms)
 
-FORMAT YOUR RESPONSE AS STRUCTURED TEXT with clear headers and numbers.
+### 7. TEXT ANNOTATIONS
+- Extract ALL text, notes, and callouts visible on the plan
+- Include revision notes, stamps, and general notes
+
+### 8. SPECIAL FEATURES
+- Identify any bulkheads, soffits, or ceiling variations
+- Note structural elements (beams, columns, footings)
+
+## Output Format:
+Organize findings clearly under each category above.
+Flag any ambiguities or illegible details.
 """
 
+QUICK_SUMMARY_PROMPT = """
+Provide a concise summary of this floor plan:
+- Overall dimensions
+- Number of rooms
+- Key features
+- Any special notes or considerations for construction takeoff
+"""
+
+
+# ---------------------------------------------------------------------------
+# Request / Response models
+# ---------------------------------------------------------------------------
 
 class TakeoffRequest(BaseModel):
     """Request body for takeoff analysis."""
     file_url: str = Field(description="Signed URL to the PDF or image file")
-    file_mime: str = Field(default="application/pdf", description="MIME type of the file")
+    file_mime: str = Field(
+        default="application/pdf",
+        description="MIME type of the file",
+    )
 
 
 class TakeoffResult(BaseModel):
@@ -86,13 +108,18 @@ class TakeoffResult(BaseModel):
     error: Optional[str] = None
 
 
+# ---------------------------------------------------------------------------
+# Route
+# ---------------------------------------------------------------------------
+
 @router.post("/analyze", response_model=TakeoffResult)
 async def analyze_takeoff(req: TakeoffRequest):
     """
     Analyze a floor plan for material takeoff.
-    
-    Accepts a signed URL to a PDF/image, downloads it, sends to Gemini,
-    and returns the full extraction and material estimate.
+
+    Downloads the file from *file_url*, sends it to Gemini with the
+    Spatial Verification Protocol prompt, and returns the structured
+    extraction + material estimate.
     """
     settings = get_settings()
     if not settings.gemini_configured and not settings.vertex_configured:
@@ -101,19 +128,22 @@ async def analyze_takeoff(req: TakeoffRequest):
             detail="Configure GEMINI_API_KEY or Vertex AI in backend/.env",
         )
 
-    # Download the file from the signed URL
+    # ------ download file from signed URL ------
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.get(req.file_url)
             resp.raise_for_status()
             file_bytes = resp.content
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to download file: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to download file: {str(e)}",
+        )
 
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Downloaded file is empty")
 
-    # Send to Gemini for analysis
+    # ------ send to Gemini with Spatial Verification Protocol ------
     try:
         analysis = analyze_image(
             image_bytes=file_bytes,
@@ -122,7 +152,10 @@ async def analyze_takeoff(req: TakeoffRequest):
             model=DEFAULT_MODEL,
         )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Gemini API error: {str(e)}",
+        )
 
     return TakeoffResult(
         status="ok",

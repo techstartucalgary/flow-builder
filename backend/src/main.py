@@ -9,24 +9,27 @@ from fastapi.middleware.cors import CORSMiddleware
 # Load .env from backend directory
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from src.api.routes import vision, floorplan, partitions, takeoff
+from src.api.routes import vision, floorplan, partitions, takeoff, cv_takeoff
 from src.core.config import get_settings
 
 app = FastAPI(title="FlowBuildr API", version="0.1.0")
 
-# Allow the Next.js frontend to call our API
+# Allow the Next.js frontend to call our API.
+# Use explicit allow_headers (not *) so preflight works with allow_credentials=True.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3001", "http://127.0.0.1:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
+    expose_headers=["*"],
 )
 
 app.include_router(vision.router)
 app.include_router(floorplan.router)
 app.include_router(partitions.router)
 app.include_router(takeoff.router)
+app.include_router(cv_takeoff.router)
 
 
 @app.get("/health")
@@ -49,7 +52,7 @@ def test_gemini():
 
         client = get_genai_client()
         # Gemini 2.5 Flash Lite: 4K RPM, 4M TPM, Unlimited RPD (best limits)
-        model = "gemini-2.5-flash-lite"
+        model = "gemini-3-pro-preview"
         response = client.models.generate_content(
             model=model,
             contents="Reply with exactly: Gemini is working",
