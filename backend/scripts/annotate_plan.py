@@ -17,6 +17,7 @@ Run from the backend/ directory:
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -35,6 +36,9 @@ DOOR_COLOR    = (0, 0, 255)      # red
 WINDOW_COLOR  = (255, 150, 0)    # blue
 OPENING_COLOR = (0, 200, 255)    # yellow
 FONT          = cv2.FONT_HERSHEY_SIMPLEX
+
+# Junction corner fill — max endpoint distance to consider a corner pair
+CORNER_MAX_DIST_PX = 50
 
 
 def annotate(
@@ -97,6 +101,33 @@ def annotate(
             pt1 = (w.start[0] - half_t, w.start[1])
             pt2 = (w.end[0]   + half_t, w.end[1])
         cv2.rectangle(wall_overlay, pt1, pt2, WALL_COLOR, -1)  # filled
+
+    # ── Fill junction corners ────────────────────────────────────────
+    # Morphological opening erodes wall endpoints, leaving visible gaps
+    # where perpendicular walls meet.  Fill small rectangles at these
+    # corners so the overlay looks continuous.
+    for i, w1 in enumerate(result.walls):
+        for w2 in result.walls[i + 1:]:
+            if w1.orientation == w2.orientation:
+                continue
+            vt1 = w1.visual_thickness if w1.visual_thickness > 0 else w1.thickness
+            vt2 = w2.visual_thickness if w2.visual_thickness > 0 else w2.thickness
+            ht1 = max(vt1 // 2, 3)
+            ht2 = max(vt2 // 2, 3)
+            for ep1 in [w1.start, w1.end]:
+                for ep2 in [w2.start, w2.end]:
+                    d = math.hypot(ep1[0] - ep2[0], ep1[1] - ep2[1])
+                    if d < CORNER_MAX_DIST_PX:
+                        mx = (ep1[0] + ep2[0]) // 2
+                        my = (ep1[1] + ep2[1]) // 2
+                        if w1.orientation.value == "H":
+                            h_ht, v_ht = ht1, ht2
+                        else:
+                            h_ht, v_ht = ht2, ht1
+                        cp1 = (mx - v_ht, my - h_ht)
+                        cp2 = (mx + v_ht, my + h_ht)
+                        cv2.rectangle(wall_overlay, cp1, cp2, WALL_COLOR, -1)
+
     # Blend: 40% wall fill, 60% original drawing
     cv2.addWeighted(wall_overlay, 0.4, annotated, 0.6, 0, annotated)
 

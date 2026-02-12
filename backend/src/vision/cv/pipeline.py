@@ -38,6 +38,9 @@ GAP_TAG_MATCH_RADIUS_PX = 200   # max distance to correlate a gap with a tag
 TAG_WALL_SPLIT_DIST_PX = 80     # max perpendicular distance from tag to wall to split
 TAG_SPLIT_HALF_WIDTH_PX = 60    # half-width of the gap inserted at each tag
 VISUAL_THICKNESS_SEARCH_PX = 30 # perpendicular search radius for visual thickness
+MAX_VISUAL_THICKNESS_PX = 45    # absolute cap — ~13" at 200 DPI
+ENDPOINT_MARGIN_MIN_PX = 40     # min along-axis margin from endpoints when sampling
+ENDPOINT_MARGIN_FRAC = 0.15     # fraction of wall length to skip at each end
 
 
 # ---------------------------------------------------------------------------
@@ -50,56 +53,93 @@ def _euclidean(a: tuple[int, int], b: tuple[int, int]) -> float:
 
 def _measure_visual_thickness(
     walls: list[WallSegment],
-    combined_mask: np.ndarray,
+    h_mask: np.ndarray,
+    v_mask: np.ndarray,
     search_radius: int = VISUAL_THICKNESS_SEARCH_PX,
 ) -> None:
     """
-    For each wall, scan the combined morphological mask perpendicular to the
-    wall at multiple points and set ``visual_thickness`` to the median extent
-    (first wall pixel to last wall pixel).  This captures both parallel faces
-    of an architectural wall, unlike the single-face ``thickness`` attribute.
+    For each wall, scan the **orientation-matched** morphological mask
+    perpendicular to the wall at multiple interior points and set
+    ``visual_thickness`` to the median extent (first wall pixel → last
+    wall pixel).
+
+    Key improvements over the previous combined-mask approach:
+      • Uses ``h_mask`` for H walls and ``v_mask`` for V walls so that
+        perpendicular walls at T-/L-junctions do NOT contaminate the scan.
+      • Skips samples near endpoints (where perpendicular walls connect)
+        to further reduce junction artifacts.
+      • Caps the result at ``MAX_VISUAL_THICKNESS_PX`` and at
+        ``4 × morphological thickness`` as a sanity bound.
     """
-    h, w = combined_mask.shape[:2]
+    img_h, img_w = h_mask.shape[:2]
 
     for wall in walls:
+        # Use the mask that matches this wall's orientation.
+        # h_mask only contains horizontal features (perpendicular V walls
+        # are removed by the H morphological opening), and vice versa.
+        mask = h_mask if wall.orientation == Orientation.HORIZONTAL else v_mask
+
         widths: list[int] = []
 
         if wall.orientation == Orientation.HORIZONTAL:
             y_mid = wall.start[1]
             x_lo, x_hi = wall.start[0], wall.end[0]
-            num = min(20, max(5, (x_hi - x_lo) // 50))
-            step = max(1, (x_hi - x_lo) // (num + 1))
+            seg_len = x_hi - x_lo
+
+            # Margin: skip samples near endpoints to avoid junction noise
+            margin = max(ENDPOINT_MARGIN_MIN_PX, int(seg_len * ENDPOINT_MARGIN_FRAC))
+            samp_lo = x_lo + margin
+            samp_hi = x_hi - margin
+            if samp_lo >= samp_hi:
+                # Wall too short — single sample at centre
+                samp_lo = (x_lo + x_hi) // 2
+                samp_hi = samp_lo + 1
+
+            num = min(15, max(3, (samp_hi - samp_lo) // 40))
+            step = max(1, (samp_hi - samp_lo) // (num + 1))
 
             for i in range(1, num + 1):
-                x = x_lo + i * step
-                if x >= x_hi:
+                x = samp_lo + i * step
+                if x >= samp_hi:
                     break
                 y0 = max(0, y_mid - search_radius)
-                y1 = min(h, y_mid + search_radius + 1)
-                col = combined_mask[y0:y1, x]
+                y1 = min(img_h, y_mid + search_radius + 1)
+                col = mask[y0:y1, x]
                 nz = np.nonzero(col)[0]
                 if len(nz) >= 2:
                     widths.append(int(nz[-1] - nz[0]) + 1)
         else:
             x_mid = wall.start[0]
             y_lo, y_hi = wall.start[1], wall.end[1]
-            num = min(20, max(5, (y_hi - y_lo) // 50))
-            step = max(1, (y_hi - y_lo) // (num + 1))
+            seg_len = y_hi - y_lo
+
+            margin = max(ENDPOINT_MARGIN_MIN_PX, int(seg_len * ENDPOINT_MARGIN_FRAC))
+            samp_lo = y_lo + margin
+            samp_hi = y_hi - margin
+            if samp_lo >= samp_hi:
+                samp_lo = (y_lo + y_hi) // 2
+                samp_hi = samp_lo + 1
+
+            num = min(15, max(3, (samp_hi - samp_lo) // 40))
+            step = max(1, (samp_hi - samp_lo) // (num + 1))
 
             for i in range(1, num + 1):
-                y = y_lo + i * step
-                if y >= y_hi:
+                y = samp_lo + i * step
+                if y >= samp_hi:
                     break
                 x0 = max(0, x_mid - search_radius)
-                x1 = min(w, x_mid + search_radius + 1)
-                row = combined_mask[y, x0:x1]
+                x1 = min(img_w, x_mid + search_radius + 1)
+                row = mask[y, x0:x1]
                 nz = np.nonzero(row)[0]
                 if len(nz) >= 2:
                     widths.append(int(nz[-1] - nz[0]) + 1)
 
         if widths:
             widths.sort()
-            wall.visual_thickness = widths[len(widths) // 2]  # median
+            median_w = widths[len(widths) // 2]
+            # Double cap: absolute max + relative to morphological thickness
+            cap = min(MAX_VISUAL_THICKNESS_PX, wall.thickness * 4)
+            wall.visual_thickness = min(median_w, cap)
         else:
             wall.visual_thickness = wall.thickness
 
@@ -248,7 +288,9 @@ def _split_one_wall(
 
 
 # Minimum length for a wall piece after splitting (avoid tiny stubs)
-MIN_PIECE_LENGTH = 50
+# Reduced from 50 → 30 to preserve short wall segments at corners
+# and between closely-spaced openings.
+MIN_PIECE_LENGTH = 30
 
 
 def _mark_double_doors(tags: list[TagAnchor]) -> int:
@@ -417,7 +459,9 @@ def run(
     walls = _split_walls_at_tags(walls, tags)
 
     # ── 4c. Measure visual thickness (both faces) ────────────────────
-    _measure_visual_thickness(walls, combined_wall_mask)
+    #        Uses orientation-matched masks (h_mask for H walls,
+    #        v_mask for V walls) to prevent perpendicular contamination.
+    _measure_visual_thickness(walls, h_mask, v_mask)
 
     # ── 5. Double-door pair grouping ───────────────────────────────────
     double_pairs = _mark_double_doors(tags)
