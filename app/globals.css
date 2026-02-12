@@ -5,6 +5,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* ── Auth surface tokens (derived from existing palette) ── */
+  --auth-surface: #f8f9fb;       /* right-panel bg — 2% tint of white       */
+  --auth-border: #e5e7eb;        /* input/card border — gray-200            */
+  --auth-ring: rgba(0, 153, 252, 0.20); /* focus ring from existing #0099FC */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -12,6 +17,15 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+/* ── Micro-interaction: fade-in for inline toasts ── */
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.auth-fade-in {
+  animation: authFadeIn 0.2s ease-out forwards;
 }
 
 body {
