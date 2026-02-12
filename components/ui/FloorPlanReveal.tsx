@@ -51,16 +51,16 @@ export default function FloorPlanReveal() {
   const active = inView || replayKey > 0;
 
   return (
-    <div ref={wrapperRef} className="relative w-full max-w-3xl mx-auto">
-      {/* Glow behind the plan */}
-      <div className="absolute inset-0 -inset-x-8 blur-[60px] opacity-30 pointer-events-none bg-gradient-radial from-blue-500/20 to-transparent" />
+    <div ref={wrapperRef} className="relative w-full h-full min-h-[260px] flex items-center justify-center [contain:layout]">
+      {/* Glow behind the plan (subtle, component-level) */}
+      <div className="absolute inset-0 -inset-x-4 blur-[50px] opacity-25 pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,rgba(96,165,250,0.15),transparent)]" />
 
       <svg
         key={replayKey}
         ref={svgRef}
-        viewBox="0 0 860 680"
+        viewBox="0 0 780 680"
         preserveAspectRatio="xMidYMid meet"
-        className="w-full h-auto"
+        className="w-full h-full max-h-full"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
