@@ -27,7 +27,12 @@ from src.vision.cv.models import (
 )
 from src.vision.cv.preprocessing import binarise, crop_drawing_area, isolate_walls, load_image
 from src.vision.cv.tag_detection import detect_tags
-from src.vision.cv.wall_detection import Gap, detect_gaps, extract_wall_segments
+from src.vision.cv.wall_detection import (
+    Gap,
+    detect_gaps,
+    extract_wall_segments,
+    suppress_measurement_artifacts,
+)
 
 # ---------------------------------------------------------------------------
 # Tunables
@@ -455,6 +460,7 @@ def run(
 
     # ── 2. Vectorise walls ─────────────────────────────────────────────
     walls = extract_wall_segments(h_mask, v_mask)
+    walls, suppression_debug = suppress_measurement_artifacts(walls, binary)
     combined_wall_mask = cv2.bitwise_or(h_mask, v_mask)
 
     # ── 3. Detect gaps (opening candidates) ────────────────────────────
@@ -501,6 +507,8 @@ def run(
         horizontal_walls=h_count,
         vertical_walls=v_count,
         total_wall_segments=len(walls),
+        walls_raw=suppression_debug["walls_raw"],
+        walls_after_suppression=suppression_debug["walls_after_suppression"],
         door_tags=sum(1 for t in tags if t.tag_class == TagClass.DOOR),
         window_tags=sum(1 for t in tags if t.tag_class == TagClass.WINDOW),
         double_door_pairs=double_pairs,

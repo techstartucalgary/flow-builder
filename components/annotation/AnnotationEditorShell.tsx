@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fromCVTakeoffResult, toPersistencePayload } from '@/lib/annotationAdapters';
+import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import EditorToolbar from '@/components/annotation/EditorToolbar';
 import IssueHighlighter from '@/components/annotation/IssueHighlighter';
 import LayerVisibilityPanel from '@/components/annotation/LayerVisibilityPanel';
@@ -11,11 +12,9 @@ import RevisionStatusBar from '@/components/annotation/RevisionStatusBar';
 import ViewportStage from '@/components/annotation/ViewportStage';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import type {
-  AnnotationDocument,
   AnnotationStorePayload,
   CVTakeoffResultPayload,
   RevisionsResponse,
-  RevisionEvent,
 } from '@/types/annotation';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
@@ -39,6 +38,7 @@ export default function AnnotationEditorShell({
 }: AnnotationEditorShellProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showBaseImage, setShowBaseImage] = useState(true);
 
   const document = useAnnotationEditorStore((s) => s.document);
   const entities = useAnnotationEditorStore((s) => s.entities);
@@ -78,7 +78,7 @@ export default function AnnotationEditorShell({
       const existing = (await existingRes.json()) as AnnotationStorePayload;
 
       if (existing.document) {
-        initializeDocument(existing.document);
+        initializeDocument(sanitizeAnnotationDocument(existing.document));
         setLoading(false);
         return;
       }
@@ -109,12 +109,13 @@ export default function AnnotationEditorShell({
         page: pageNumber,
         sourceUrl: fileUrl,
       });
-      initializeDocument(initialDoc);
+      const sanitizedDoc = sanitizeAnnotationDocument(initialDoc);
+      initializeDocument(sanitizedDoc);
 
       await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(toPersistencePayload(initialDoc)),
+        body: JSON.stringify(toPersistencePayload(sanitizedDoc)),
       });
     } catch (err: any) {
       setError(err?.message || 'Failed to load annotation editor');
@@ -237,6 +238,8 @@ export default function AnnotationEditorShell({
         onRedo={redo}
         onDelete={deleteSelected}
         onSave={() => void saveSnapshot()}
+        showBaseImage={showBaseImage}
+        onToggleBaseImage={() => setShowBaseImage((v) => !v)}
         gridEnabled={gridEnabled}
         wallSnapEnabled={wallSnapEnabled}
         onToggleGrid={toggleGrid}
@@ -248,6 +251,7 @@ export default function AnnotationEditorShell({
           baseImageUrl={document.baseImage.sourceUrl}
           widthPx={document.baseImage.widthPx}
           heightPx={document.baseImage.heightPx}
+          showBaseImage={showBaseImage}
           issues={document.issues}
           onIssueSelect={(issue) => setSelection([issue.elementId])}
         />

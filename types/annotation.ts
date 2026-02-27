@@ -2,9 +2,7 @@ export type AnnotationElementType =
   | 'wall'
   | 'door'
   | 'window'
-  | 'room'
-  | 'label'
-  | 'dimension';
+  | 'room';
 
 export type AnnotationStatus = 'auto' | 'edited' | 'new';
 
@@ -14,8 +12,6 @@ export type ToolMode =
   | 'door'
   | 'window'
   | 'room'
-  | 'label'
-  | 'dimension'
   | 'delete';
 
 export interface BaseElementAttrs {
@@ -46,18 +42,7 @@ export interface RectGeometry {
   rotationDeg: number;
 }
 
-export interface TextGeometry {
-  kind: 'text';
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotationDeg: number;
-  text: string;
-  fontSize: number;
-}
-
-export type ElementGeometry = SegmentGeometry | RectGeometry | TextGeometry;
+export type ElementGeometry = SegmentGeometry | RectGeometry;
 
 export interface BaseAnnotationElement {
   id: string;
@@ -87,23 +72,11 @@ export interface RoomElement extends BaseAnnotationElement {
   geometry: RectGeometry;
 }
 
-export interface LabelElement extends BaseAnnotationElement {
-  type: 'label';
-  geometry: TextGeometry;
-}
-
-export interface DimensionElement extends BaseAnnotationElement {
-  type: 'dimension';
-  geometry: SegmentGeometry;
-}
-
 export type AnnotationElement =
   | WallElement
   | DoorElement
   | WindowElement
-  | RoomElement
-  | LabelElement
-  | DimensionElement;
+  | RoomElement;
 
 export interface AnnotationIssue {
   id: string;
@@ -118,8 +91,6 @@ export interface AnnotationLayers {
   door: boolean;
   window: boolean;
   room: boolean;
-  label: boolean;
-  dimension: boolean;
 }
 
 export interface BaseImageRef {

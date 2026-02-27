@@ -6,6 +6,8 @@ import type {
   PersistedAnnotationSnapshot,
 } from '@/types/annotation';
 
+const SUPPORTED_TYPES: ReadonlySet<AnnotationElementType> = new Set(['wall', 'door', 'window', 'room']);
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -16,8 +18,6 @@ function defaultLayers() {
     door: true,
     window: true,
     room: true,
-    label: true,
-    dimension: true,
   };
 }
 
@@ -63,6 +63,7 @@ export function fromCVTakeoffResult(
 
   for (const tag of cv.tags) {
     const type = tag.tag_class === 'door' ? 'door' : 'window';
+    if (!SUPPORTED_TYPES.has(type)) continue;
     const size = Math.max(10, tag.radius * 2);
     elements.push({
       ...makeBaseElement(type, `${type}_${tag.id}`),
@@ -100,7 +101,7 @@ export function fromCVTakeoffResult(
       revision: 0,
     },
     layers: defaultLayers(),
-    elements,
+    elements: elements.filter((element) => SUPPORTED_TYPES.has(element.type)),
     issues: [],
   };
 }

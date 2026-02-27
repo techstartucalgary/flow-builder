@@ -108,6 +108,8 @@ class DebugInfo(BaseModel):
     horizontal_walls: int = 0
     vertical_walls: int = 0
     total_wall_segments: int = 0
+    walls_raw: int = 0
+    walls_after_suppression: int = 0
     door_tags: int = 0
     window_tags: int = 0
     double_door_pairs: int = 0

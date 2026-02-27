@@ -19,7 +19,6 @@ detect_gaps(segments, binary)         → list[Gap]
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import cv2
 import numpy as np
@@ -48,6 +47,19 @@ MERGE_MIN_FILL_IN_GAP = 0.55    # gap must be meaningfully wall-filled to merge
 # Gap detection (for opening candidates)
 MIN_GAP_SIZE_PX = 25
 MAX_GAP_SIZE_PX = 400
+
+# Measurement/text artifact suppression
+TEXT_CC_MIN_AREA = 12
+TEXT_CC_MAX_AREA = 650
+TEXT_CC_MAX_W = 42
+TEXT_CC_MAX_H = 42
+TEXT_NEAR_DENSITY = 0.02
+CONNECTIVITY_ENDPOINT_DIST_PX = 22
+THIN_LONG_MIN_LEN_PX = 260
+THIN_LONG_MAX_THICKNESS_PX = 7
+THIN_LONG_MIN_ASPECT = 35.0
+EXTREME_THIN_LONG_MIN_LEN_PX = 420
+EXTREME_THIN_MAX_THICKNESS_PX = 6
 
 
 # ---------------------------------------------------------------------------
@@ -417,3 +429,130 @@ def detect_gaps(
             )
 
     return gaps
+
+
+def _component_mask(binary: np.ndarray) -> np.ndarray:
+    """Build a mask of text-like connected components for artifact scoring."""
+    text_like = np.zeros_like(binary, dtype=np.uint8)
+    n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+
+    for label_idx in range(1, n_labels):
+        x = int(stats[label_idx, cv2.CC_STAT_LEFT])
+        y = int(stats[label_idx, cv2.CC_STAT_TOP])
+        w = int(stats[label_idx, cv2.CC_STAT_WIDTH])
+        h = int(stats[label_idx, cv2.CC_STAT_HEIGHT])
+        area = int(stats[label_idx, cv2.CC_STAT_AREA])
+
+        if area < TEXT_CC_MIN_AREA or area > TEXT_CC_MAX_AREA:
+            continue
+        if w < 2 or h < 2 or w > TEXT_CC_MAX_W or h > TEXT_CC_MAX_H:
+            continue
+
+        aspect = max(w, h) / max(1, min(w, h))
+        if aspect > 8.0:
+            continue
+
+        text_like[y:y + h, x:x + w][labels[y:y + h, x:x + w] == label_idx] = 255
+
+    if np.count_nonzero(text_like) == 0:
+        return text_like
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    return cv2.dilate(text_like, kernel, iterations=1)
+
+
+def _endpoint_connectivity(walls: list[WallSegment], threshold_px: int) -> list[tuple[int, int]]:
+    """Count nearby neighbors for each wall endpoint."""
+    threshold2 = threshold_px * threshold_px
+    endpoint_deg = [[0, 0] for _ in walls]
+
+    for i in range(len(walls)):
+        a = walls[i]
+        a_points = (a.start, a.end)
+        for j in range(i + 1, len(walls)):
+            b = walls[j]
+            b_points = (b.start, b.end)
+            for ai, ap in enumerate(a_points):
+                for bi, bp in enumerate(b_points):
+                    dx = ap[0] - bp[0]
+                    dy = ap[1] - bp[1]
+                    if (dx * dx + dy * dy) <= threshold2:
+                        endpoint_deg[i][ai] += 1
+                        endpoint_deg[j][bi] += 1
+
+    return [(deg[0], deg[1]) for deg in endpoint_deg]
+
+
+def _text_density_near_segment(mask: np.ndarray, wall: WallSegment, pad: int = 12) -> float:
+    """Estimate how much text-like signal exists around a wall segment."""
+    x1, y1 = wall.start
+    x2, y2 = wall.end
+    min_x = max(0, min(x1, x2) - pad)
+    max_x = min(mask.shape[1], max(x1, x2) + pad + 1)
+    min_y = max(0, min(y1, y2) - pad)
+    max_y = min(mask.shape[0], max(y1, y2) + pad + 1)
+    roi = mask[min_y:max_y, min_x:max_x]
+    if roi.size == 0:
+        return 0.0
+    return float(np.count_nonzero(roi)) / float(roi.size)
+
+
+def suppress_measurement_artifacts(
+    walls: list[WallSegment],
+    binary: np.ndarray,
+) -> tuple[list[WallSegment], dict[str, int]]:
+    """
+    Remove likely measurement/text artifacts with a balanced scoring model.
+
+    A wall is removed only if multiple signals agree:
+      1) thin + very high aspect ratio
+      2) weak endpoint connectivity to other walls
+      3) near dense text-like connected components
+    """
+    walls_raw = len(walls)
+    if walls_raw == 0:
+        return walls, {"walls_raw": 0, "walls_after_suppression": 0}
+
+    text_mask = _component_mask(binary)
+    connectivity = _endpoint_connectivity(walls, CONNECTIVITY_ENDPOINT_DIST_PX)
+
+    filtered: list[WallSegment] = []
+    for idx, wall in enumerate(walls):
+        length = max(1, int(wall.length_px))
+        thickness = max(1, int(wall.thickness))
+        aspect = float(length) / float(thickness)
+
+        thin_and_long = (
+            thickness <= THIN_LONG_MAX_THICKNESS_PX
+            and length >= THIN_LONG_MIN_LEN_PX
+            and aspect >= THIN_LONG_MIN_ASPECT
+        )
+        start_deg, end_deg = connectivity[idx]
+        weakly_connected = start_deg == 0 and end_deg == 0
+
+        text_density = _text_density_near_segment(text_mask, wall)
+        near_text = text_density >= TEXT_NEAR_DENSITY and length >= 120
+
+        score = 0
+        if thin_and_long:
+            score += 1
+        if weakly_connected:
+            score += 1
+        if near_text:
+            score += 1
+
+        extreme_ruler = (
+            thickness <= EXTREME_THIN_MAX_THICKNESS_PX
+            and length >= EXTREME_THIN_LONG_MIN_LEN_PX
+            and (weakly_connected or near_text)
+        )
+
+        if score >= 2 or extreme_ruler:
+            continue
+
+        filtered.append(wall)
+
+    return filtered, {
+        "walls_raw": walls_raw,
+        "walls_after_suppression": len(filtered),
+    }

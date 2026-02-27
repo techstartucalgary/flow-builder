@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 
+import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import { safeClone } from '@/lib/clone';
 import { applyOperation, invertOperation } from '@/lib/history';
 import { snapPointToWalls, snapToGrid } from '@/lib/snapping';
@@ -27,8 +28,6 @@ function emptyEntities(): EditorEntities {
       door: [],
       window: [],
       room: [],
-      label: [],
-      dimension: [],
     },
   };
 }
@@ -40,7 +39,9 @@ function indexElements(doc: AnnotationDocument | null): EditorEntities {
 
   for (const element of doc.elements) {
     byId[element.id] = element;
-    byType[element.type].push(element.id);
+    const bucket = byType[element.type];
+    if (!bucket) continue;
+    bucket.push(element.id);
   }
 
   return { byId, byType };
@@ -115,9 +116,10 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
   saveStatus: 'saved',
 
   initializeDocument: (doc) => {
+    const sanitized = sanitizeAnnotationDocument(doc);
     set({
-      document: doc,
-      entities: indexElements(doc),
+      document: sanitized,
+      entities: indexElements(sanitized),
       selection: [],
       history: { past: [], future: [], pendingOps: [] },
       saveStatus: 'saved',
@@ -249,18 +251,6 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
         ...common,
         type,
         geometry: { kind: 'segment', x1: px, y1: py, x2: px + 120, y2: py, thicknessPx: 14, rotationDeg: 0 },
-      };
-    } else if (type === 'label') {
-      element = {
-        ...common,
-        type,
-        geometry: { kind: 'text', x: px, y: py, width: 160, height: 28, rotationDeg: 0, text: 'Label', fontSize: 16 },
-      };
-    } else if (type === 'dimension') {
-      element = {
-        ...common,
-        type,
-        geometry: { kind: 'segment', x1: px, y1: py, x2: px + 100, y2: py, thicknessPx: 2, rotationDeg: 0 },
       };
     } else {
       element = {

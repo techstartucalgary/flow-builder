@@ -7,7 +7,7 @@ interface LayerVisibilityPanelProps {
   onToggle: (type: AnnotationElementType) => void;
 }
 
-const TYPES: AnnotationElementType[] = ['wall', 'door', 'window', 'room', 'label', 'dimension'];
+const TYPES: AnnotationElementType[] = ['wall', 'door', 'window', 'room'];
 
 export default function LayerVisibilityPanel({ document, onToggle }: LayerVisibilityPanelProps) {
   return (

@@ -27,8 +27,6 @@ interface FormValues {
   x2: number;
   y2: number;
   thicknessPx: number;
-  text: string;
-  fontSize: number;
 }
 
 export default function PropertyPanel({ element, onApply }: PropertyPanelProps) {
@@ -49,8 +47,6 @@ export default function PropertyPanel({ element, onApply }: PropertyPanelProps) 
       x2: 0,
       y2: 0,
       thicknessPx: 12,
-      text: '',
-      fontSize: 16,
     },
   });
 
@@ -65,15 +61,13 @@ export default function PropertyPanel({ element, onApply }: PropertyPanelProps) 
       rotationDeg: element.geometry.rotationDeg,
       x: element.geometry.kind === 'segment' ? 0 : element.geometry.x,
       y: element.geometry.kind === 'segment' ? 0 : element.geometry.y,
-      width: element.geometry.kind === 'rect' || element.geometry.kind === 'text' ? element.geometry.width : 0,
-      height: element.geometry.kind === 'rect' || element.geometry.kind === 'text' ? element.geometry.height : 0,
+      width: element.geometry.kind === 'rect' ? element.geometry.width : 0,
+      height: element.geometry.kind === 'rect' ? element.geometry.height : 0,
       x1: element.geometry.kind === 'segment' ? element.geometry.x1 : 0,
       y1: element.geometry.kind === 'segment' ? element.geometry.y1 : 0,
       x2: element.geometry.kind === 'segment' ? element.geometry.x2 : 0,
       y2: element.geometry.kind === 'segment' ? element.geometry.y2 : 0,
       thicknessPx: element.geometry.kind === 'segment' ? element.geometry.thicknessPx : 0,
-      text: element.geometry.kind === 'text' ? element.geometry.text : '',
-      fontSize: element.geometry.kind === 'text' ? element.geometry.fontSize : 16,
     };
     reset(values);
   }, [element, reset]);
@@ -104,14 +98,6 @@ export default function PropertyPanel({ element, onApply }: PropertyPanelProps) 
           updated.geometry.y2 = Number(values.y2);
           updated.geometry.thicknessPx = Number(values.thicknessPx);
           updated.geometry.rotationDeg = Number(values.rotationDeg);
-        } else if (updated.geometry.kind === 'text') {
-          updated.geometry.x = Number(values.x);
-          updated.geometry.y = Number(values.y);
-          updated.geometry.width = Number(values.width);
-          updated.geometry.height = Number(values.height);
-          updated.geometry.rotationDeg = Number(values.rotationDeg);
-          updated.geometry.text = values.text;
-          updated.geometry.fontSize = Number(values.fontSize);
         } else {
           updated.geometry.x = Number(values.x);
           updated.geometry.y = Number(values.y);
@@ -150,13 +136,6 @@ export default function PropertyPanel({ element, onApply }: PropertyPanelProps) 
           <label className="text-gray-400">X2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x2', { valueAsNumber: true })} /></label>
           <label className="text-gray-400">Y2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y2', { valueAsNumber: true })} /></label>
           <label className="text-gray-400">Thickness<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('thicknessPx', { valueAsNumber: true })} /></label>
-        </div>
-      )}
-
-      {element.geometry.kind === 'text' && (
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-gray-400 col-span-2">Text<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('text')} /></label>
-          <label className="text-gray-400">Font Size<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('fontSize', { valueAsNumber: true })} /></label>
         </div>
       )}
 

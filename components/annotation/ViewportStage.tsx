@@ -18,11 +18,12 @@ interface ViewportStageProps {
   baseImageUrl: string;
   widthPx: number;
   heightPx: number;
+  showBaseImage: boolean;
   issues: AnnotationIssue[];
   onIssueSelect: (issue: AnnotationIssue) => void;
 }
 
-export default function ViewportStage({ baseImageUrl, widthPx, heightPx }: ViewportStageProps) {
+export default function ViewportStage({ baseImageUrl, widthPx, heightPx, showBaseImage }: ViewportStageProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const [container, setContainer] = useState({ width: 0, height: 0 });
@@ -50,12 +51,15 @@ export default function ViewportStage({ baseImageUrl, widthPx, heightPx }: Viewp
   }, []);
 
   useEffect(() => {
-    if (!baseImageUrl) return;
+    if (!showBaseImage || !baseImageUrl) {
+      setBgImage(null);
+      return;
+    }
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => setBgImage(img);
     img.src = baseImageUrl;
-  }, [baseImageUrl]);
+  }, [baseImageUrl, showBaseImage]);
 
   useEffect(() => {
     if (!container.width || !container.height) return;

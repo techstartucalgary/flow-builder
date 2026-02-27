@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment } from 'react';
-import { Circle, Line, Rect, Text } from 'react-konva';
+import { Circle, Line, Rect } from 'react-konva';
 
 import type { AnnotationElement } from '@/types/annotation';
 
@@ -42,8 +42,7 @@ export default function AnnotationRenderLayer({
               id={element.id}
               points={[element.geometry.x1, element.geometry.y1, element.geometry.x2, element.geometry.y2]}
               stroke={stroke}
-              strokeWidth={Math.max(strokeWidth, element.type === 'dimension' ? 2 : element.geometry.thicknessPx)}
-              opacity={element.type === 'dimension' ? 0.8 : 1}
+              strokeWidth={Math.max(strokeWidth, element.geometry.thicknessPx)}
               draggable={!element.attrs.locked}
               onClick={() => onSelect(element.id)}
               onTap={() => onSelect(element.id)}
@@ -53,27 +52,7 @@ export default function AnnotationRenderLayer({
           );
         }
 
-        if (element.geometry.kind === 'text') {
-          return (
-            <Text
-              key={element.id}
-              id={element.id}
-              x={element.geometry.x}
-              y={element.geometry.y}
-              width={element.geometry.width}
-              height={element.geometry.height}
-              text={element.geometry.text}
-              fontSize={element.geometry.fontSize}
-              fill={stroke}
-              rotation={element.geometry.rotationDeg}
-              draggable={!element.attrs.locked}
-              onClick={() => onSelect(element.id)}
-              onTap={() => onSelect(element.id)}
-              onDragEnd={(e) => onDragEnd(element.id, e)}
-              onTransformEnd={(e) => onTransformEnd(element.id, e)}
-            />
-          );
-        }
+        if (element.geometry.kind !== 'rect') return null;
 
         return (
           <Fragment key={element.id}>

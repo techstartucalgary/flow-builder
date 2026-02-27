@@ -9,13 +9,15 @@ interface EditorToolbarProps {
   onRedo: () => void;
   onDelete: () => void;
   onSave: () => void;
+  showBaseImage: boolean;
+  onToggleBaseImage: () => void;
   gridEnabled: boolean;
   wallSnapEnabled: boolean;
   onToggleGrid: () => void;
   onToggleWallSnap: () => void;
 }
 
-const TOOLS: ToolMode[] = ['select', 'wall', 'door', 'window', 'room', 'label', 'dimension', 'delete'];
+const TOOLS: ToolMode[] = ['select', 'wall', 'door', 'window', 'room', 'delete'];
 
 export default function EditorToolbar({
   toolMode,
@@ -24,6 +26,8 @@ export default function EditorToolbar({
   onRedo,
   onDelete,
   onSave,
+  showBaseImage,
+  onToggleBaseImage,
   gridEnabled,
   wallSnapEnabled,
   onToggleGrid,
@@ -83,6 +87,16 @@ export default function EditorToolbar({
         className="px-3 py-1.5 text-xs rounded border border-indigo-400/50 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
       >
         Save
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleBaseImage}
+        className={`px-2 py-1 text-xs rounded border ${
+          showBaseImage ? 'border-cyan-400/60 text-cyan-200 bg-cyan-500/10' : 'border-white/10 text-gray-300'
+        }`}
+      >
+        {showBaseImage ? 'Mode: Overlay' : 'Mode: Vector Only'}
       </button>
     </div>
   );

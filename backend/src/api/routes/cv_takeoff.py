@@ -106,6 +106,9 @@ async def analyze_url(req: CVUrlRequest):
             floor_level=req.floor_level,
             address=req.address,
         )
+        # Keep suppression counters explicit in API output for observability.
+        result.debug.walls_raw = result.debug.walls_raw or len(result.walls)
+        result.debug.walls_after_suppression = result.debug.walls_after_suppression or len(result.walls)
         result.preview_image = _preview_image_b64(
             file_bytes,
             req.file_mime,
@@ -172,6 +175,9 @@ async def analyze_upload(
             floor_level=floor_level,
             address=address,
         )
+        # Keep suppression counters explicit in API output for observability.
+        result.debug.walls_raw = result.debug.walls_raw or len(result.walls)
+        result.debug.walls_after_suppression = result.debug.walls_after_suppression or len(result.walls)
         result.preview_image = _preview_image_b64(
             file_bytes,
             mime,
