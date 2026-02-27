@@ -133,3 +133,7 @@ class CVTakeoffResult(BaseModel):
     tags: list[TagAnchor] = Field(default_factory=list)
     metadata: PlanMetadata = Field(default_factory=PlanMetadata)
     debug: DebugInfo = Field(default_factory=DebugInfo)
+    preview_image: Optional[str] = Field(
+        default=None,
+        description="Optional base64-encoded PNG of the analyzed (cropped) page for frontend overlays.",
+    )

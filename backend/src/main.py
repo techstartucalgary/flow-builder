@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Load .env from backend directory
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from src.api.routes import partitions, takeoff, cv_takeoff
+from src.api.routes import annotations, partitions, takeoff, cv_takeoff
 
 app = FastAPI(title="FlowBuildr API", version="0.1.0")
 
@@ -33,6 +33,7 @@ app.add_middleware(
 app.include_router(partitions.router)
 app.include_router(takeoff.router)
 app.include_router(cv_takeoff.router)
+app.include_router(annotations.router)
 
 
 @app.get("/health")

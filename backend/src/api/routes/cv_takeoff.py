@@ -10,11 +10,14 @@ SVG / Canvas primitives.
 from __future__ import annotations
 
 import httpx
+import base64
+import cv2
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from typing import Optional
 
 from src.vision.cv.models import CVTakeoffResult
 from src.vision.cv import pipeline
+from src.vision.cv.preprocessing import load_image, crop_drawing_area
 
 router = APIRouter(prefix="/api/cv-takeoff", tags=["cv-takeoff"])
 
@@ -33,6 +36,7 @@ from pydantic import BaseModel, Field
 class CVUrlRequest(BaseModel):
     file_url: str = Field(description="Signed URL to the PDF or image file")
     file_mime: str = Field(default="application/pdf", description="MIME type")
+    page_number: int = Field(default=1, ge=1, description="1-indexed page number for PDF input")
     dpi: int = Field(default=200, ge=72, le=600, description="Render DPI for PDFs")
     h_kernel: int = Field(default=50, ge=10, le=200, description="Horizontal kernel length (px)")
     v_kernel: int = Field(default=50, ge=10, le=200, description="Vertical kernel length (px)")
@@ -44,6 +48,28 @@ class CVUrlRequest(BaseModel):
     sheet: Optional[str] = Field(default=None, description="Sheet number override")
     floor_level: Optional[str] = Field(default=None, description="Floor level override")
     address: Optional[str] = Field(default=None, description="Address override")
+
+
+def _preview_image_b64(
+    file_bytes: bytes,
+    mime_type: str,
+    *,
+    dpi: int,
+    page_number: int,
+    crop_left: float,
+    crop_top: float,
+    crop_right: float,
+    crop_bottom: float,
+) -> Optional[str]:
+    try:
+        bgr = load_image(file_bytes, mime_type, dpi=dpi, page_number=max(0, page_number - 1))
+        bgr = crop_drawing_area(bgr, crop_left, crop_top, crop_right, crop_bottom)
+        ok, buf = cv2.imencode(".png", bgr)
+        if not ok:
+            return None
+        return base64.b64encode(buf.tobytes()).decode("utf-8")
+    except Exception:
+        return None
 
 
 @router.post("/analyze-url", response_model=CVTakeoffResult)
@@ -68,6 +94,7 @@ async def analyze_url(req: CVUrlRequest):
             file_bytes,
             req.file_mime,
             dpi=req.dpi,
+            page_number=max(0, req.page_number - 1),
             h_kernel=req.h_kernel,
             v_kernel=req.v_kernel,
             crop_left=req.crop_left,
@@ -78,6 +105,16 @@ async def analyze_url(req: CVUrlRequest):
             sheet=req.sheet,
             floor_level=req.floor_level,
             address=req.address,
+        )
+        result.preview_image = _preview_image_b64(
+            file_bytes,
+            req.file_mime,
+            dpi=req.dpi,
+            page_number=req.page_number,
+            crop_left=req.crop_left,
+            crop_top=req.crop_top,
+            crop_right=req.crop_right,
+            crop_bottom=req.crop_bottom,
         )
     except Exception as e:
         raise HTTPException(502, f"CV pipeline error: {e}")
@@ -92,6 +129,7 @@ async def analyze_url(req: CVUrlRequest):
 @router.post("/analyze", response_model=CVTakeoffResult)
 async def analyze_upload(
     file: UploadFile = File(..., description="Floor plan image or PDF"),
+    page_number: int = Form(default=1, description="1-indexed page number for PDF input"),
     dpi: int = Form(default=200, description="Render DPI for PDFs"),
     h_kernel: int = Form(default=50, description="Horizontal kernel length (px)"),
     v_kernel: int = Form(default=50, description="Vertical kernel length (px)"),
@@ -122,6 +160,7 @@ async def analyze_upload(
             file_bytes,
             mime,
             dpi=dpi,
+            page_number=max(0, page_number - 1),
             h_kernel=h_kernel,
             v_kernel=v_kernel,
             crop_left=crop_left,
@@ -132,6 +171,16 @@ async def analyze_upload(
             sheet=sheet,
             floor_level=floor_level,
             address=address,
+        )
+        result.preview_image = _preview_image_b64(
+            file_bytes,
+            mime,
+            dpi=dpi,
+            page_number=page_number,
+            crop_left=crop_left,
+            crop_top=crop_top,
+            crop_right=crop_right,
+            crop_bottom=crop_bottom,
         )
     except Exception as e:
         raise HTTPException(502, f"CV pipeline error: {e}")

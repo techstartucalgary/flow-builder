@@ -13,6 +13,7 @@ import {
   ZoomIn,
   ZoomOut,
   Sparkles,
+  PencilRuler,
 } from 'lucide-react';
 import { parseTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
 import type { TakeoffData } from '@/lib/parseTakeoff';
@@ -26,6 +27,13 @@ const PdfViewerClient = dynamic(() => import('@/components/pdf/PdfViewer'), {
   ssr: false,
   loading: () => <div className="text-gray-400">Loading PDF viewer...</div>,
 });
+const AnnotationEditorShell = dynamic(
+  () => import('@/components/annotation/AnnotationEditorShell'),
+  {
+    ssr: false,
+    loading: () => <div className="text-gray-400">Loading annotation editor...</div>,
+  },
+);
 
 type ProjectRow = {
   id: string;
@@ -49,6 +57,7 @@ export default function ProjectViewerPage() {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [zoom, setZoom] = useState(1);
+  const [editorMode, setEditorMode] = useState(true);
 
   // Takeoff state
   const [generating, setGenerating] = useState(false);
@@ -220,8 +229,23 @@ export default function ProjectViewerPage() {
 
         <div className="text-white font-semibold text-lg truncate">{project.name}</div>
 
-        {isPdf && numPages > 1 && (
-          <div className="ml-auto flex items-center gap-2 shrink-0">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setEditorMode((v) => !v)}
+            className={`h-8 px-3 rounded-lg border text-xs inline-flex items-center gap-1.5 transition ${
+              editorMode
+                ? 'border-cyan-400/60 bg-cyan-500/10 text-cyan-200'
+                : 'border-white/10 bg-white/5 text-gray-300'
+            }`}
+            title="Toggle annotation editor"
+          >
+            <PencilRuler size={14} />
+            {editorMode ? 'Editor On' : 'Editor Off'}
+          </button>
+
+          {isPdf && numPages > 1 && (
+            <>
             <button
               onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
               className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 grid place-items-center text-gray-200"
@@ -239,76 +263,92 @@ export default function ProjectViewerPage() {
             >
               <ChevronRight size={16} />
             </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* 2-panel layout — takes all remaining height */}
       <div className="flex-1 min-h-0 flex">
         {/* Left — PDF with zoom bar */}
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
-          {/* Zoom bar */}
-          <div className="flex items-center gap-3 px-3 py-1.5 text-gray-300 text-xs shrink-0">
-            <button
-              onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
-              className="flex items-center justify-center hover:text-white transition"
-              aria-label="Zoom out"
-            >
-              <ZoomOut size={16} />
-            </button>
-            <button
-              onClick={() => setZoom(1)}
-              className="hover:text-white transition min-w-[3rem] text-center"
-              aria-label="Reset zoom"
-              title="Reset to 100%"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <button
-              onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
-              className="flex items-center justify-center hover:text-white transition"
-              aria-label="Zoom in"
-            >
-              <ZoomIn size={16} />
-            </button>
-          </div>
-
-          {/* PDF / Image — or annotated overlay after takeoff */}
-          <div className="flex-1 min-h-0 overflow-auto relative">
-            {annotatedImage && generated ? (
-              /* Show CV-annotated floor plan after takeoff */
-              <div className="w-full h-full flex items-center justify-center p-2">
-                <img
-                  src={annotatedImage}
-                  alt="Annotated floor plan"
-                  className="max-h-full max-w-full object-contain"
-                  style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-                />
-              </div>
-            ) : isPdf ? (
-              <PdfViewerClient
+          {editorMode ? (
+            <div className="flex-1 min-h-0 p-2">
+              <AnnotationEditorShell
+                projectId={project.id}
                 fileUrl={fileUrl}
+                fileMime={project.file_mime}
                 pageNumber={pageNumber}
-                zoom={zoom}
-                onLoadNumPages={(n) => {
-                  setNumPages(n);
-                  setPageNumber((p) => Math.min(p, n));
-                }}
+                scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
+                actorId={user?.id}
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <img
-                  src={fileUrl}
-                  alt={project.name}
-                  className="max-h-full max-w-full object-contain"
-                  style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-                />
+            </div>
+          ) : (
+            <>
+              {/* Zoom bar */}
+              <div className="flex items-center gap-3 px-3 py-1.5 text-gray-300 text-xs shrink-0">
+                <button
+                  onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                  className="flex items-center justify-center hover:text-white transition"
+                  aria-label="Zoom out"
+                >
+                  <ZoomOut size={16} />
+                </button>
+                <button
+                  onClick={() => setZoom(1)}
+                  className="hover:text-white transition min-w-[3rem] text-center"
+                  aria-label="Reset zoom"
+                  title="Reset to 100%"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
+                  className="flex items-center justify-center hover:text-white transition"
+                  aria-label="Zoom in"
+                >
+                  <ZoomIn size={16} />
+                </button>
               </div>
-            )}
 
-            {/* Takeoff analyzing overlay */}
-            <TakeoffAnalyzingOverlay isOpen={generating} statusText={overlayStatus} />
-          </div>
+              {/* PDF / Image — or annotated overlay after takeoff */}
+              <div className="flex-1 min-h-0 overflow-auto relative">
+                {annotatedImage && generated ? (
+                  /* Show CV-annotated floor plan after takeoff */
+                  <div className="w-full h-full flex items-center justify-center p-2">
+                    <img
+                      src={annotatedImage}
+                      alt="Annotated floor plan"
+                      className="max-h-full max-w-full object-contain"
+                      style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                    />
+                  </div>
+                ) : isPdf ? (
+                  <PdfViewerClient
+                    fileUrl={fileUrl}
+                    pageNumber={pageNumber}
+                    zoom={zoom}
+                    onLoadNumPages={(n) => {
+                      setNumPages(n);
+                      setPageNumber((p) => Math.min(p, n));
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <img
+                      src={fileUrl}
+                      alt={project.name}
+                      className="max-h-full max-w-full object-contain"
+                      style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                    />
+                  </div>
+                )}
+
+                {/* Takeoff analyzing overlay */}
+                <TakeoffAnalyzingOverlay isOpen={generating} statusText={overlayStatus} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right — Takeoff Panel */}
