@@ -30,19 +30,19 @@ HOUGH_DP = 1.2
 HOUGH_MIN_DIST = 30
 HOUGH_PARAM1 = 60
 HOUGH_PARAM2 = 42
-MIN_CIRCLE_RADIUS = 12
-MAX_CIRCLE_RADIUS = 30
+MIN_CIRCLE_RADIUS = 10
+MAX_CIRCLE_RADIUS = 35
 
 # ---- flat-top hexagon (window tag) detection ----
 # Calibrated from the drawing's own legend hexagon symbols.
-MIN_HEX_AREA = 1200          # px²  (legend examples are ~1950; on-plan ~1400-1800)
-MAX_HEX_AREA = 2500          # px²
+MIN_HEX_AREA = 1000          # px²  (legend examples ~1950; on-plan ~1400-1800; widened for DPI variation)
+MAX_HEX_AREA = 2800          # px²
 HEX_ASPECT_LO = 1.05         # must be wider than tall (flat-top hexagon)
 HEX_ASPECT_HI = 1.60
 HEX_DEDUP_DIST = 20          # merge inner/outer contour pairs within this distance
 
 # ---- proximity filters ----
-MAX_DIST_TO_WALL_DOOR_PX = 150
+MAX_DIST_TO_WALL_DOOR_PX = 220
 MAX_DIST_TO_WALL_WINDOW_PX = 500
 
 
@@ -52,7 +52,7 @@ MAX_DIST_TO_WALL_WINDOW_PX = 500
 
 def _subtract_walls(binary: np.ndarray, wall_mask: np.ndarray) -> np.ndarray:
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    dilated = cv2.dilate(wall_mask, kernel, iterations=2)
+    dilated = cv2.dilate(wall_mask, kernel, iterations=1)
     return cv2.subtract(binary, dilated)
 
 
@@ -150,7 +150,7 @@ def _detect_hexagons(
 
         # Try a tight epsilon to get exactly 6-7 vertices
         found = False
-        for eps_frac in (0.01, 0.015, 0.02, 0.025, 0.03):
+        for eps_frac in (0.01, 0.015, 0.02, 0.025, 0.03, 0.035, 0.04):
             approx = cv2.approxPolyDP(cnt, eps_frac * perimeter, True)
             if len(approx) in (6, 7):
                 found = True
@@ -200,7 +200,7 @@ def _detect_hexagons(
 def _deduplicate_tags(
     door_tags: list[TagAnchor],
     window_tags: list[TagAnchor],
-    overlap_px: int = 30,
+    overlap_px: int = 18,
 ) -> tuple[list[TagAnchor], list[TagAnchor]]:
     """If a circle and hexagon overlap, keep only the window tag."""
     window_centres = {(t.center[0], t.center[1]) for t in window_tags}

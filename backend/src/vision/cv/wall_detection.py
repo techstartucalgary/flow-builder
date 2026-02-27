@@ -32,16 +32,18 @@ from src.vision.cv.models import Orientation, WallSegment
 
 # At 200 DPI with 1/4"=1' scale → 1 foot ≈ 50 px.
 MIN_WALL_THICKNESS_PX = 5       # drops dim lines / hatch lines
-MIN_WALL_LENGTH_PX = 100        # ~2 ft — catches short inner partitions & closet walls
-MIN_FILL_RATIO = 0.50           # slightly lenient to catch inner walls with annotations
+MIN_WALL_LENGTH_PX = 45         # preserve short partitions and nib walls
+SHORT_WALL_STRICT_LEN_PX = 70   # apply extra guardrail for short segments
+SHORT_WALL_MIN_THICKNESS_PX = 8
+MIN_FILL_RATIO = 0.45           # slightly relaxed for annotation-heavy plans
 
 # Midline scanning
 MIN_OPENING_GAP_PX = 25         # pixel gaps smaller than this are bridged (handles T-junctions)
 
 # Merge tunables
-MERGE_CROSS_AXIS_TOL = 30       # max cross-axis offset to cluster wall faces
-MERGE_ALONG_AXIS_GAP = 60       # max gap between sequential segments to merge
-MERGE_MIN_FILL_IN_GAP = 0.40    # gap must be this full to merge across it
+MERGE_CROSS_AXIS_TOL = 24       # max cross-axis offset to cluster wall faces
+MERGE_ALONG_AXIS_GAP = 35       # avoid bridging large door/window openings
+MERGE_MIN_FILL_IN_GAP = 0.55    # gap must be meaningfully wall-filled to merge
 
 # Gap detection (for opening candidates)
 MIN_GAP_SIZE_PX = 25
@@ -128,6 +130,9 @@ def _contours_to_segments(
                 seg_len = run_end - run_start
                 if seg_len < MIN_WALL_LENGTH_PX:
                     continue
+                # Short segments are kept only when thick enough to be walls.
+                if seg_len < SHORT_WALL_STRICT_LEN_PX and thickness < SHORT_WALL_MIN_THICKNESS_PX:
+                    continue
                 segments.append(WallSegment(
                     id=f"{prefix}-{idx:02d}",
                     orientation=orientation,
@@ -146,6 +151,8 @@ def _contours_to_segments(
             for run_start, run_end in _find_pixel_runs(strip):
                 seg_len = run_end - run_start
                 if seg_len < MIN_WALL_LENGTH_PX:
+                    continue
+                if seg_len < SHORT_WALL_STRICT_LEN_PX and thickness < SHORT_WALL_MIN_THICKNESS_PX:
                     continue
                 segments.append(WallSegment(
                     id=f"{prefix}-{idx:02d}",

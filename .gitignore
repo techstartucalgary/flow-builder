@@ -36,6 +36,17 @@ Thumbs.db
 *.log
 logs/
 
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.bmp
+*.tiff
+*.tif
+
 # Misc
 *.local
 

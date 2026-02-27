@@ -57,6 +57,8 @@ export default function ProjectViewerPage() {
   const [takeoffError, setTakeoffError] = useState<string | null>(null);
   // CV pipeline annotated image (base64 PNG, displayed over PDF)
   const [annotatedImage, setAnnotatedImage] = useState<string | null>(null);
+  // Optional scale (px/ft) for drywall calculation — e.g. 50 for 1/4"=1' at 200 DPI
+  const [scalePxPerFt, setScalePxPerFt] = useState<string>('');
 
   // Overlay stepper
   const ANALYSIS_STEPS = [
@@ -137,14 +139,20 @@ export default function ProjectViewerPage() {
     startStepper();
 
     try {
+      const body: Record<string, unknown> = {
+        file_url: fileUrl,
+        file_mime: project.file_mime,
+        page_number: pageNumber,
+      };
+      const scale = scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined;
+      if (typeof scale === 'number' && !Number.isNaN(scale) && scale > 0) {
+        body.scale_px_per_ft = scale;
+      }
+      console.log('[takeoff] request:', { ...body, file_url: '(hidden)' });
       const res = await fetch(`${BACKEND_URL}/api/takeoff/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_url: fileUrl,
-          file_mime: project.file_mime,
-          page_number: pageNumber,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -153,22 +161,21 @@ export default function ProjectViewerPage() {
       }
 
       const data = await res.json();
-      console.log('[handleGenerate] raw analysis length:', data.analysis?.length);
-      console.log('[handleGenerate] raw analysis preview:', data.analysis?.substring(0, 500));
-      const parsed = parseTakeoff(data.analysis || '');
-
-      // Override doors & windows with CV pipeline counts (more accurate)
-      if (data.cv_doors > 0 || data.cv_windows > 0) {
-        parsed.doors = data.cv_doors;
-        parsed.windows = data.cv_windows;
-        // Recalculate drywall deduction with CV counts
-        const openingDeduction = parsed.doors * 21 + parsed.windows * 12;
-        if (parsed.netDrywall > 0) {
-          parsed.netDrywall = Math.max(0, parsed.netDrywall + openingDeduction -
-            (data.cv_doors * 21 + data.cv_windows * 12));
-        }
-        console.log('[handleGenerate] CV overrides: doors=', data.cv_doors, 'windows=', data.cv_windows, 'walls=', data.cv_walls);
-      }
+      console.log('[takeoff] response:', { net_drywall_sqft: data.net_drywall_sqft, scale: scale, cv_walls: data.cv_walls });
+      const hasStructured =
+        typeof data.net_drywall_sqft === 'number' ||
+        typeof data.cv_doors === 'number' ||
+        typeof data.cv_windows === 'number';
+      const parsed: TakeoffData = hasStructured
+        ? {
+            totalArea: typeof data.total_area_sqft === 'number' ? data.total_area_sqft : 0,
+            netDrywall: typeof data.net_drywall_sqft === 'number' ? data.net_drywall_sqft : 0,
+            doors: typeof data.cv_doors === 'number' ? data.cv_doors : 0,
+            windows: typeof data.cv_windows === 'number' ? data.cv_windows : 0,
+            waste: Math.round(WASTE_FACTOR * 100),
+            summary: data.analysis || '',
+          }
+        : parseTakeoff(data.analysis || '');
 
       setTakeoff(parsed);
       setGenerated(true);
@@ -306,6 +313,21 @@ export default function ProjectViewerPage() {
 
         {/* Right — Takeoff Panel */}
         <aside className="w-[420px] shrink-0 border-l border-white/10 bg-[#0a0f1a] flex flex-col min-h-0 overflow-hidden">
+          {/* Scale input */}
+          <div className="px-4 pt-4 pb-2 shrink-0">
+            <label className="text-xs text-gray-400 block mb-1.5">
+              Scale (px/ft) — required for area & drywall
+            </label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              placeholder="e.g. 50"
+              value={scalePxPerFt}
+              onChange={(e) => setScalePxPerFt(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
           {/* Header row */}
           <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
             <span className="text-white font-semibold text-sm">AI Takeoff</span>
@@ -460,7 +482,19 @@ export default function ProjectViewerPage() {
             ) : generated ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-gray-500 text-xs text-center px-4">
-                  Analysis complete. Some metrics may not have been extracted. Check browser console for debug info.
+                  {takeoff.netDrywall === 0 ? (
+                    scalePxPerFt.trim() ? (
+                      <>
+                        Scale was sent but drywall is 0. Check browser console and backend terminal for <code>scale_px_per_ft</code>, <code>total_length_px</code>, <code>walls</code>.
+                      </>
+                    ) : (
+                      <>
+                        Add <strong>Scale (px/ft)</strong> (e.g. <strong>50</strong> for 1/4&quot;=1&apos;) and click <strong>Generate Takeoff</strong> again.
+                      </>
+                    )
+                  ) : (
+                    'Analysis complete.'
+                  )}
                 </p>
               </div>
             ) : (

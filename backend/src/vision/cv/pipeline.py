@@ -36,7 +36,9 @@ DOUBLE_DOOR_RADIUS_PX = 50      # max distance between paired door tags
 GAP_TAG_MATCH_RADIUS_PX = 200   # max distance to correlate a gap with a tag
                                  # (tags are often offset from the gap via leader lines)
 TAG_WALL_SPLIT_DIST_PX = 80     # max perpendicular distance from tag to wall to split
-TAG_SPLIT_HALF_WIDTH_PX = 60    # half-width of the gap inserted at each tag
+TAG_FORCE_SPLIT_DIST_PX = 18    # allow split without a gap only when tag is very near centerline
+TAG_TO_GAP_MAX_DIST_PX = 140    # tag must align with a detected wall gap to be split
+TAG_SPLIT_HALF_WIDTH_PX = 45    # half-width of the gap inserted at each tag
 VISUAL_THICKNESS_SEARCH_PX = 30 # perpendicular search radius for visual thickness
 MAX_VISUAL_THICKNESS_PX = 45    # absolute cap — ~13" at 200 DPI
 ENDPOINT_MARGIN_MIN_PX = 40     # min along-axis margin from endpoints when sampling
@@ -158,6 +160,7 @@ def _point_to_segment_dist(px: int, py: int, seg: WallSegment) -> float:
 def _split_walls_at_tags(
     walls: list[WallSegment],
     tags: list[TagAnchor],
+    gaps: list[Gap],
 ) -> list[WallSegment]:
     """
     Post-processing: for each door/window tag near a wall, split that
@@ -173,7 +176,14 @@ def _split_walls_at_tags(
         nearby_tags: list[TagAnchor] = []
         for tag in tags:
             dist = _point_to_segment_dist(tag.center[0], tag.center[1], wall)
-            if dist <= TAG_WALL_SPLIT_DIST_PX:
+            has_near_gap = any(
+                g.wall_id == wall.id and _euclidean(g.center, tag.center) <= TAG_TO_GAP_MAX_DIST_PX
+                for g in gaps
+            )
+            should_split = dist <= TAG_WALL_SPLIT_DIST_PX and (
+                has_near_gap or dist <= TAG_FORCE_SPLIT_DIST_PX
+            )
+            if should_split:
                 # Also check the tag is within the wall's along-axis range
                 if wall.orientation == Orientation.HORIZONTAL:
                     lo = min(wall.start[0], wall.end[0])
@@ -456,7 +466,7 @@ def run(
 
     # ── 4b. Split walls at tag positions ───────────────────────────────
     #        Guarantees walls don't visually cross door/window openings.
-    walls = _split_walls_at_tags(walls, tags)
+    walls = _split_walls_at_tags(walls, tags, gaps)
 
     # ── 4c. Measure visual thickness (both faces) ────────────────────
     #        Uses orientation-matched masks (h_mask for H walls,

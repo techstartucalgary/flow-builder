@@ -2,15 +2,12 @@
 Takeoff API route — full floor plan analysis via URL.
 =====================================================
 Accepts a signed URL pointing to a PDF/image, downloads it,
-sends it to Gemini using a Spatial Verification Protocol that
-eliminates hallucinated counts, and returns structured results.
-
-Also runs the deterministic CV pipeline to extract accurate
-door/window counts and an annotated floor plan image.
+runs the deterministic CV pipeline for door/window/wall counts
+and drywall calculation, and returns structured results.
+No LLM usage — all calculations from CV pipeline.
 """
 
 import base64
-import math
 import httpx
 import cv2
 import numpy as np
@@ -18,76 +15,15 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from src.core.config import get_settings
-from src.vision.providers.gemini_vision import DEFAULT_MODEL, analyze_image
 from src.vision.cv import pipeline as cv_pipeline
 from src.vision.cv.preprocessing import load_image, crop_drawing_area
 from src.vision.cv.models import TagClass
 
 router = APIRouter(prefix="/api/takeoff", tags=["takeoff"])
 
-# ---------------------------------------------------------------------------
-# Spatial Verification Protocol prompt
-# ---------------------------------------------------------------------------
-
-"""Construction takeoff prompts for floor plan analysis."""
-
-TAKEOFF_PROMPT = """
-Analyze this construction floor plan and extract ALL details for material takeoff.
-Be thorough and precise. If something is unclear, note it explicitly.
-
-## Extract the following:
-
-### 1. WALLS
-- Identify all wall segments (foundation walls, partition studs, load-bearing, etc.)
-- Note wall types, thicknesses, and materials if shown in legend
-- List all wall dimensions (X and Y directions)
-- Identify end-caps, corners, and vertical soffit faces
-
-### 2. DIMENSIONS & MEASUREMENTS
-- List ALL dimension strings shown on the plan
-- Note overall dimensions and individual room dimensions
-- Extract any height specifications (ceiling heights, dropped ceilings, bulkheads)
-
-### 3. SCALE & UNITS
-- Identify the drawing scale (e.g., 1/4"=1'-0")
-- Note the units used (feet, inches, meters)
-
-### 4. LEGENDS & SYMBOLS
-- List all legend items (material codes, wall types, symbols)
-- Note any special symbols (electrical, plumbing, HVAC)
-- Identify color codes or hatch patterns
-
-### 5. WINDOWS & DOORS
-- List all window and door tags/labels
-- Note schedules if present (sizes, types, quantities)
-- Identify locations and rough openings
-
-### 6. ROOMS & SPACES
-- List all room labels and names
-- Note any special areas (dropped ceilings, bulkheads, mechanical rooms)
-
-### 7. TEXT ANNOTATIONS
-- Extract ALL text, notes, and callouts visible on the plan
-- Include revision notes, stamps, and general notes
-
-### 8. SPECIAL FEATURES
-- Identify any bulkheads, soffits, or ceiling variations
-- Note structural elements (beams, columns, footings)
-
-## Output Format:
-Organize findings clearly under each category above.
-Flag any ambiguities or illegible details.
-"""
-
-QUICK_SUMMARY_PROMPT = """
-Provide a concise summary of this floor plan:
-- Overall dimensions
-- Number of rooms
-- Key features
-- Any special notes or considerations for construction takeoff
-"""
-
+# Standard opening sizes (sq ft) for deduction — door ~3x7, window ~3x4
+DOOR_OPENING_SQFT = 21
+WINDOW_OPENING_SQFT = 12
 
 # ---------------------------------------------------------------------------
 # Request / Response models
@@ -104,19 +40,53 @@ class TakeoffRequest(BaseModel):
         default=1,
         description="1-indexed page number to analyze (for multi-page PDFs)",
     )
+    scale_px_per_ft: Optional[float] = Field(
+        default=None,
+        description="Pixels per foot (e.g. 50 for 1/4\"=1' at 200 DPI). Required for drywall calculation.",
+    )
+    ceiling_height_ft: float = Field(
+        default=9.0,
+        description="Wall height in feet for drywall calculation",
+    )
+    crop_left: float = Field(
+        default=0.02,
+        ge=0.0,
+        le=1.0,
+        description="Crop left boundary (fraction of width).",
+    )
+    crop_top: float = Field(
+        default=0.05,
+        ge=0.0,
+        le=1.0,
+        description="Crop top boundary (fraction of height).",
+    )
+    crop_right: float = Field(
+        default=0.72,
+        ge=0.0,
+        le=1.0,
+        description="Crop right boundary (fraction of width).",
+    )
+    crop_bottom: float = Field(
+        default=0.95,
+        ge=0.0,
+        le=1.0,
+        description="Crop bottom boundary (fraction of height).",
+    )
 
 
 class TakeoffResult(BaseModel):
-    """Takeoff analysis result."""
+    """Takeoff analysis result — all from deterministic CV pipeline."""
     status: str = "ok"
-    model: str = ""
     analysis: str = ""
     error: Optional[str] = None
-    # CV pipeline outputs — accurate door/window counts
     cv_doors: int = 0
     cv_windows: int = 0
     cv_walls: int = 0
-    # Annotated image as base64-encoded PNG (no Supabase storage)
+    total_area_sqft: float = 0.0
+    net_drywall_sqft: float = 0.0
+    total_linear_ft: float = 0.0
+    gross_drywall_sqft: float = 0.0
+    opening_deduction_sqft: float = 0.0
     annotated_image: Optional[str] = None
 
 
@@ -128,71 +98,42 @@ WALL_COLOR   = (0, 180, 0)    # green (BGR)
 DOOR_COLOR   = (0, 0, 255)    # red
 WINDOW_COLOR = (255, 150, 0)  # blue
 FONT         = cv2.FONT_HERSHEY_SIMPLEX
-
-# Junction corner fill — max endpoint distance to consider a corner pair
-CORNER_MAX_DIST_PX = 50
-
-
-def _generate_annotated_image(file_bytes: bytes, mime_type: str, cv_result, page_number: int = 0) -> str:
-    """
-    Draw CV detections on the floor plan and return as a base64 PNG string.
-    """
+def _generate_annotated_image(
+    file_bytes: bytes,
+    mime_type: str,
+    cv_result,
+    page_number: int = 0,
+    crop_left: float = 0.02,
+    crop_top: float = 0.05,
+    crop_right: float = 0.72,
+    crop_bottom: float = 0.95,
+) -> str:
+    """Draw CV detections on the floor plan and return as a base64 PNG string."""
     bgr = load_image(file_bytes, mime_type, dpi=200, page_number=page_number)
-    bgr = crop_drawing_area(bgr)
+    # Keep annotation coordinates aligned with the exact CV crop window.
+    bgr = crop_drawing_area(bgr, crop_left, crop_top, crop_right, crop_bottom)
     annotated = bgr.copy()
 
-    # Draw walls (full-thickness semi-transparent fill)
     wall_overlay = annotated.copy()
     for w in cv_result.walls:
         vt = w.visual_thickness if w.visual_thickness > 0 else w.thickness
-        half_t = max(vt // 2, 3)
-        if w.orientation.value == "H":
-            pt1 = (w.start[0], w.start[1] - half_t)
-            pt2 = (w.end[0],   w.end[1]   + half_t)
-        else:
-            pt1 = (w.start[0] - half_t, w.start[1])
-            pt2 = (w.end[0]   + half_t, w.end[1])
-        cv2.rectangle(wall_overlay, pt1, pt2, WALL_COLOR, -1)
-
-    # Fill junction corners (bridge gaps from morphological erosion)
-    for i, w1 in enumerate(cv_result.walls):
-        for w2 in cv_result.walls[i + 1:]:
-            if w1.orientation == w2.orientation:
-                continue
-            vt1 = w1.visual_thickness if w1.visual_thickness > 0 else w1.thickness
-            vt2 = w2.visual_thickness if w2.visual_thickness > 0 else w2.thickness
-            ht1 = max(vt1 // 2, 3)
-            ht2 = max(vt2 // 2, 3)
-            for ep1 in [w1.start, w1.end]:
-                for ep2 in [w2.start, w2.end]:
-                    d = math.hypot(ep1[0] - ep2[0], ep1[1] - ep2[1])
-                    if d < CORNER_MAX_DIST_PX:
-                        mx = (ep1[0] + ep2[0]) // 2
-                        my = (ep1[1] + ep2[1]) // 2
-                        if w1.orientation.value == "H":
-                            h_ht, v_ht = ht1, ht2
-                        else:
-                            h_ht, v_ht = ht2, ht1
-                        cp1 = (mx - v_ht, my - h_ht)
-                        cp2 = (mx + v_ht, my + h_ht)
-                        cv2.rectangle(wall_overlay, cp1, cp2, WALL_COLOR, -1)
+        line_t = max(3, int(vt))
+        # Anti-aliased centerline rendering avoids blocky corner overpaint.
+        cv2.line(wall_overlay, w.start, w.end, WALL_COLOR, line_t, cv2.LINE_AA)
 
     cv2.addWeighted(wall_overlay, 0.4, annotated, 0.6, 0, annotated)
 
-    # Wall labels on top
     for w in cv_result.walls:
         mx = (w.start[0] + w.end[0]) // 2
         my = (w.start[1] + w.end[1]) // 2
         cv2.putText(annotated, w.id, (mx - 20, my - 8), FONT, 0.45, WALL_COLOR, 1, cv2.LINE_AA)
 
-    # Draw door tags
     for t in cv_result.tags:
         if t.tag_class == TagClass.DOOR:
             cv2.circle(annotated, t.center, t.radius + 6, DOOR_COLOR, 2)
             cv2.putText(annotated, t.id, (t.center[0] - 15, t.center[1] - t.radius - 10),
                         FONT, 0.4, DOOR_COLOR, 1, cv2.LINE_AA)
 
-    # Draw window tags (hexagon outline)
     for t in cv_result.tags:
         if t.tag_class == TagClass.WINDOW:
             r = t.radius + 8
@@ -207,7 +148,6 @@ def _generate_annotated_image(file_bytes: bytes, mime_type: str, cv_result, page
             cv2.putText(annotated, t.id, (t.center[0] - 15, t.center[1] - t.radius - 12),
                         FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
 
-    # Draw legend
     doors = [t for t in cv_result.tags if t.tag_class == TagClass.DOOR]
     wins  = [t for t in cv_result.tags if t.tag_class == TagClass.WINDOW]
     lx, ly = 20, 30
@@ -223,9 +163,72 @@ def _generate_annotated_image(file_bytes: bytes, mime_type: str, cv_result, page
     cv2.circle(annotated, (lx + 12, ly + 4), 8, WINDOW_COLOR, 2)
     cv2.putText(annotated, f"Window tags ({len(wins)})", (lx + 40, ly + 8), FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
 
-    # Encode to PNG → base64
     _, buf = cv2.imencode('.png', annotated)
     return base64.b64encode(buf.tobytes()).decode('utf-8')
+
+
+def _compute_drywall(
+    cv_result,
+    deduction_doors: int,
+    deduction_windows: int,
+    scale_px_per_ft: Optional[float],
+    ceiling_height_ft: float,
+) -> tuple[float, float, float, float]:
+    """Compute total_linear_ft and net_drywall_sqft from CV walls when scale known."""
+    if scale_px_per_ft is None or scale_px_per_ft <= 0:
+        return 0.0, 0.0, 0.0, 0.0
+
+    total_length_px = sum(w.length_px for w in cv_result.walls)
+    total_linear_ft = total_length_px / scale_px_per_ft
+    gross_drywall_sqft = total_linear_ft * ceiling_height_ft * 2  # double-sided interior
+    opening_deduction = deduction_doors * DOOR_OPENING_SQFT + deduction_windows * WINDOW_OPENING_SQFT
+    net_drywall_sqft = max(0.0, gross_drywall_sqft - opening_deduction)
+    return total_linear_ft, gross_drywall_sqft, opening_deduction, net_drywall_sqft
+
+
+def _compute_total_area_sqft(cv_result, scale_px_per_ft: Optional[float]) -> float:
+    """
+    Estimate plan area in sq ft from the convex hull of detected wall endpoints.
+    Requires scale to convert px² -> ft².
+    """
+    if scale_px_per_ft is None or scale_px_per_ft <= 0:
+        return 0.0
+    if not cv_result.walls:
+        return 0.0
+
+    pts = []
+    for w in cv_result.walls:
+        pts.append(w.start)
+        pts.append(w.end)
+
+    if len(pts) < 3:
+        return 0.0
+
+    pts_np = np.array(pts, dtype=np.int32)
+    hull = cv2.convexHull(pts_np)
+    area_px2 = float(cv2.contourArea(hull))
+
+    # Fallback for degenerate hulls (e.g., near-collinear points)
+    if area_px2 <= 0:
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        width = max(xs) - min(xs)
+        height = max(ys) - min(ys)
+        area_px2 = float(max(0, width) * max(0, height))
+
+    return area_px2 / (scale_px_per_ft * scale_px_per_ft)
+
+
+def _validate_crop_bounds(
+    crop_left: float,
+    crop_top: float,
+    crop_right: float,
+    crop_bottom: float,
+) -> None:
+    if crop_left >= crop_right:
+        raise HTTPException(status_code=422, detail="Invalid crop bounds: crop_left must be < crop_right")
+    if crop_top >= crop_bottom:
+        raise HTTPException(status_code=422, detail="Invalid crop bounds: crop_top must be < crop_bottom")
 
 
 # ---------------------------------------------------------------------------
@@ -238,19 +241,10 @@ async def analyze_takeoff(req: TakeoffRequest):
     Analyze a floor plan for material takeoff.
 
     1. Downloads the file from *file_url*.
-    2. Sends it to Gemini for full text extraction.
-    3. Runs the deterministic CV pipeline for accurate door/window counts
-       and generates an annotated floor plan image.
-    4. Returns both: Gemini analysis text + CV counts/annotated image.
+    2. Runs the deterministic CV pipeline for door/window/wall counts.
+    3. Computes drywall from wall lengths when scale_px_per_ft provided.
+    4. Returns structured results and annotated image.
     """
-    settings = get_settings()
-    if not settings.gemini_configured and not settings.vertex_configured:
-        raise HTTPException(
-            status_code=503,
-            detail="Configure GEMINI_API_KEY or Vertex AI in backend/.env",
-        )
-
-    # ------ download file from signed URL ------
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.get(req.file_url)
@@ -265,50 +259,100 @@ async def analyze_takeoff(req: TakeoffRequest):
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Downloaded file is empty")
 
-    # ------ send to Gemini ------
-    try:
-        analysis = analyze_image(
-            image_bytes=file_bytes,
-            mime_type=req.file_mime,
-            prompt=TAKEOFF_PROMPT,
-            model=DEFAULT_MODEL,
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Gemini API error: {str(e)}",
-        )
-
-    # ------ run CV pipeline for doors/windows/walls + annotated image ------
     cv_doors = 0
     cv_windows = 0
     cv_walls = 0
     annotated_b64: Optional[str] = None
+    total_area_sqft = 0.0
+    net_drywall_sqft = 0.0
+    total_linear_ft = 0.0
+    gross_drywall_sqft = 0.0
+    opening_deduction_sqft = 0.0
+    cv_result = None
 
     try:
-        # page_number in the request is 1-indexed; pipeline uses 0-indexed
         cv_page = max(0, req.page_number - 1)
+        _validate_crop_bounds(req.crop_left, req.crop_top, req.crop_right, req.crop_bottom)
         print(f"[takeoff/cv] file size={len(file_bytes)} bytes, mime={req.file_mime}, page={cv_page}")
-        cv_result = cv_pipeline.run(file_bytes, req.file_mime, page_number=cv_page)
+        cv_result = cv_pipeline.run(
+            file_bytes,
+            req.file_mime,
+            page_number=cv_page,
+            scale_px_per_ft=req.scale_px_per_ft,
+            crop_left=req.crop_left,
+            crop_top=req.crop_top,
+            crop_right=req.crop_right,
+            crop_bottom=req.crop_bottom,
+        )
         cv_doors = sum(1 for t in cv_result.tags if t.tag_class == TagClass.DOOR)
         cv_windows = sum(1 for t in cv_result.tags if t.tag_class == TagClass.WINDOW)
         cv_walls = len(cv_result.walls)
-        print(f"[takeoff/cv] walls={cv_walls} doors={cv_doors} windows={cv_windows}")
-        print(f"[takeoff/cv] debug: {cv_result.debug}")
-        annotated_b64 = _generate_annotated_image(file_bytes, req.file_mime, cv_result, page_number=cv_page)
-        print(f"[takeoff/cv] annotated image size={len(annotated_b64)} chars (base64)")
+        total_length_px = sum(w.length_px for w in cv_result.walls)
+        print(f"[takeoff/cv] scale_px_per_ft={req.scale_px_per_ft} walls={cv_walls} doors={cv_doors} windows={cv_windows} total_length_px={total_length_px}")
+
+        # For deductions, prefer openings correlated to walls/gaps over raw tag count.
+        opening_doors = sum(
+            1 for o in cv_result.openings
+            if o.tag_class == TagClass.DOOR and len(o.tag_ids) > 0
+        )
+        opening_windows = sum(
+            1 for o in cv_result.openings
+            if o.tag_class == TagClass.WINDOW and len(o.tag_ids) > 0
+        )
+        min_door_coverage = max(1, int(cv_doors * 0.5))
+        min_window_coverage = max(1, int(cv_windows * 0.5))
+        deduction_doors = opening_doors if opening_doors >= min_door_coverage else cv_doors
+        deduction_windows = opening_windows if opening_windows >= min_window_coverage else cv_windows
+
+        total_linear_ft, gross_drywall_sqft, opening_deduction_sqft, net_drywall_sqft = _compute_drywall(
+            cv_result, deduction_doors, deduction_windows,
+            req.scale_px_per_ft, req.ceiling_height_ft,
+        )
+        total_area_sqft = _compute_total_area_sqft(cv_result, req.scale_px_per_ft)
+
+        annotated_b64 = _generate_annotated_image(
+            file_bytes,
+            req.file_mime,
+            cv_result,
+            page_number=cv_page,
+            crop_left=req.crop_left,
+            crop_top=req.crop_top,
+            crop_right=req.crop_right,
+            crop_bottom=req.crop_bottom,
+        )
+        print(
+            "[takeoff/cv] "
+            f"total_linear_ft={total_linear_ft:.1f} gross={gross_drywall_sqft:.1f} "
+            f"openings_deduction={opening_deduction_sqft:.1f} net={net_drywall_sqft:.1f} "
+            f"total_area_sqft={total_area_sqft:.1f} "
+            f"annotated image size={len(annotated_b64)} chars (base64)"
+        )
     except Exception as e:
-        # CV pipeline failure is non-fatal; Gemini results still return
         import traceback
-        print(f"[takeoff] CV pipeline error (non-fatal): {e}")
+        print(f"[takeoff] CV pipeline error: {e}")
         traceback.print_exc()
+
+    scale_note = " (provide scale_px_per_ft for drywall calculation)" if not req.scale_px_per_ft else ""
+    analysis_lines = [
+        f"CV Pipeline: {cv_walls} walls, {cv_doors} doors, {cv_windows} windows.",
+        f"Estimated total area: {total_area_sqft:.0f} sq ft{scale_note}.",
+        (
+            f"Net drywall: {net_drywall_sqft:.0f} sq ft "
+            f"(gross {gross_drywall_sqft:.0f} - openings {opening_deduction_sqft:.0f}){scale_note}."
+        ),
+    ]
+    analysis = " ".join(analysis_lines)
 
     return TakeoffResult(
         status="ok",
-        model=DEFAULT_MODEL,
-        analysis=analysis.strip(),
+        analysis=analysis,
         cv_doors=cv_doors,
         cv_windows=cv_windows,
         cv_walls=cv_walls,
+        total_area_sqft=round(total_area_sqft, 2),
+        net_drywall_sqft=round(net_drywall_sqft, 2),
+        total_linear_ft=round(total_linear_ft, 2),
+        gross_drywall_sqft=round(gross_drywall_sqft, 2),
+        opening_deduction_sqft=round(opening_deduction_sqft, 2),
         annotated_image=annotated_b64,
     )

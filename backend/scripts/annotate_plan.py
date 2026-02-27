@@ -38,7 +38,7 @@ OPENING_COLOR = (0, 200, 255)    # yellow
 FONT          = cv2.FONT_HERSHEY_SIMPLEX
 
 # Junction corner fill — max endpoint distance to consider a corner pair
-CORNER_MAX_DIST_PX = 50
+CORNER_MAX_DIST_PX = 70
 
 
 def annotate(

@@ -63,7 +63,7 @@ WINDOW_COLOR = (255, 150, 0)
 CORNER_COLOR = (0, 255, 255)  # yellow for corner fills
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
-CORNER_MAX_DIST_PX = 50
+CORNER_MAX_DIST_PX = 70
 
 
 def _save(img: np.ndarray, path: str) -> None:
@@ -116,6 +116,7 @@ def diagnose(
     # ── 2. Extract wall segments ──────────────────────────────────────
     walls = extract_wall_segments(h_mask, v_mask)
     print(f"  Walls after extraction+merge: {len(walls)}")
+    gaps = detect_gaps(walls, combined)
 
     # Draw thin wall midlines
     thin_img = bgr.copy()
@@ -128,7 +129,7 @@ def diagnose(
 
     # ── 3. Tags & split ───────────────────────────────────────────────
     tags = detect_tags(gray, binary, combined, walls)
-    walls = _split_walls_at_tags(walls, tags)
+    walls = _split_walls_at_tags(walls, tags, gaps)
     print(f"  Walls after tag splitting: {len(walls)}")
 
     # ── 4. Measure visual thickness ───────────────────────────────────

@@ -3,14 +3,13 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Load .env from backend directory
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from src.api.routes import vision, floorplan, partitions, takeoff, cv_takeoff
-from src.core.config import get_settings
+from src.api.routes import partitions, takeoff, cv_takeoff
 
 app = FastAPI(title="FlowBuildr API", version="0.1.0")
 
@@ -23,6 +22,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
+        "http://localhost:3002",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -30,8 +30,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-app.include_router(vision.router)
-app.include_router(floorplan.router)
 app.include_router(partitions.router)
 app.include_router(takeoff.router)
 app.include_router(cv_takeoff.router)
@@ -40,31 +38,3 @@ app.include_router(cv_takeoff.router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-@app.get("/api/gemini/test")
-def test_gemini():
-    """Test Gemini API connection (Vertex AI or API key)."""
-    settings = get_settings()
-    if not settings.gemini_configured and not settings.vertex_configured:
-        raise HTTPException(
-            status_code=503,
-            detail="Configure GEMINI_API_KEY or Vertex AI (GOOGLE_APPLICATION_CREDENTIALS + project) in .env",
-        )
-
-    try:
-        from src.vision.providers.client import get_genai_client
-
-        client = get_genai_client()
-        # Gemini 2.5 Flash Lite: 4K RPM, 4M TPM, Unlimited RPD (best limits)
-        model = "gemini-3-pro-preview"
-        response = client.models.generate_content(
-            model=model,
-            contents="Reply with exactly: Gemini is working",
-        )
-        text = response.text or ""
-        return {"status": "ok", "model": model, "reply": text.strip()}
-    except ValueError as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
