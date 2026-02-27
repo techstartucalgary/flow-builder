@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 344,
+  "latest_revision": 358,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -15,8 +15,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-02-27T20:40:50.800Z",
-      "revision": 344
+      "updatedAt": "2026-02-27T21:59:48.862Z",
+      "revision": 358
     },
     "layers": {
       "wall": true,
@@ -686,308 +686,342 @@
         "relations": {}
       },
       {
-        "id": "door_D-01",
+        "id": "door_OP-01",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.66
         },
         "geometry": {
           "kind": "rect",
-          "x": 2700,
-          "y": 2164,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 3283,
+          "y": 1608,
+          "width": 46,
+          "height": 8,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-03",
+          "source": "tag_projected",
+          "confidence": 0.66,
+          "tagIds": [
+            "D-01"
+          ]
+        }
       },
       {
-        "id": "door_D-02",
+        "id": "door_OP-02",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.6
         },
         "geometry": {
           "kind": "rect",
-          "x": 3332,
-          "y": 1544,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 2946,
+          "y": 2004,
+          "width": 43,
+          "height": 8,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-07",
+          "source": "tag_projected",
+          "confidence": 0.6,
+          "tagIds": [
+            "D-02"
+          ]
+        }
       },
       {
-        "id": "door_D-03",
+        "id": "door_OP-03",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.62
         },
         "geometry": {
           "kind": "rect",
-          "x": 2688,
-          "y": 1566,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 2244,
+          "y": 1502,
+          "width": 46,
+          "height": 24,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-02",
+          "source": "tag_projected",
+          "confidence": 0.62,
+          "tagIds": [
+            "D-03"
+          ]
+        }
       },
       {
-        "id": "door_D-04",
+        "id": "door_OP-04",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.62
         },
         "geometry": {
           "kind": "rect",
-          "x": 3312,
-          "y": 1852,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 3367,
+          "y": 1821,
+          "width": 46,
+          "height": 20,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-06",
+          "source": "tag_projected",
+          "confidence": 0.62,
+          "tagIds": [
+            "D-04"
+          ]
+        }
       },
       {
-        "id": "door_D-05",
+        "id": "door_OP-05",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.61
         },
         "geometry": {
           "kind": "rect",
-          "x": 3112,
-          "y": 1938,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 2696,
+          "y": 2247,
+          "width": 46,
+          "height": 20,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-09",
+          "source": "tag_projected",
+          "confidence": 0.61,
+          "tagIds": [
+            "D-05"
+          ]
+        }
       },
       {
-        "id": "door_D-06",
+        "id": "door_OP-06",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.61
         },
         "geometry": {
           "kind": "rect",
-          "x": 2798,
-          "y": 2616,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 2840,
+          "y": 1810,
+          "width": 46,
+          "height": 20,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-05",
+          "source": "tag_projected",
+          "confidence": 0.61,
+          "tagIds": [
+            "D-06"
+          ]
+        }
       },
       {
-        "id": "door_D-07",
+        "id": "door_OP-07",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.59
         },
         "geometry": {
           "kind": "rect",
-          "x": 3508,
-          "y": 2134,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 2775,
+          "y": 1562,
+          "width": 20,
+          "height": 46,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_V-03",
+          "source": "tag_projected",
+          "confidence": 0.59,
+          "tagIds": [
+            "D-07"
+          ]
+        }
       },
       {
-        "id": "door_D-08",
+        "id": "door_OP-08",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.58
         },
         "geometry": {
           "kind": "rect",
-          "x": 2248,
-          "y": 1566,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 3043,
+          "y": 2004,
+          "width": 46,
+          "height": 8,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-07",
+          "source": "tag_projected",
+          "confidence": 0.58,
+          "tagIds": [
+            "D-08"
+          ]
+        }
       },
       {
-        "id": "door_D-09",
+        "id": "door_OP-09",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.64
         },
         "geometry": {
           "kind": "rect",
-          "x": 3407,
-          "y": 1889,
-          "width": 64,
-          "height": 21.333333333333332,
+          "x": 2886,
+          "y": 1810,
+          "width": 34,
+          "height": 20,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-05",
+          "source": "tag_projected",
+          "confidence": 0.64,
+          "tagIds": [
+            "D-09"
+          ]
+        }
       },
       {
-        "id": "door_D-10",
+        "id": "door_OP-10",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.54
         },
         "geometry": {
           "kind": "rect",
-          "x": 2882,
+          "x": 3726,
+          "y": 2255,
+          "width": 20,
+          "height": 38,
+          "rotationDeg": 0
+        },
+        "relations": {
+          "hostWallId": "wall_V-08",
+          "source": "tag_projected",
+          "confidence": 0.54,
+          "tagIds": [
+            "D-10"
+          ]
+        }
+      },
+      {
+        "id": "door_OP-11",
+        "type": "door",
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": false,
+          "confidence": 0.45
+        },
+        "geometry": {
+          "kind": "rect",
+          "x": 2927,
+          "y": 2612,
+          "width": 20,
+          "height": 46,
+          "rotationDeg": 0
+        },
+        "relations": {
+          "hostWallId": "wall_V-04",
+          "source": "tag_projected",
+          "confidence": 0.45,
+          "tagIds": [
+            "D-11"
+          ]
+        }
+      },
+      {
+        "id": "window_OP-12",
+        "type": "window",
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": false,
+          "confidence": 0.6
+        },
+        "geometry": {
+          "kind": "rect",
+          "x": 2182,
           "y": 2035,
-          "width": 36,
-          "height": 12,
+          "width": 20,
+          "height": 65,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_V-01",
+          "source": "tag_projected",
+          "confidence": 0.6,
+          "tagIds": [
+            "W-01"
+          ]
+        }
       },
       {
-        "id": "door_D-11",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2844,
-          "y": 1726,
-          "width": 38,
-          "height": 12.666666666666666,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-12",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3640,
-          "y": 2293,
-          "width": 32,
-          "height": 10.666666666666666,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-01",
+        "id": "window_OP-13",
         "type": "window",
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": true,
-          "confidence": 0.9
+          "visible": false,
+          "confidence": 0.55
         },
         "geometry": {
           "kind": "rect",
-          "x": 3019,
-          "y": 3539,
-          "width": 50,
-          "height": 16.666666666666668,
+          "x": 2407,
+          "y": 3440,
+          "width": 65,
+          "height": 20,
           "rotationDeg": 0
         },
-        "relations": {}
-      },
-      {
-        "id": "window_W-02",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2755,
-          "y": 3539,
-          "width": 50,
-          "height": 16.666666666666668,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-03",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2494,
-          "y": 3539,
-          "width": 50,
-          "height": 16.666666666666668,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-04",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2057,
-          "y": 2079,
-          "width": 50,
-          "height": 16.666666666666668,
-          "rotationDeg": 0
-        },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-10",
+          "source": "tag_projected",
+          "confidence": 0.55,
+          "tagIds": [
+            "W-02"
+          ]
+        }
       }
     ],
     "issues": []
@@ -18445,6 +18479,434 @@
               "x2": 4564,
               "y2": 3243,
               "thicknessPx": 6,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772226000802_pgu90",
+      "revisionId": 347,
+      "parentRevisionId": 346,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:00:00.802Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-11",
+          "before": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3529,
+              "y1": 2216,
+              "x2": 3529,
+              "y2": 2830,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3217,
+              "y1": 2728,
+              "x2": 3217,
+              "y2": 3342,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772226001873_z8z3y",
+      "revisionId": 348,
+      "parentRevisionId": 346,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:00:01.873Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-11",
+          "before": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3217,
+              "y1": 2728,
+              "x2": 3217,
+              "y2": 3342,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3529,
+              "y1": 2216,
+              "x2": 3529,
+              "y2": 2830,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772226224669_1s3be",
+      "revisionId": 349,
+      "parentRevisionId": 348,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:03:44.669Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "door_OP-06",
+          "before": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2779,
+              "y": 1423,
+              "width": 12,
+              "height": 247,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-03"
+            }
+          },
+          "after": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2661.406411398595,
+              "y": 1550.088155045944,
+              "width": 11.999999999999782,
+              "height": 246.99999999999724,
+              "rotationDeg": -88.88152380535155
+            },
+            "relations": {
+              "hostWallId": "wall_V-03"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772226228946_x23kr",
+      "revisionId": 350,
+      "parentRevisionId": 349,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:03:48.946Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "door_OP-06",
+          "before": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2661.406411398595,
+              "y": 1550.088155045944,
+              "width": 11.999999999999782,
+              "height": 246.99999999999724,
+              "rotationDeg": -88.88152380535155
+            },
+            "relations": {
+              "hostWallId": "wall_V-03"
+            }
+          },
+          "after": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2500.00331529905,
+              "y": 1551.4220649310641,
+              "width": 11.999999999999782,
+              "height": 246.99999999999724,
+              "rotationDeg": -88.88152380535155
+            },
+            "relations": {
+              "hostWallId": "wall_V-03"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772227031368_t9fkc",
+      "revisionId": 352,
+      "parentRevisionId": 351,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:17:11.368Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "window_OP-10",
+          "before": {
+            "id": "window_OP-10",
+            "type": "window",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2182,
+              "y": 2037,
+              "width": 20,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-01",
+              "source": "tag_projected",
+              "confidence": 0.54,
+              "tagIds": [
+                "W-10"
+              ]
+            }
+          },
+          "after": {
+            "id": "window_OP-10",
+            "type": "window",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2166,
+              "y": 2113,
+              "width": 20,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-01",
+              "source": "tag_projected",
+              "confidence": 0.54,
+              "tagIds": [
+                "W-10"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772227592585_mdjiu",
+      "revisionId": 354,
+      "parentRevisionId": 353,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:26:32.585Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-09",
+          "before": {
+            "id": "wall_V-09",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3239,
+              "y1": 1421,
+              "x2": 3239,
+              "y2": 1624,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-09",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3225.354551576223,
+              "y1": 1186.1033521335498,
+              "x2": 3225.354551576223,
+              "y2": 1389.1033521335498,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772227599611_v0u01",
+      "revisionId": 355,
+      "parentRevisionId": 354,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:26:39.611Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_V-09",
+          "element": {
+            "id": "wall_V-09",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3225.354551576223,
+              "y1": 1186.1033521335498,
+              "x2": 3225.354551576223,
+              "y2": 1389.1033521335498,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_system_cleanup_356",
+      "revisionId": 356,
+      "parentRevisionId": 355,
+      "actorId": "system_cleanup",
+      "timestamp": "2026-02-27T21:39:19.496875Z",
+      "operations": []
+    },
+    {
+      "id": "evt_1772229566829_gjkgx",
+      "revisionId": 357,
+      "parentRevisionId": 356,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T21:59:26.829Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-15",
+          "before": {
+            "id": "wall_H-15",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3515,
+              "y1": 2635,
+              "x2": 4184,
+              "y2": 2635,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-15",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2775,
+              "y1": 2863,
+              "x2": 3444,
+              "y2": 2863,
+              "thicknessPx": 20,
               "rotationDeg": 0
             },
             "relations": {}

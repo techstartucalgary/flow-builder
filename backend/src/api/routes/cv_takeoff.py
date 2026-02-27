@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import httpx
 import base64
+import hashlib
+import json
 import cv2
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from typing import Optional
@@ -50,6 +52,59 @@ class CVUrlRequest(BaseModel):
     address: Optional[str] = Field(default=None, description="Address override")
 
 
+def _coordinate_space_id(
+    *,
+    page_number: int,
+    dpi: int,
+    crop_left: float,
+    crop_top: float,
+    crop_right: float,
+    crop_bottom: float,
+    image_width: int,
+    image_height: int,
+) -> str:
+    payload = {
+        "page_number": int(page_number),
+        "dpi": int(dpi),
+        "crop_left": round(float(crop_left), 5),
+        "crop_top": round(float(crop_top), 5),
+        "crop_right": round(float(crop_right), 5),
+        "crop_bottom": round(float(crop_bottom), 5),
+        "image_width": int(image_width),
+        "image_height": int(image_height),
+    }
+    digest = hashlib.sha1(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+    return f"coord_{digest}"
+
+
+def _ensure_coordinate_metadata(
+    result: CVTakeoffResult,
+    *,
+    page_number: int,
+    dpi: int,
+    crop_left: float,
+    crop_top: float,
+    crop_right: float,
+    crop_bottom: float,
+) -> None:
+    result.metadata.coordinate_space_id = _coordinate_space_id(
+        page_number=page_number,
+        dpi=dpi,
+        crop_left=crop_left,
+        crop_top=crop_top,
+        crop_right=crop_right,
+        crop_bottom=crop_bottom,
+        image_width=result.metadata.image_width,
+        image_height=result.metadata.image_height,
+    )
+    result.metadata.crop.left = crop_left
+    result.metadata.crop.top = crop_top
+    result.metadata.crop.right = crop_right
+    result.metadata.crop.bottom = crop_bottom
+    result.metadata.crop.dpi = dpi
+    result.metadata.crop.page_number = page_number
+
+
 def _preview_image_b64(
     file_bytes: bytes,
     mime_type: str,
@@ -70,6 +125,21 @@ def _preview_image_b64(
         return base64.b64encode(buf.tobytes()).decode("utf-8")
     except Exception:
         return None
+
+
+def _log_debug_summary(result: CVTakeoffResult, context: str) -> None:
+    debug = result.debug
+    print(
+        "[cv-takeoff]"
+        f" {context}"
+        f" door_tags_raw={debug.door_tags_raw}"
+        f" door_tags_after_dedupe={debug.door_tags_after_dedupe}"
+        f" window_tags_raw={debug.window_tags_raw}"
+        f" window_tags_after_dedupe={debug.window_tags_after_dedupe}"
+        f" openings_gap_matched={debug.openings_gap_matched}"
+        f" openings_tag_projected={debug.openings_tag_projected}"
+        f" openings_hidden_recommended={debug.openings_hidden_recommended}"
+    )
 
 
 @router.post("/analyze-url", response_model=CVTakeoffResult)
@@ -109,6 +179,15 @@ async def analyze_url(req: CVUrlRequest):
         # Keep suppression counters explicit in API output for observability.
         result.debug.walls_raw = result.debug.walls_raw or len(result.walls)
         result.debug.walls_after_suppression = result.debug.walls_after_suppression or len(result.walls)
+        _ensure_coordinate_metadata(
+            result,
+            page_number=max(0, req.page_number - 1),
+            dpi=req.dpi,
+            crop_left=req.crop_left,
+            crop_top=req.crop_top,
+            crop_right=req.crop_right,
+            crop_bottom=req.crop_bottom,
+        )
         result.preview_image = _preview_image_b64(
             file_bytes,
             req.file_mime,
@@ -119,6 +198,7 @@ async def analyze_url(req: CVUrlRequest):
             crop_right=req.crop_right,
             crop_bottom=req.crop_bottom,
         )
+        _log_debug_summary(result, "analyze-url")
     except Exception as e:
         raise HTTPException(502, f"CV pipeline error: {e}")
 
@@ -178,6 +258,15 @@ async def analyze_upload(
         # Keep suppression counters explicit in API output for observability.
         result.debug.walls_raw = result.debug.walls_raw or len(result.walls)
         result.debug.walls_after_suppression = result.debug.walls_after_suppression or len(result.walls)
+        _ensure_coordinate_metadata(
+            result,
+            page_number=max(0, page_number - 1),
+            dpi=dpi,
+            crop_left=crop_left,
+            crop_top=crop_top,
+            crop_right=crop_right,
+            crop_bottom=crop_bottom,
+        )
         result.preview_image = _preview_image_b64(
             file_bytes,
             mime,
@@ -188,6 +277,7 @@ async def analyze_upload(
             crop_right=crop_right,
             crop_bottom=crop_bottom,
         )
+        _log_debug_summary(result, "analyze-upload")
     except Exception as e:
         raise HTTPException(502, f"CV pipeline error: {e}")
 

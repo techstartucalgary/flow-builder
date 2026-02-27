@@ -15,11 +15,13 @@ import {
   Sparkles,
   PencilRuler,
 } from 'lucide-react';
+import { getBackendUrl } from '@/lib/backendUrl';
 import { parseTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
 import type { TakeoffData } from '@/lib/parseTakeoff';
 import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
+import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBoundary';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = getBackendUrl();
 const WASTE_FACTOR = 0.15;
 const SHEET_SQFT = 48; // 4' x 12' sheet = 48 sq ft
 
@@ -274,14 +276,19 @@ export default function ProjectViewerPage() {
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {editorMode ? (
             <div className="flex-1 min-h-0 p-2">
-              <AnnotationEditorShell
-                projectId={project.id}
-                fileUrl={fileUrl}
-                fileMime={project.file_mime}
-                pageNumber={pageNumber}
-                scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
-                actorId={user?.id}
-              />
+              <AnnotationEditorBoundary
+                key={`${project.id}:${pageNumber}`}
+                onDisableEditor={() => setEditorMode(false)}
+              >
+                <AnnotationEditorShell
+                  projectId={project.id}
+                  fileUrl={fileUrl}
+                  fileMime={project.file_mime}
+                  pageNumber={pageNumber}
+                  scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
+                  actorId={user?.id}
+                />
+              </AnnotationEditorBoundary>
             </div>
           ) : (
             <>

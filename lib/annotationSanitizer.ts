@@ -3,9 +3,11 @@ import type {
   AnnotationElement,
   AnnotationElementType,
   AnnotationLayers,
+  OpeningRelations,
 } from '@/types/annotation';
 
 const SUPPORTED_TYPES: ReadonlySet<AnnotationElementType> = new Set(['wall', 'door', 'window', 'room']);
+const PROJECTED_OPENING_MIN_CONFIDENCE = 0.72;
 
 function defaultLayers(): AnnotationLayers {
   return {
@@ -39,7 +41,22 @@ function sanitizeElements(elements: unknown): AnnotationElement[] {
     const element = raw as AnnotationElement & { type?: unknown; geometry?: { kind?: unknown } };
     if (!isSupportedType(element.type)) continue;
     if (!element.geometry || (element.geometry.kind !== 'segment' && element.geometry.kind !== 'rect')) continue;
-    sanitized.push(element as AnnotationElement);
+    const next = { ...element } as AnnotationElement;
+    const relations = (next.relations && typeof next.relations === 'object')
+      ? (next.relations as OpeningRelations)
+      : undefined;
+    if (
+      (next.type === 'door' || next.type === 'window')
+      && relations?.source === 'tag_projected'
+      && typeof relations.confidence === 'number'
+      && relations.confidence < PROJECTED_OPENING_MIN_CONFIDENCE
+    ) {
+      next.attrs = {
+        ...next.attrs,
+        visible: false,
+      };
+    }
+    sanitized.push(next);
   }
   return sanitized;
 }
@@ -51,4 +68,3 @@ export function sanitizeAnnotationDocument(doc: AnnotationDocument): AnnotationD
     elements: sanitizeElements(doc.elements),
   };
 }
-

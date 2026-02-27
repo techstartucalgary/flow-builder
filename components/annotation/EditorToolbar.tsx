@@ -9,8 +9,13 @@ interface EditorToolbarProps {
   onRedo: () => void;
   onDelete: () => void;
   onSave: () => void;
+  onRefreshOpenings: () => void;
   showBaseImage: boolean;
   onToggleBaseImage: () => void;
+  showTags: boolean;
+  onToggleShowTags: () => void;
+  showTentativeOpenings: boolean;
+  onToggleTentativeOpenings: () => void;
   gridEnabled: boolean;
   wallSnapEnabled: boolean;
   onToggleGrid: () => void;
@@ -26,8 +31,13 @@ export default function EditorToolbar({
   onRedo,
   onDelete,
   onSave,
+  onRefreshOpenings,
   showBaseImage,
   onToggleBaseImage,
+  showTags,
+  onToggleShowTags,
+  showTentativeOpenings,
+  onToggleTentativeOpenings,
   gridEnabled,
   wallSnapEnabled,
   onToggleGrid,
@@ -91,12 +101,40 @@ export default function EditorToolbar({
 
       <button
         type="button"
+        onClick={onRefreshOpenings}
+        className="px-2 py-1 text-xs rounded border border-amber-400/50 text-amber-200 bg-amber-500/10 hover:bg-amber-500/20"
+      >
+        Refresh Openings
+      </button>
+
+      <button
+        type="button"
         onClick={onToggleBaseImage}
         className={`px-2 py-1 text-xs rounded border ${
           showBaseImage ? 'border-cyan-400/60 text-cyan-200 bg-cyan-500/10' : 'border-white/10 text-gray-300'
         }`}
       >
         {showBaseImage ? 'Mode: Overlay' : 'Mode: Vector Only'}
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleShowTags}
+        className={`px-2 py-1 text-xs rounded border ${
+          showTags ? 'border-fuchsia-400/60 text-fuchsia-200 bg-fuchsia-500/10' : 'border-white/10 text-gray-300'
+        }`}
+      >
+        {showTags ? 'Tags: On' : 'Tags: Off'}
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleTentativeOpenings}
+        className={`px-2 py-1 text-xs rounded border ${
+          showTentativeOpenings ? 'border-sky-400/60 text-sky-200 bg-sky-500/10' : 'border-white/10 text-gray-300'
+        }`}
+      >
+        {showTentativeOpenings ? 'Tentative: On' : 'Tentative: Off'}
       </button>
     </div>
   );

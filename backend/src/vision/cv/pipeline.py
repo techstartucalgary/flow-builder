@@ -9,6 +9,8 @@ run(file_bytes, mime_type, **opts) → CVTakeoffResult
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from typing import Optional
 
@@ -17,6 +19,7 @@ import numpy as np
 
 from src.vision.cv.models import (
     CVTakeoffResult,
+    CropMetadata,
     DebugInfo,
     Opening,
     Orientation,
@@ -38,8 +41,6 @@ from src.vision.cv.wall_detection import (
 # Tunables
 # ---------------------------------------------------------------------------
 DOUBLE_DOOR_RADIUS_PX = 50      # max distance between paired door tags
-GAP_TAG_MATCH_RADIUS_PX = 200   # max distance to correlate a gap with a tag
-                                 # (tags are often offset from the gap via leader lines)
 TAG_WALL_SPLIT_DIST_PX = 80     # max perpendicular distance from tag to wall to split
 TAG_FORCE_SPLIT_DIST_PX = 18    # allow split without a gap only when tag is very near centerline
 TAG_TO_GAP_MAX_DIST_PX = 140    # tag must align with a detected wall gap to be split
@@ -48,6 +49,16 @@ VISUAL_THICKNESS_SEARCH_PX = 30 # perpendicular search radius for visual thickne
 MAX_VISUAL_THICKNESS_PX = 45    # absolute cap — ~13" at 200 DPI
 ENDPOINT_MARGIN_MIN_PX = 40     # min along-axis margin from endpoints when sampling
 ENDPOINT_MARGIN_FRAC = 0.15     # fraction of wall length to skip at each end
+HOST_WALL_DIST_DOOR_PX = 120
+HOST_WALL_DIST_WINDOW_PX = 180
+GAP_MATCH_RADIUS_MIN_PX = 28
+GAP_MATCH_RADIUS_MULT = 1.8
+GAP_MATCH_SCORE_THRESHOLD = 90.0
+PROJECTED_OPENING_MIN_SIZE_PX = 22
+PROJECTED_OPENING_MAX_SIZE_PX = 120
+DOOR_PROJECT_MIN_CONFIDENCE = 0.60
+WINDOW_PROJECT_MIN_CONFIDENCE = 0.68
+LOW_CONFIDENCE_PROJECTED_HIDDEN_THRESHOLD = 0.72
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +171,81 @@ def _point_to_segment_dist(px: int, py: int, seg: WallSegment) -> float:
         return math.hypot(px - x1, py - y1)
     t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
     return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+
+def _project_point_to_segment(px: int, py: int, seg: WallSegment) -> tuple[float, float, float]:
+    """Return projected point and clamped segment parameter t."""
+    x1, y1 = seg.start
+    x2, y2 = seg.end
+    dx, dy = x2 - x1, y2 - y1
+    denom = dx * dx + dy * dy
+    if denom == 0:
+        return float(x1), float(y1), 0.0
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / denom))
+    return (x1 + t * dx, y1 + t * dy, t)
+
+
+def _wall_threshold(tag_class: TagClass) -> int:
+    return HOST_WALL_DIST_DOOR_PX if tag_class == TagClass.DOOR else HOST_WALL_DIST_WINDOW_PX
+
+
+def _project_threshold(tag_class: TagClass) -> float:
+    return DOOR_PROJECT_MIN_CONFIDENCE if tag_class == TagClass.DOOR else WINDOW_PROJECT_MIN_CONFIDENCE
+
+
+def _axis_value(point: tuple[int, int] | tuple[float, float], orientation: Orientation) -> float:
+    return point[0] if orientation == Orientation.HORIZONTAL else point[1]
+
+
+def _opening_extent_px(tags: list[TagAnchor], is_double: bool) -> int:
+    avg_radius = sum(max(8, int(t.radius)) for t in tags) / max(1, len(tags))
+    extent = int(round(avg_radius * (4.0 if is_double else 2.4)))
+    return max(PROJECTED_OPENING_MIN_SIZE_PX, min(PROJECTED_OPENING_MAX_SIZE_PX, extent))
+
+
+def _opening_bbox_from_center(
+    center: tuple[int, int],
+    wall: Optional[WallSegment],
+    width_px: int,
+) -> tuple[int, int, int, int]:
+    cx, cy = center
+    if wall is None:
+        half = max(10, width_px // 2)
+        return (cx - half, cy - half, half * 2, half * 2)
+
+    wall_thickness = max(8, int(wall.visual_thickness or wall.thickness))
+    if wall.orientation == Orientation.HORIZONTAL:
+        return (cx - width_px // 2, cy - wall_thickness // 2, width_px, wall_thickness)
+    return (cx - wall_thickness // 2, cy - width_px // 2, wall_thickness, width_px)
+
+
+def _assign_host_wall_for_point(
+    tag_class: TagClass,
+    center: tuple[int, int],
+    walls: list[WallSegment],
+) -> tuple[Optional[WallSegment], Optional[tuple[int, int]], float]:
+    """Assign the nearest plausible host wall and projected point."""
+    best_wall: Optional[WallSegment] = None
+    best_projection: Optional[tuple[int, int]] = None
+    best_score = float("inf")
+    best_dist = float("inf")
+
+    for wall in walls:
+        proj_x, proj_y, t = _project_point_to_segment(center[0], center[1], wall)
+        dist = math.hypot(center[0] - proj_x, center[1] - proj_y)
+        endpoint_penalty = 14.0 if t <= 0.04 or t >= 0.96 else 0.0
+        score = dist + endpoint_penalty
+        if score < best_score:
+            best_score = score
+            best_dist = dist
+            best_wall = wall
+            best_projection = (int(round(proj_x)), int(round(proj_y)))
+
+    if best_wall is None or best_projection is None:
+        return None, None, float("inf")
+    if best_dist > _wall_threshold(tag_class):
+        return None, None, best_dist
+    return best_wall, best_projection, best_dist
 
 
 def _split_walls_at_tags(
@@ -341,56 +427,145 @@ def _correlate_gaps_and_tags(
     gaps: list[Gap],
     tags: list[TagAnchor],
     walls: list[WallSegment],
-) -> list[Opening]:
+) -> tuple[list[Opening], dict[str, int]]:
     """
-    Match each gap to the nearest tag within ``GAP_TAG_MATCH_RADIUS_PX``.
-    If no tag is nearby the gap is still emitted (the frontend can review).
+    Emit one opening per tag (or double-door pair), using gap correlation
+    only when a nearby wall-local gap is plausible.
     """
     openings: list[Opening] = []
-    tag_claimed: set[str] = set()
-    idx = 1
+    grouped_tags: list[list[TagAnchor]] = []
+    used: set[str] = set()
+    tag_by_id = {tag.id: tag for tag in tags}
 
-    for gap in gaps:
-        best_tag: Optional[TagAnchor] = None
-        best_dist = float("inf")
-
-        for tag in tags:
-            if tag.id in tag_claimed:
+    for tag in tags:
+        if tag.id in used:
+            continue
+        if tag.tag_class == TagClass.DOOR and tag.is_double and tag.pair_id and tag.pair_id in tag_by_id:
+            pair = tag_by_id[tag.pair_id]
+            if pair.id not in used:
+                grouped_tags.append([tag, pair])
+                used.add(tag.id)
+                used.add(pair.id)
                 continue
-            d = _euclidean(gap.center, tag.center)
-            if d < best_dist:
-                best_dist = d
-                best_tag = tag
+        grouped_tags.append([tag])
+        used.add(tag.id)
 
-        tag_ids: list[str] = []
-        tag_class = TagClass.DOOR  # default
-        is_double = False
+    hosted = 0
+    unhosted = 0
+    openings_gap_matched = 0
+    openings_tag_projected = 0
+    openings_hidden_recommended = 0
+    gaps_considered = 0
+    gaps_matched = 0
 
-        if best_tag is not None and best_dist <= GAP_TAG_MATCH_RADIUS_PX:
-            tag_ids.append(best_tag.id)
-            tag_class = best_tag.tag_class
-            tag_claimed.add(best_tag.id)
+    for idx, group in enumerate(grouped_tags, 1):
+        is_double = len(group) == 2 and group[0].tag_class == TagClass.DOOR
+        tag_class = group[0].tag_class
+        center = (
+            int(round(sum(tag.center[0] for tag in group) / len(group))),
+            int(round(sum(tag.center[1] for tag in group) / len(group))),
+        )
+        tag_ids = [tag.id for tag in group]
+        tag_confidence = min(tag.confidence for tag in group)
 
-            # If it's a double-door, claim the pair too
-            if best_tag.is_double and best_tag.pair_id:
-                tag_ids.append(best_tag.pair_id)
-                tag_claimed.add(best_tag.pair_id)
-                is_double = True
+        if tag_confidence < _project_threshold(tag_class):
+            unhosted += len(group)
+            continue
 
+        host_wall, projected_center, host_dist = _assign_host_wall_for_point(tag_class, center, walls)
+        if host_wall is None or projected_center is None:
+            unhosted += len(group)
+            continue
+
+        hosted += len(group)
+        extent_px = _opening_extent_px(group, is_double)
+        if is_double:
+            axis_delta = abs(_axis_value(group[0].center, host_wall.orientation) - _axis_value(group[1].center, host_wall.orientation))
+            extent_px = max(extent_px, int(axis_delta + max(group[0].radius, group[1].radius) * 2.2))
+
+        candidate_radius = max(GAP_MATCH_RADIUS_MIN_PX, int(round(max(tag.radius for tag in group) * GAP_MATCH_RADIUS_MULT)))
+        projected_axis = _axis_value(projected_center, host_wall.orientation)
+        expected_width = extent_px
+        best_gap: Optional[Gap] = None
+        best_score = float("inf")
+        wall_gaps = [gap for gap in gaps if gap.wall_id == host_wall.id]
+
+        for gap in wall_gaps:
+            gap_axis = _axis_value(gap.center, host_wall.orientation)
+            axial_dist = abs(gap_axis - projected_axis)
+            if axial_dist > candidate_radius:
+                continue
+
+            perp_dist = abs(
+                (_axis_value(gap.center, Orientation.VERTICAL) - _axis_value(projected_center, Orientation.VERTICAL))
+                if host_wall.orientation == Orientation.HORIZONTAL
+                else (_axis_value(gap.center, Orientation.HORIZONTAL) - _axis_value(projected_center, Orientation.HORIZONTAL))
+            )
+            size_penalty = abs(gap.width_px - expected_width) * 0.25
+            score = axial_dist + (0.8 * perp_dist) + size_penalty
+            gaps_considered += 1
+
+            if score < best_score:
+                best_score = score
+                best_gap = gap
+
+        if best_gap is not None and best_score <= GAP_MATCH_SCORE_THRESHOLD:
+            bbox = best_gap.bbox
+            confidence = max(
+                0.75,
+                min(
+                    0.95,
+                    round((0.55 * tag_confidence) + (0.40 * (0.95 - (best_score / GAP_MATCH_SCORE_THRESHOLD) * 0.20)), 2),
+                ),
+            )
+            openings.append(
+                Opening(
+                    id=f"OP-{idx:02d}",
+                    tag_class=tag_class,
+                    bbox=(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])),
+                    center=(int(best_gap.center[0]), int(best_gap.center[1])),
+                    wall_id=host_wall.id,
+                    tag_ids=tag_ids,
+                    is_double_door=is_double,
+                    source="gap_matched",
+                    confidence=confidence,
+                )
+            )
+            openings_gap_matched += 1
+            gaps_matched += 1
+            continue
+
+        bbox = _opening_bbox_from_center(projected_center, host_wall, extent_px)
+        host_threshold = float(_wall_threshold(tag_class))
+        distance_score = 1.0 - min(1.0, host_dist / max(1.0, host_threshold))
+        confidence = max(0.45, min(0.90, round((0.65 * tag_confidence) + (0.25 * distance_score), 2)))
         openings.append(
             Opening(
                 id=f"OP-{idx:02d}",
                 tag_class=tag_class,
-                bbox=gap.bbox,
-                center=gap.center,
-                wall_id=gap.wall_id,
+                bbox=tuple(int(v) for v in bbox),
+                center=projected_center,
+                wall_id=host_wall.id,
                 tag_ids=tag_ids,
                 is_double_door=is_double,
+                source="tag_projected",
+                confidence=confidence,
             )
         )
-        idx += 1
+        openings_tag_projected += 1
+        if confidence < LOW_CONFIDENCE_PROJECTED_HIDDEN_THRESHOLD:
+            openings_hidden_recommended += 1
 
-    return openings
+    return openings, {
+        "tags_total": len(tags),
+        "tags_hosted": hosted,
+        "tags_unhosted": unhosted,
+        "openings_gap_matched": openings_gap_matched,
+        "openings_tag_projected": openings_tag_projected,
+        "gaps_considered": gaps_considered,
+        "gaps_matched": gaps_matched,
+        "openings_hidden_recommended": openings_hidden_recommended,
+    }
 
 
 def _apply_scale(
@@ -405,6 +580,31 @@ def _apply_scale(
         bw, bh = op.bbox[2], op.bbox[3]
         op.width_ft = round(bw / scale_px_per_ft, 2)
         op.height_ft = round(bh / scale_px_per_ft, 2)
+
+
+def _coordinate_space_id(
+    *,
+    page_number: int,
+    dpi: int,
+    crop_left: float,
+    crop_top: float,
+    crop_right: float,
+    crop_bottom: float,
+    image_width: int,
+    image_height: int,
+) -> str:
+    payload = {
+        "page_number": int(page_number),
+        "dpi": int(dpi),
+        "crop_left": round(float(crop_left), 5),
+        "crop_top": round(float(crop_top), 5),
+        "crop_right": round(float(crop_right), 5),
+        "crop_bottom": round(float(crop_bottom), 5),
+        "image_width": int(image_width),
+        "image_height": int(image_height),
+    }
+    digest = hashlib.sha1(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+    return f"coord_{digest}"
 
 
 # ---------------------------------------------------------------------------
@@ -468,7 +668,7 @@ def run(
 
     # ── 4. Detect tags (circles → doors, hexagons → windows) ──────────
     #       Tags are filtered to only those near a detected wall segment.
-    tags = detect_tags(gray, binary, combined_wall_mask, walls)
+    tags, tag_debug = detect_tags(gray, binary, combined_wall_mask, walls)
 
     # ── 4b. Split walls at tag positions ───────────────────────────────
     #        Guarantees walls don't visually cross door/window openings.
@@ -483,7 +683,7 @@ def run(
     double_pairs = _mark_double_doors(tags)
 
     # ── 6. Correlate gaps with tags → openings ─────────────────────────
-    openings = _correlate_gaps_and_tags(gaps, tags, walls)
+    openings, opening_debug = _correlate_gaps_and_tags(gaps, tags, walls)
 
     # ── 7. Apply scale conversion (if provided) ───────────────────────
     if scale_px_per_ft is not None:
@@ -491,6 +691,16 @@ def run(
 
     # ── 8. Build metadata ──────────────────────────────────────────────
     img_h, img_w = gray.shape[:2]
+    coordinate_space_id = _coordinate_space_id(
+        page_number=page_number,
+        dpi=dpi,
+        crop_left=crop_left,
+        crop_top=crop_top,
+        crop_right=crop_right,
+        crop_bottom=crop_bottom,
+        image_width=img_w,
+        image_height=img_h,
+    )
     metadata = PlanMetadata(
         sheet=sheet,
         floor_level=floor_level,
@@ -498,6 +708,15 @@ def run(
         image_width=img_w,
         image_height=img_h,
         scale_px_per_ft=scale_px_per_ft,
+        coordinate_space_id=coordinate_space_id,
+        crop=CropMetadata(
+            left=crop_left,
+            top=crop_top,
+            right=crop_right,
+            bottom=crop_bottom,
+            dpi=dpi,
+            page_number=page_number,
+        ),
     )
 
     h_count = sum(1 for w in walls if w.orientation == Orientation.HORIZONTAL)
@@ -509,11 +728,23 @@ def run(
         total_wall_segments=len(walls),
         walls_raw=suppression_debug["walls_raw"],
         walls_after_suppression=suppression_debug["walls_after_suppression"],
+        door_tags_raw=tag_debug["door_tags_raw"],
+        door_tags_after_dedupe=tag_debug["door_tags_after_dedupe"],
         door_tags=sum(1 for t in tags if t.tag_class == TagClass.DOOR),
+        window_tags_raw=tag_debug["window_tags_raw"],
+        window_tags_after_dedupe=tag_debug["window_tags_after_dedupe"],
         window_tags=sum(1 for t in tags if t.tag_class == TagClass.WINDOW),
         double_door_pairs=double_pairs,
         openings=len(openings),
         gaps_detected=len(gaps),
+        tags_total=opening_debug["tags_total"],
+        tags_hosted=opening_debug["tags_hosted"],
+        tags_unhosted=opening_debug["tags_unhosted"],
+        openings_gap_matched=opening_debug["openings_gap_matched"],
+        openings_tag_projected=opening_debug["openings_tag_projected"],
+        gaps_considered=opening_debug["gaps_considered"],
+        gaps_matched=opening_debug["gaps_matched"],
+        openings_hidden_recommended=opening_debug["openings_hidden_recommended"],
     )
 
     return CVTakeoffResult(

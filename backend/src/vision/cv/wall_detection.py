@@ -46,7 +46,10 @@ MERGE_MIN_FILL_IN_GAP = 0.55    # gap must be meaningfully wall-filled to merge
 
 # Gap detection (for opening candidates)
 MIN_GAP_SIZE_PX = 25
-MAX_GAP_SIZE_PX = 400
+MAX_GAP_SIZE_PX = 220
+GAP_SCAN_HALF_BAND_PX = 5
+GAP_SIDE_SAMPLE_PX = 12
+GAP_MIN_SIDE_FILL = 0.18
 
 # Measurement/text artifact suppression
 TEXT_CC_MIN_AREA = 12
@@ -345,6 +348,47 @@ class Gap:
     bbox: tuple[int, int, int, int]
 
 
+def _fill_ratio(roi: np.ndarray) -> float:
+    if roi.size == 0:
+        return 0.0
+    return float(np.count_nonzero(roi)) / float(roi.size)
+
+
+def _gap_has_wall_continuity(
+    mask: np.ndarray,
+    seg: WallSegment,
+    gap_start: int,
+    gap_end: int,
+    band_half: int = GAP_SCAN_HALF_BAND_PX,
+    sample_px: int = GAP_SIDE_SAMPLE_PX,
+) -> bool:
+    """Require wall pixels immediately before and after a candidate gap."""
+    if seg.orientation == Orientation.HORIZONTAL:
+        row = max(0, min(seg.start[1], mask.shape[0] - 1))
+        lo_x, hi_x = min(seg.start[0], seg.end[0]), max(seg.start[0], seg.end[0])
+        y0 = max(0, row - band_half)
+        y1 = min(mask.shape[0], row + band_half + 1)
+        left0 = max(lo_x, lo_x + gap_start - sample_px)
+        left1 = max(lo_x, lo_x + gap_start)
+        right0 = min(hi_x, lo_x + gap_end)
+        right1 = min(hi_x, lo_x + gap_end + sample_px)
+        left_fill = _fill_ratio(mask[y0:y1, left0:left1])
+        right_fill = _fill_ratio(mask[y0:y1, right0:right1])
+    else:
+        col = max(0, min(seg.start[0], mask.shape[1] - 1))
+        lo_y, hi_y = min(seg.start[1], seg.end[1]), max(seg.start[1], seg.end[1])
+        x0 = max(0, col - band_half)
+        x1 = min(mask.shape[1], col + band_half + 1)
+        top0 = max(lo_y, lo_y + gap_start - sample_px)
+        top1 = max(lo_y, lo_y + gap_start)
+        bottom0 = min(hi_y, lo_y + gap_end)
+        bottom1 = min(hi_y, lo_y + gap_end + sample_px)
+        left_fill = _fill_ratio(mask[top0:top1, x0:x1])
+        right_fill = _fill_ratio(mask[bottom0:bottom1, x0:x1])
+
+    return left_fill >= GAP_MIN_SIDE_FILL and right_fill >= GAP_MIN_SIDE_FILL
+
+
 # ---------------------------------------------------------------------------
 # Public functions
 # ---------------------------------------------------------------------------
@@ -385,11 +429,15 @@ def detect_gaps(
         if seg.orientation == Orientation.HORIZONTAL:
             row = max(0, min(y1, combined_wall_mask.shape[0] - 1))
             lo_x, hi_x = min(x1, x2), max(x1, x2)
-            strip = combined_wall_mask[row, lo_x:hi_x]
+            y0 = max(0, row - GAP_SCAN_HALF_BAND_PX)
+            y1_band = min(combined_wall_mask.shape[0], row + GAP_SCAN_HALF_BAND_PX + 1)
+            strip = np.max(combined_wall_mask[y0:y1_band, lo_x:hi_x], axis=0)
         else:
             col = max(0, min(x1, combined_wall_mask.shape[1] - 1))
             lo_y, hi_y = min(y1, y2), max(y1, y2)
-            strip = combined_wall_mask[lo_y:hi_y, col]
+            x0 = max(0, col - GAP_SCAN_HALF_BAND_PX)
+            x1_band = min(combined_wall_mask.shape[1], col + GAP_SCAN_HALF_BAND_PX + 1)
+            strip = np.max(combined_wall_mask[lo_y:hi_y, x0:x1_band], axis=1)
 
         if strip.size == 0:
             continue
@@ -403,6 +451,8 @@ def detect_gaps(
         for gs, ge in zip(starts, ends):
             gap_len = int(ge - gs)
             if gap_len < MIN_GAP_SIZE_PX or gap_len > MAX_GAP_SIZE_PX:
+                continue
+            if not _gap_has_wall_continuity(combined_wall_mask, seg, int(gs), int(ge)):
                 continue
 
             mid = (gs + ge) // 2

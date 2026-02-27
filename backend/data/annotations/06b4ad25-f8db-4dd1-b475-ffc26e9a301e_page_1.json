@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 1,
+  "latest_revision": 2,
   "document": {
     "documentId": "06b4ad25-f8db-4dd1-b475-ffc26e9a301e_page_1",
     "projectId": "06b4ad25-f8db-4dd1-b475-ffc26e9a301e",
@@ -15,16 +15,14 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:16:14.211Z",
-      "updatedAt": "2026-02-27T13:16:14.211Z",
-      "revision": 1
+      "updatedAt": "2026-02-27T20:42:10.715641Z",
+      "revision": 2
     },
     "layers": {
       "wall": true,
       "door": true,
       "window": true,
-      "room": true,
-      "label": true,
-      "dimension": true
+      "room": true
     },
     "elements": [
       {
@@ -1708,5 +1706,14 @@
     ],
     "issues": []
   },
-  "events": []
+  "events": [
+    {
+      "id": "evt_system_cleanup_2",
+      "revisionId": 2,
+      "parentRevisionId": 1,
+      "actorId": "system_cleanup",
+      "timestamp": "2026-02-27T20:42:10.715659Z",
+      "operations": []
+    }
+  ]
 }

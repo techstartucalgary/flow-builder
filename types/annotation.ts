@@ -44,12 +44,21 @@ export interface RectGeometry {
 
 export type ElementGeometry = SegmentGeometry | RectGeometry;
 
+export type OpeningSource = 'gap_matched' | 'tag_projected';
+
+export interface OpeningRelations {
+  hostWallId?: string;
+  source?: OpeningSource;
+  confidence?: number;
+  tagIds?: string[];
+}
+
 export interface BaseAnnotationElement {
   id: string;
   type: AnnotationElementType;
   geometry: ElementGeometry;
   attrs: BaseElementAttrs;
-  relations?: Record<string, unknown>;
+  relations?: OpeningRelations | Record<string, unknown>;
 }
 
 export interface WallElement extends BaseAnnotationElement {
@@ -106,6 +115,7 @@ export interface AnnotationDocumentMeta {
   createdAt: string;
   updatedAt: string;
   revision: number;
+  coordinateSpaceId?: string;
 }
 
 export interface AnnotationDocument {
@@ -181,15 +191,39 @@ export interface CVTag {
   tag_class: 'door' | 'window';
   center: [number, number];
   radius: number;
+  confidence?: number;
+}
+
+export interface CVCropMetadata {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  dpi: number;
+  page_number: number;
+}
+
+export interface CVOpening {
+  id: string;
+  tag_class: 'door' | 'window';
+  bbox: [number, number, number, number];
+  center: [number, number];
+  wall_id?: string | null;
+  tag_ids?: string[];
+  source?: OpeningSource;
+  confidence?: number;
 }
 
 export interface CVTakeoffResultPayload {
   walls: CVWallSegment[];
+  openings?: CVOpening[];
   tags: CVTag[];
   metadata: {
     image_width: number;
     image_height: number;
     scale_px_per_ft?: number;
+    coordinate_space_id?: string;
+    crop?: CVCropMetadata;
   };
   preview_image?: string | null;
 }
@@ -197,4 +231,15 @@ export interface CVTakeoffResultPayload {
 export interface EditorEntities {
   byId: Record<string, AnnotationElement>;
   byType: Record<AnnotationElementType, string[]>;
+}
+
+export interface EditorTagOverlayState {
+  showTags: boolean;
+  tags: CVTag[];
+  coordinateSpaceId?: string;
+}
+
+export interface ProjectedOpeningVisibilityState {
+  projectedOpeningMinConfidence: number;
+  showLowConfidenceProjectedOpenings: boolean;
 }

@@ -8,7 +8,7 @@ elements the user can drag or resize to correct the takeoff.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -53,6 +53,12 @@ class TagAnchor(BaseModel):
     tag_class: TagClass
     center: tuple[int, int] = Field(description="(x, y) centre in px")
     radius: int = Field(description="Approximate radius in px")
+    confidence: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Heuristic confidence score for this tag classification.",
+    )
     is_double: bool = Field(
         default=False,
         description="True if this tag is part of a double-door pair",
@@ -84,11 +90,29 @@ class Opening(BaseModel):
         description="Tag(s) that anchor this opening",
     )
     is_double_door: bool = False
+    source: Literal["gap_matched", "tag_projected"] = Field(
+        default="tag_projected",
+        description="How this opening was generated (gap correlation vs wall projection).",
+    )
+    confidence: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Heuristic confidence score for this opening.",
+    )
     width_ft: Optional[float] = None
     height_ft: Optional[float] = None
 
 
 # ── metadata ───────────────────────────────────────────────────────────
+
+class CropMetadata(BaseModel):
+    left: float = 0.0
+    top: float = 0.0
+    right: float = 1.0
+    bottom: float = 1.0
+    dpi: int = 200
+    page_number: int = 0
 
 class PlanMetadata(BaseModel):
     sheet: Optional[str] = None
@@ -100,6 +124,11 @@ class PlanMetadata(BaseModel):
         default=None,
         description="Pixels-per-foot ratio derived from the plan scale",
     )
+    coordinate_space_id: str = Field(
+        default="",
+        description="Deterministic identifier for the image coordinate frame.",
+    )
+    crop: CropMetadata = Field(default_factory=CropMetadata)
 
 
 class DebugInfo(BaseModel):
@@ -112,9 +141,21 @@ class DebugInfo(BaseModel):
     walls_after_suppression: int = 0
     door_tags: int = 0
     window_tags: int = 0
+    door_tags_raw: int = 0
+    door_tags_after_dedupe: int = 0
+    window_tags_raw: int = 0
+    window_tags_after_dedupe: int = 0
     double_door_pairs: int = 0
     openings: int = 0
     gaps_detected: int = 0
+    tags_total: int = 0
+    tags_hosted: int = 0
+    tags_unhosted: int = 0
+    openings_gap_matched: int = 0
+    openings_tag_projected: int = 0
+    gaps_considered: int = 0
+    gaps_matched: int = 0
+    openings_hidden_recommended: int = 0
 
 
 # ── top-level response ─────────────────────────────────────────────────

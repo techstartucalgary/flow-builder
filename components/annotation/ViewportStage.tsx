@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Layer, Stage } from 'react-konva';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Circle, Layer, Stage, Text } from 'react-konva';
 import type Konva from 'konva';
 
 import { safeClone } from '@/lib/clone';
 import { clamp, worldFromScreen } from '@/lib/geometry';
-import type { AnnotationElement, AnnotationElementType, AnnotationIssue } from '@/types/annotation';
+import { isObjectUrl, normalizeBaseImageUrl } from '@/lib/imageUrl';
+import type { AnnotationElement, AnnotationElementType, AnnotationIssue, CVTag } from '@/types/annotation';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import AnnotationRenderLayer from '@/components/annotation/AnnotationRenderLayer';
-import FloorplanImageLayer from '@/components/annotation/FloorplanImageLayer';
 import InteractionLayer from '@/components/annotation/InteractionLayer';
 import SelectionTransformer from '@/components/annotation/SelectionTransformer';
 import SnapGuideOverlay from '@/components/annotation/SnapGuideOverlay';
@@ -19,15 +19,28 @@ interface ViewportStageProps {
   widthPx: number;
   heightPx: number;
   showBaseImage: boolean;
+  showTags: boolean;
+  tags: CVTag[];
+  showLowConfidenceProjectedOpenings: boolean;
   issues: AnnotationIssue[];
   onIssueSelect: (issue: AnnotationIssue) => void;
 }
 
-export default function ViewportStage({ baseImageUrl, widthPx, heightPx, showBaseImage }: ViewportStageProps) {
+export default function ViewportStage({
+  baseImageUrl,
+  widthPx,
+  heightPx,
+  showBaseImage,
+  showTags,
+  tags,
+  showLowConfidenceProjectedOpenings,
+}: ViewportStageProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const [container, setContainer] = useState({ width: 0, height: 0 });
-  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+  const [normalizedBaseImageUrl, setNormalizedBaseImageUrl] = useState(baseImageUrl);
+  const [baseImageReady, setBaseImageReady] = useState(!showBaseImage || !baseImageUrl);
+  const readinessLoggedRef = useRef(false);
 
   const document = useAnnotationEditorStore((s) => s.document);
   const entities = useAnnotationEditorStore((s) => s.entities);
@@ -51,14 +64,39 @@ export default function ViewportStage({ baseImageUrl, widthPx, heightPx, showBas
   }, []);
 
   useEffect(() => {
+    readinessLoggedRef.current = false;
+  }, [baseImageUrl, heightPx, widthPx, document?.documentId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrlToRevoke: string | null = null;
+
     if (!showBaseImage || !baseImageUrl) {
-      setBgImage(null);
-      return;
+      setNormalizedBaseImageUrl(baseImageUrl);
+      setBaseImageReady(true);
+      return () => {
+        cancelled = true;
+      };
     }
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => setBgImage(img);
-    img.src = baseImageUrl;
+
+    setBaseImageReady(false);
+    void normalizeBaseImageUrl(baseImageUrl).then((nextUrl) => {
+      if (cancelled) {
+        if (isObjectUrl(nextUrl)) {
+          URL.revokeObjectURL(nextUrl);
+        }
+        return;
+      }
+      objectUrlToRevoke = isObjectUrl(nextUrl) ? nextUrl : null;
+      setNormalizedBaseImageUrl(nextUrl);
+    });
+
+    return () => {
+      cancelled = true;
+      if (objectUrlToRevoke) {
+        URL.revokeObjectURL(objectUrlToRevoke);
+      }
+    };
   }, [baseImageUrl, showBaseImage]);
 
   useEffect(() => {
@@ -87,6 +125,42 @@ export default function ViewportStage({ baseImageUrl, widthPx, heightPx, showBas
     if (!el || el.type !== 'wall' || el.geometry.kind !== 'segment') return null;
     return el;
   }, [entities.byId, selection]);
+
+  const isViewportReady = container.width > 0 && container.height > 0 && widthPx > 0 && heightPx > 0;
+  const shouldMountStage = isViewportReady && (!showBaseImage || baseImageReady);
+  const stageKey = useMemo(() => {
+    const documentId = document?.documentId || 'annotation-stage';
+    return `stage:${widthPx}x${heightPx}:${documentId}`;
+  }, [document?.documentId, heightPx, widthPx]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
+    if (!isViewportReady) {
+      if (!readinessLoggedRef.current) {
+        console.debug('[annotation-editor] viewport not ready', {
+          containerWidth: container.width,
+          containerHeight: container.height,
+          widthPx,
+          heightPx,
+        });
+      }
+      return;
+    }
+
+    if (!readinessLoggedRef.current && (!showBaseImage || baseImageReady)) {
+      readinessLoggedRef.current = true;
+      console.debug('[annotation-editor] viewport ready', {
+        containerWidth: container.width,
+        containerHeight: container.height,
+        widthPx,
+        heightPx,
+        baseImageMode: showBaseImage
+          ? (normalizedBaseImageUrl.startsWith('blob:') ? 'blob' : normalizedBaseImageUrl.startsWith('data:') ? 'data' : 'url')
+          : 'disabled',
+      });
+    }
+  }, [baseImageReady, container.height, container.width, heightPx, isViewportReady, normalizedBaseImageUrl, showBaseImage, widthPx]);
 
   function onDragEnd(id: string, e: any) {
     const el = entities.byId[id];
@@ -179,58 +253,108 @@ export default function ViewportStage({ baseImageUrl, widthPx, heightPx, showBas
   }
 
   return (
-    <div ref={wrapRef} className="w-full h-full rounded-lg border border-white/10 bg-[#0a0f1a] overflow-hidden">
-      <Stage
-        ref={stageRef}
-        width={container.width}
-        height={container.height}
-        x={camera.panX}
-        y={camera.panY}
-        scaleX={camera.zoom}
-        scaleY={camera.zoom}
-        onMouseDown={onStageMouseDown}
-        onWheel={onWheel}
-        draggable={toolMode === 'select'}
-        onDragEnd={(e) => setCamera({ panX: e.target.x(), panY: e.target.y() })}
-      >
-        <Layer>
-          <FloorplanImageLayer image={bgImage} width={widthPx} height={heightPx} />
-        </Layer>
-        <Layer>
-          <AnnotationRenderLayer
-            elements={visibleElements}
-            selectedIds={selection}
-            onSelect={(id) => setSelection([id])}
-            onDragEnd={onDragEnd}
-            onTransformEnd={onTransformEnd}
-          />
-          <SnapGuideOverlay guides={[]} />
-        </Layer>
-        <Layer>
-          <InteractionLayer
-            selectedWall={selectedWall}
-            onWallEndpointChange={(id, endpoint, x, y) => {
-              const wall = entities.byId[id];
-              if (!wall || wall.type !== 'wall' || wall.geometry.kind !== 'segment') return;
-              const next = safeClone(wall);
-              if (endpoint === 'start') {
-                next.geometry.x1 = x;
-                next.geometry.y1 = y;
-              } else {
-                next.geometry.x2 = x;
-                next.geometry.y2 = y;
-              }
-              next.attrs.status = 'edited';
-              updateElement(next);
+    <div ref={wrapRef} className="relative w-full h-full rounded-lg border border-white/10 bg-[#0a0f1a] overflow-hidden">
+      {showBaseImage && normalizedBaseImageUrl && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <img
+            src={normalizedBaseImageUrl}
+            alt=""
+            draggable={false}
+            className="absolute top-0 left-0 select-none max-w-none"
+            onLoad={() => setBaseImageReady(true)}
+            onError={() => setBaseImageReady(true)}
+            style={{
+              width: `${widthPx}px`,
+              height: `${heightPx}px`,
+              transform: `translate(${camera.panX}px, ${camera.panY}px) scale(${camera.zoom})`,
+              transformOrigin: 'top left',
             }}
           />
-          <SelectionTransformer
-            stageRef={stageRef}
-            selectedIds={selection}
-            enabled={selection.length > 0 && (!selectedWall || toolMode !== 'wall')}
-          />
-        </Layer>
-      </Stage>
+        </div>
+      )}
+      {!shouldMountStage ? (
+        <div className="absolute inset-0 grid place-items-center text-xs text-gray-400">
+          Initializing editor viewport…
+        </div>
+      ) : (
+        <Stage
+          key={stageKey}
+          ref={stageRef}
+          width={container.width}
+          height={container.height}
+          x={camera.panX}
+          y={camera.panY}
+          scaleX={camera.zoom}
+          scaleY={camera.zoom}
+          onMouseDown={onStageMouseDown}
+          onWheel={onWheel}
+          draggable={toolMode === 'select'}
+          onDragEnd={(e) => setCamera({ panX: e.target.x(), panY: e.target.y() })}
+        >
+          <Layer>
+            <AnnotationRenderLayer
+              elements={visibleElements}
+              selectedIds={selection}
+              showLowConfidenceProjectedOpenings={showLowConfidenceProjectedOpenings}
+              onSelect={(id) => setSelection([id])}
+              onDragEnd={onDragEnd}
+              onTransformEnd={onTransformEnd}
+            />
+            <SnapGuideOverlay guides={[]} />
+          </Layer>
+          {showTags && tags.length > 0 && (
+            <Layer listening={false}>
+              {tags.map((tag) => {
+                const color = tag.tag_class === 'door' ? '#fb7185' : '#60a5fa';
+                const radius = Math.max(8, tag.radius);
+                return (
+                  <Fragment key={tag.id}>
+                    <Circle
+                      x={tag.center[0]}
+                      y={tag.center[1]}
+                      radius={radius}
+                      stroke={color}
+                      strokeWidth={2}
+                      dash={[6, 4]}
+                    />
+                    <Text
+                      x={tag.center[0] + radius + 4}
+                      y={tag.center[1] - 8}
+                      text={tag.id}
+                      fontSize={14}
+                      fill={color}
+                    />
+                  </Fragment>
+                );
+              })}
+            </Layer>
+          )}
+          <Layer>
+            <InteractionLayer
+              selectedWall={selectedWall}
+              onWallEndpointChange={(id, endpoint, x, y) => {
+                const wall = entities.byId[id];
+                if (!wall || wall.type !== 'wall' || wall.geometry.kind !== 'segment') return;
+                const next = safeClone(wall);
+                if (endpoint === 'start') {
+                  next.geometry.x1 = x;
+                  next.geometry.y1 = y;
+                } else {
+                  next.geometry.x2 = x;
+                  next.geometry.y2 = y;
+                }
+                next.attrs.status = 'edited';
+                updateElement(next);
+              }}
+            />
+            <SelectionTransformer
+              stageRef={stageRef}
+              selectedIds={selection}
+              enabled={selection.length > 0 && (!selectedWall || toolMode !== 'wall')}
+            />
+          </Layer>
+        </Stage>
+      )}
     </div>
   );
 }

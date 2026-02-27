@@ -2,11 +2,13 @@ import type {
   AnnotationDocument,
   AnnotationElement,
   AnnotationElementType,
+  AnnotationIssue,
   CVTakeoffResultPayload,
   PersistedAnnotationSnapshot,
 } from '@/types/annotation';
 
 const SUPPORTED_TYPES: ReadonlySet<AnnotationElementType> = new Set(['wall', 'door', 'window', 'room']);
+const PROJECTED_OPENING_MIN_CONFIDENCE = 0.72;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -34,6 +36,13 @@ function makeBaseElement(type: AnnotationElementType, id: string): Pick<Annotati
   };
 }
 
+function rectsOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
 export function fromCVTakeoffResult(
   cv: CVTakeoffResultPayload,
   options: {
@@ -43,6 +52,7 @@ export function fromCVTakeoffResult(
   },
 ): AnnotationDocument {
   const elements: AnnotationElement[] = [];
+  const issues: AnnotationIssue[] = [];
 
   for (const wall of cv.walls) {
     elements.push({
@@ -61,23 +71,80 @@ export function fromCVTakeoffResult(
     });
   }
 
-  for (const tag of cv.tags) {
-    const type = tag.tag_class === 'door' ? 'door' : 'window';
-    if (!SUPPORTED_TYPES.has(type)) continue;
-    const size = Math.max(10, tag.radius * 2);
-    elements.push({
-      ...makeBaseElement(type, `${type}_${tag.id}`),
-      type,
-      geometry: {
-        kind: 'rect',
-        x: tag.center[0] - size / 2,
-        y: tag.center[1] - size / 2,
-        width: size,
-        height: Math.max(8, size / 3),
-        rotationDeg: 0,
-      },
-      relations: {},
-    });
+  const openings = Array.isArray(cv.openings) ? cv.openings : [];
+  if (openings.length > 0) {
+    for (const opening of openings) {
+      const type = opening.tag_class === 'door' ? 'door' : 'window';
+      if (!SUPPORTED_TYPES.has(type)) continue;
+      const [x, y, width, height] = opening.bbox;
+      if (width <= 0 || height <= 0) continue;
+      const confidence = typeof opening.confidence === 'number' ? opening.confidence : 0.5;
+      const source = opening.source || 'tag_projected';
+      const visible = source === 'gap_matched' || confidence >= PROJECTED_OPENING_MIN_CONFIDENCE;
+      if (source === 'tag_projected' && confidence < PROJECTED_OPENING_MIN_CONFIDENCE) {
+        issues.push({
+          id: `issue_${opening.id}_low_confidence`,
+          elementId: `${type}_${opening.id}`,
+          severity: 'warning',
+          code: 'LOW_CONFIDENCE_PROJECTED_OPENING',
+          message: `${type} opening is tentative and hidden by default.`,
+        });
+      }
+      if (source === 'tag_projected' && !opening.wall_id) {
+        issues.push({
+          id: `issue_${opening.id}_unhosted`,
+          elementId: `${type}_${opening.id}`,
+          severity: 'warning',
+          code: 'UNHOSTED_PROJECTED_OPENING',
+          message: `${type} opening has no host wall and should be reviewed.`,
+        });
+      }
+      elements.push({
+        ...makeBaseElement(type, `${type}_${opening.id}`),
+        type,
+        geometry: {
+          kind: 'rect',
+          x,
+          y,
+          width,
+          height,
+          rotationDeg: 0,
+        },
+        relations: {
+          ...(opening.wall_id ? { hostWallId: `wall_${opening.wall_id}` } : {}),
+          source,
+          confidence,
+          tagIds: Array.isArray(opening.tag_ids) ? opening.tag_ids : [],
+        },
+        attrs: {
+          ...makeBaseElement(type, `${type}_${opening.id}`).attrs,
+          visible,
+          confidence,
+        },
+      });
+    }
+  }
+
+  for (let i = 0; i < elements.length; i += 1) {
+    const left = elements[i];
+    if ((left.type !== 'door' && left.type !== 'window') || left.geometry.kind !== 'rect') continue;
+    const leftRelations = left.relations as { hostWallId?: string; source?: string } | undefined;
+    if (!leftRelations?.hostWallId) continue;
+    for (let j = i + 1; j < elements.length; j += 1) {
+      const right = elements[j];
+      if ((right.type !== 'door' && right.type !== 'window') || right.geometry.kind !== 'rect') continue;
+      const rightRelations = right.relations as { hostWallId?: string; source?: string } | undefined;
+      if (!rightRelations?.hostWallId || rightRelations.hostWallId !== leftRelations.hostWallId) continue;
+      if (!rectsOverlap(left.geometry, right.geometry)) continue;
+      issues.push({
+        id: `issue_overlap_${left.id}_${right.id}`,
+        elementId: left.id,
+        severity: 'info',
+        code: 'OVERLAPPING_OPENINGS',
+        message: 'Multiple openings overlap on the same wall segment.',
+      });
+      break;
+    }
   }
 
   const createdAt = nowIso();
@@ -99,10 +166,11 @@ export function fromCVTakeoffResult(
       createdAt,
       updatedAt: createdAt,
       revision: 0,
+      coordinateSpaceId: cv.metadata.coordinate_space_id,
     },
     layers: defaultLayers(),
     elements: elements.filter((element) => SUPPORTED_TYPES.has(element.type)),
-    issues: [],
+    issues,
   };
 }
 

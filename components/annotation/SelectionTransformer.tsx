@@ -18,10 +18,17 @@ export default function SelectionTransformer({ stageRef, selectedIds, enabled }:
     const stage = stageRef.current;
     const transformer = trRef.current;
     if (!stage || !transformer) return;
+    if (stage.width() <= 0 || stage.height() <= 0) return;
 
     const nodes = selectedIds
       .map((id) => stage.findOne(`#${id}`))
       .filter((node): node is Konva.Node => Boolean(node));
+
+    if (!nodes.length) {
+      transformer.nodes([]);
+      transformer.getLayer()?.batchDraw();
+      return;
+    }
 
     transformer.nodes(nodes);
     transformer.getLayer()?.batchDraw();
