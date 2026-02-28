@@ -7,7 +7,14 @@ import type Konva from 'konva';
 import { safeClone } from '@/lib/clone';
 import { clamp, worldFromScreen } from '@/lib/geometry';
 import { isObjectUrl, normalizeBaseImageUrl } from '@/lib/imageUrl';
-import type { AnnotationElement, AnnotationElementType, AnnotationIssue, CVTag } from '@/types/annotation';
+import type {
+  AnnotationElement,
+  AnnotationElementType,
+  AnnotationIssue,
+  AnnotationRenderHints,
+  CVTag,
+  EditorViewPreset,
+} from '@/types/annotation';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import AnnotationRenderLayer from '@/components/annotation/AnnotationRenderLayer';
 import InteractionLayer from '@/components/annotation/InteractionLayer';
@@ -21,7 +28,11 @@ interface ViewportStageProps {
   showBaseImage: boolean;
   showTags: boolean;
   tags: CVTag[];
-  showLowConfidenceProjectedOpenings: boolean;
+  matchedTagIds: Set<string>;
+  displayElements: AnnotationElement[];
+  viewPreset: EditorViewPreset;
+  renderHints: AnnotationRenderHints;
+  issuesByElementId: Set<string>;
   issues: AnnotationIssue[];
   onIssueSelect: (issue: AnnotationIssue) => void;
 }
@@ -33,7 +44,11 @@ export default function ViewportStage({
   showBaseImage,
   showTags,
   tags,
-  showLowConfidenceProjectedOpenings,
+  matchedTagIds,
+  displayElements,
+  viewPreset,
+  renderHints,
+  issuesByElementId,
 }: ViewportStageProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -52,6 +67,11 @@ export default function ViewportStage({
   const createElementAt = useAnnotationEditorStore((s) => s.createElementAt);
   const moveElementBy = useAnnotationEditorStore((s) => s.moveElementBy);
   const updateElement = useAnnotationEditorStore((s) => s.updateElement);
+  const displayedElementIds = useMemo(() => new Set(displayElements.map((element) => element.id)), [displayElements]);
+  const hasVisibleSelection = useMemo(
+    () => selection.some((id) => displayedElementIds.has(id)),
+    [displayedElementIds, selection],
+  );
 
   useEffect(() => {
     if (!wrapRef.current) return;
@@ -114,17 +134,13 @@ export default function ViewportStage({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [container.width, container.height, widthPx, heightPx]);
 
-  const visibleElements = useMemo(() => {
-    if (!document) return [] as AnnotationElement[];
-    return document.elements.filter((element) => document.layers[element.type]);
-  }, [document]);
-
   const selectedWall = useMemo(() => {
     if (!selection.length) return null;
     const el = entities.byId[selection[0]];
+    if (!el || !displayedElementIds.has(el.id)) return null;
     if (!el || el.type !== 'wall' || el.geometry.kind !== 'segment') return null;
     return el;
-  }, [entities.byId, selection]);
+  }, [displayedElementIds, entities.byId, selection]);
 
   const isViewportReady = container.width > 0 && container.height > 0 && widthPx > 0 && heightPx > 0;
   const shouldMountStage = isViewportReady && (!showBaseImage || baseImageReady);
@@ -293,9 +309,10 @@ export default function ViewportStage({
         >
           <Layer>
             <AnnotationRenderLayer
-              elements={visibleElements}
+              elements={displayElements}
               selectedIds={selection}
-              showLowConfidenceProjectedOpenings={showLowConfidenceProjectedOpenings}
+              preset={viewPreset}
+              issuesByElementId={renderHints.highlightIssues ? issuesByElementId : undefined}
               onSelect={(id) => setSelection([id])}
               onDragEnd={onDragEnd}
               onTransformEnd={onTransformEnd}
@@ -305,8 +322,12 @@ export default function ViewportStage({
           {showTags && tags.length > 0 && (
             <Layer listening={false}>
               {tags.map((tag) => {
-                const color = tag.tag_class === 'door' ? '#fb7185' : '#60a5fa';
+                const matched = matchedTagIds.has(tag.id);
+                const color = viewPreset === 'tags_qa'
+                  ? (matched ? (tag.tag_class === 'door' ? '#f472b6' : '#22d3ee') : '#f59e0b')
+                  : (tag.tag_class === 'door' ? '#fb7185' : '#60a5fa');
                 const radius = Math.max(8, tag.radius);
+                const opacity = viewPreset === 'openings_qa' ? 0.42 : viewPreset === 'tags_qa' ? 1 : 0.78;
                 return (
                   <Fragment key={tag.id}>
                     <Circle
@@ -314,8 +335,9 @@ export default function ViewportStage({
                       y={tag.center[1]}
                       radius={radius}
                       stroke={color}
-                      strokeWidth={2}
-                      dash={[6, 4]}
+                      strokeWidth={viewPreset === 'tags_qa' && matched ? 2.5 : 2}
+                      dash={viewPreset === 'tags_qa' && !matched ? [4, 3] : [6, 4]}
+                      opacity={opacity}
                     />
                     <Text
                       x={tag.center[0] + radius + 4}
@@ -323,6 +345,7 @@ export default function ViewportStage({
                       text={tag.id}
                       fontSize={14}
                       fill={color}
+                      opacity={opacity}
                     />
                   </Fragment>
                 );
@@ -350,7 +373,7 @@ export default function ViewportStage({
             <SelectionTransformer
               stageRef={stageRef}
               selectedIds={selection}
-              enabled={selection.length > 0 && (!selectedWall || toolMode !== 'wall')}
+              enabled={hasVisibleSelection && (!selectedWall || toolMode !== 'wall')}
             />
           </Layer>
         </Stage>

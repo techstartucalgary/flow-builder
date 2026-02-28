@@ -12,6 +12,7 @@ import type {
   AnnotationElement,
   AnnotationElementType,
   AnnotationOperation,
+  EditorViewPreset,
   EditorCameraState,
   EditorEntities,
   RevisionEvent,
@@ -72,6 +73,7 @@ interface AnnotationEditorState {
   entities: EditorEntities;
   selection: string[];
   toolMode: ToolMode;
+  viewPreset: EditorViewPreset;
   camera: EditorCameraState;
   gridEnabled: boolean;
   gridSize: number;
@@ -82,6 +84,7 @@ interface AnnotationEditorState {
 
   initializeDocument: (doc: AnnotationDocument) => void;
   setToolMode: (mode: ToolMode) => void;
+  setViewPreset: (preset: EditorViewPreset) => void;
   setSelection: (ids: string[]) => void;
   setCamera: (partial: Partial<EditorCameraState>) => void;
   setSaveStatus: (status: AnnotationEditorState['saveStatus']) => void;
@@ -99,6 +102,7 @@ interface AnnotationEditorState {
   undo: () => void;
   redo: () => void;
   flushPendingOps: () => RevisionEvent[];
+  restorePendingOps: (events: RevisionEvent[]) => void;
   markRevision: (revision: number) => void;
 }
 
@@ -107,6 +111,7 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
   entities: emptyEntities(),
   selection: [],
   toolMode: 'select',
+  viewPreset: 'final',
   camera: baseCamera(),
   gridEnabled: true,
   gridSize: 8,
@@ -127,6 +132,7 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
   },
 
   setToolMode: (toolMode) => set({ toolMode }),
+  setViewPreset: (viewPreset) => set({ viewPreset }),
   setSelection: (selection) => set({ selection }),
   setCamera: (partial) => set((state) => ({ camera: { ...state.camera, ...partial } })),
   setSaveStatus: (saveStatus) => set({ saveStatus }),
@@ -350,6 +356,16 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
       }),
     );
     return pending;
+  },
+
+  restorePendingOps: (events) => {
+    if (!events.length) return;
+    set(
+      produce((state: AnnotationEditorState) => {
+        state.history.pendingOps = [...events, ...state.history.pendingOps];
+        state.saveStatus = 'unsaved';
+      }),
+    );
   },
 
   markRevision: (revision) => {

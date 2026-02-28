@@ -23,7 +23,6 @@ LAYER_DEFAULTS = {
     "window": True,
     "room": True,
 }
-PROJECTED_OPENING_MIN_CONFIDENCE = 0.72
 
 
 def _safe_project_id(project_id: str) -> str:
@@ -128,18 +127,11 @@ def _sanitize_document(document: Optional[dict[str, Any]]) -> tuple[Optional[dic
         relations = element.get("relations")
         if (
             element_type in {"door", "window"}
-            and isinstance(attrs, dict)
             and isinstance(relations, dict)
             and relations.get("source") == "tag_projected"
-            and isinstance(relations.get("confidence"), (int, float))
-            and float(relations["confidence"]) < PROJECTED_OPENING_MIN_CONFIDENCE
         ):
-            if attrs.get("visible") is not False:
-                changed = True
-            attrs = dict(attrs)
-            attrs["visible"] = False
-            element = dict(element)
-            element["attrs"] = attrs
+            changed = True
+            continue
         filtered_elements.append(element)
     if len(filtered_elements) != len(raw_elements):
         changed = True

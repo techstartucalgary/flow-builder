@@ -3,12 +3,13 @@
 import { Fragment } from 'react';
 import { Circle, Line, Rect } from 'react-konva';
 
-import type { AnnotationElement, OpeningRelations } from '@/types/annotation';
+import type { AnnotationElement, EditorViewPreset, OpeningRelations } from '@/types/annotation';
 
 interface AnnotationRenderLayerProps {
   elements: AnnotationElement[];
   selectedIds: string[];
-  showLowConfidenceProjectedOpenings: boolean;
+  preset: EditorViewPreset;
+  issuesByElementId?: Set<string>;
   onSelect: (id: string) => void;
   onDragEnd: (id: string, event: any) => void;
   onTransformEnd: (id: string, event: any) => void;
@@ -39,10 +40,101 @@ function styleForType(element: AnnotationElement, baseStroke: string) {
   };
 }
 
+function styleForPreset(
+  element: AnnotationElement,
+  preset: EditorViewPreset,
+  hasIssue: boolean,
+  selected: boolean,
+) {
+  const statusStroke = styleForStatus(element.attrs.status);
+  const base = styleForType(element, statusStroke);
+  const relations = element.relations as OpeningRelations | undefined;
+
+  if (preset === 'final') {
+    return {
+      ...base,
+      strokeWidth: selected ? 3 : 2,
+      opacity: 1,
+      dash: undefined as number[] | undefined,
+      shadowColor: hasIssue ? '#f59e0b' : undefined,
+      shadowBlur: hasIssue ? 10 : 0,
+    };
+  }
+
+  if (preset === 'walls_qa') {
+    return {
+      stroke: element.type === 'wall' ? '#22d3ee' : base.stroke,
+      fill: element.type === 'wall' ? 'rgba(34,211,238,0.04)' : base.fill,
+      strokeWidth: selected ? 3 : 2,
+      opacity: element.type === 'wall' ? 1 : 0.35,
+      dash: undefined as number[] | undefined,
+      shadowColor: hasIssue ? '#f59e0b' : undefined,
+      shadowBlur: hasIssue ? 8 : 0,
+    };
+  }
+
+  if (preset === 'tags_qa') {
+    return {
+      ...base,
+      fill: element.type === 'door' || element.type === 'window' ? 'rgba(255,255,255,0.06)' : base.fill,
+      strokeWidth: selected ? 3 : 2,
+      opacity: element.type === 'wall' ? 0.72 : 0.8,
+      dash: undefined as number[] | undefined,
+      shadowColor: hasIssue ? '#f59e0b' : undefined,
+      shadowBlur: hasIssue ? 10 : 0,
+    };
+  }
+
+  if (element.type === 'door' || element.type === 'window') {
+    const source = relations?.source;
+    if (source === 'gap_verified') {
+      return {
+        stroke: element.type === 'door' ? '#fb7185' : '#60a5fa',
+        fill: element.type === 'door' ? 'rgba(251,113,133,0.32)' : 'rgba(96,165,250,0.32)',
+        strokeWidth: selected ? 3 : 2.5,
+        opacity: 1,
+        dash: undefined as number[] | undefined,
+        shadowColor: hasIssue ? '#f59e0b' : undefined,
+        shadowBlur: hasIssue ? 12 : 0,
+      };
+    }
+    if (source === 'gap_verified_tag_classified') {
+      return {
+        stroke: element.type === 'door' ? '#fda4af' : '#93c5fd',
+        fill: element.type === 'door' ? 'rgba(251,113,133,0.2)' : 'rgba(96,165,250,0.2)',
+        strokeWidth: selected ? 3 : 2,
+        opacity: 0.95,
+        dash: [6, 4],
+        shadowColor: hasIssue ? '#f59e0b' : undefined,
+        shadowBlur: hasIssue ? 12 : 0,
+      };
+    }
+    return {
+      stroke: element.type === 'door' ? '#fbbf24' : '#22d3ee',
+      fill: element.type === 'door' ? 'rgba(251,191,36,0.14)' : 'rgba(34,211,238,0.14)',
+      strokeWidth: selected ? 3 : 2,
+      opacity: 0.92,
+      dash: [10, 6],
+      shadowColor: hasIssue ? '#f59e0b' : undefined,
+      shadowBlur: hasIssue ? 12 : 0,
+    };
+  }
+
+  return {
+    ...base,
+    strokeWidth: selected ? 3 : 2,
+    opacity: element.type === 'wall' ? 0.65 : 0.45,
+    dash: undefined as number[] | undefined,
+    shadowColor: hasIssue ? '#f59e0b' : undefined,
+    shadowBlur: hasIssue ? 8 : 0,
+  };
+}
+
 export default function AnnotationRenderLayer({
   elements,
   selectedIds,
-  showLowConfidenceProjectedOpenings,
+  preset,
+  issuesByElementId,
   onSelect,
   onDragEnd,
   onTransformEnd,
@@ -51,15 +143,15 @@ export default function AnnotationRenderLayer({
     <Fragment>
       {elements.map((element) => {
         const selected = selectedIds.includes(element.id);
-        const statusStroke = styleForStatus(element.attrs.status);
-        const relations = (element.relations && typeof element.relations === 'object')
-          ? (element.relations as OpeningRelations)
-          : undefined;
-        const tentative = relations?.source === 'tag_projected' && typeof relations?.confidence === 'number' && relations.confidence < 0.72;
-        const { stroke, fill } = styleForType(element, statusStroke);
-        const strokeWidth = selected ? 3 : 2;
+        const hasIssue = issuesByElementId?.has(element.id) ?? false;
+        const { stroke, fill, strokeWidth, opacity, dash, shadowBlur, shadowColor } = styleForPreset(
+          element,
+          preset,
+          hasIssue,
+          selected,
+        );
 
-        if (!element.attrs.visible && !(tentative && showLowConfidenceProjectedOpenings)) return null;
+        if (!element.attrs.visible) return null;
 
         if (element.geometry.kind === 'segment') {
           return (
@@ -69,7 +161,10 @@ export default function AnnotationRenderLayer({
               points={[element.geometry.x1, element.geometry.y1, element.geometry.x2, element.geometry.y2]}
               stroke={stroke}
               strokeWidth={Math.max(strokeWidth, element.geometry.thicknessPx)}
-              opacity={tentative ? 0.35 : 1}
+              opacity={opacity}
+              dash={dash}
+              shadowColor={shadowColor}
+              shadowBlur={shadowBlur}
               draggable={!element.attrs.locked}
               onClick={() => onSelect(element.id)}
               onTap={() => onSelect(element.id)}
@@ -92,9 +187,11 @@ export default function AnnotationRenderLayer({
               rotation={element.geometry.rotationDeg}
               stroke={stroke}
               strokeWidth={strokeWidth}
+              opacity={opacity}
+              dash={dash}
+              shadowColor={shadowColor}
+              shadowBlur={shadowBlur}
               fill={selected ? 'rgba(56,189,248,0.15)' : fill}
-              opacity={tentative ? 0.4 : 1}
-              dash={tentative ? [6, 4] : undefined}
               cornerRadius={element.type === 'door' || element.type === 'window' ? 4 : 2}
               draggable={!element.attrs.locked}
               onClick={() => onSelect(element.id)}

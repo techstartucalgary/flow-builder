@@ -44,6 +44,14 @@ class WallSegment(BaseModel):
         default=None,
         description="Length in feet (populated when scale is known)",
     )
+    parent_wall_id: Optional[str] = Field(
+        default=None,
+        description="Optional lineage pointer when this segment was split from a parent wall.",
+    )
+    split_origin: Optional[Literal["detected_gap", "manual_split", "tag_split_legacy"]] = Field(
+        default=None,
+        description="Why this segment was split from its parent wall, if applicable.",
+    )
 
 
 class TagAnchor(BaseModel):
@@ -90,15 +98,19 @@ class Opening(BaseModel):
         description="Tag(s) that anchor this opening",
     )
     is_double_door: bool = False
-    source: Literal["gap_matched", "tag_projected"] = Field(
-        default="tag_projected",
-        description="How this opening was generated (gap correlation vs wall projection).",
+    source: Literal["gap_verified", "gap_verified_tag_classified", "opening_feature_verified"] = Field(
+        default="gap_verified",
+        description="How this opening was verified/classified.",
     )
     confidence: float = Field(
         default=0.5,
         ge=0.0,
         le=1.0,
         description="Heuristic confidence score for this opening.",
+    )
+    verification: dict[str, float | str | None] = Field(
+        default_factory=dict,
+        description="Verification and classification details for this opening.",
     )
     width_ft: Optional[float] = None
     height_ft: Optional[float] = None
@@ -156,6 +168,17 @@ class DebugInfo(BaseModel):
     gaps_considered: int = 0
     gaps_matched: int = 0
     openings_hidden_recommended: int = 0
+    opening_candidates_raw: int = 0
+    opening_candidates_verified: int = 0
+    opening_candidates_rejected: int = 0
+    door_openings_emitted: int = 0
+    window_openings_emitted: int = 0
+    door_candidates_symbol_recovered: int = 0
+    window_candidates_frame_recovered: int = 0
+    door_candidates_rejected_after_symbol_check: int = 0
+    window_candidates_rejected_after_frame_check: int = 0
+    tags_unmatched_to_verified_openings: int = 0
+    solid_wall_projection_rejections: int = 0
 
 
 # ── top-level response ─────────────────────────────────────────────────

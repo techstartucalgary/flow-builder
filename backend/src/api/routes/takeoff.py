@@ -128,28 +128,19 @@ def _generate_annotated_image(
         my = (w.start[1] + w.end[1]) // 2
         cv2.putText(annotated, w.id, (mx - 20, my - 8), FONT, 0.45, WALL_COLOR, 1, cv2.LINE_AA)
 
-    for t in cv_result.tags:
-        if t.tag_class == TagClass.DOOR:
-            cv2.circle(annotated, t.center, t.radius + 6, DOOR_COLOR, 2)
-            cv2.putText(annotated, t.id, (t.center[0] - 15, t.center[1] - t.radius - 10),
-                        FONT, 0.4, DOOR_COLOR, 1, cv2.LINE_AA)
+    door_openings = [o for o in cv_result.openings if o.tag_class == TagClass.DOOR]
+    window_openings = [o for o in cv_result.openings if o.tag_class == TagClass.WINDOW]
 
-    for t in cv_result.tags:
-        if t.tag_class == TagClass.WINDOW:
-            r = t.radius + 8
-            pts = []
-            for i in range(6):
-                angle = i * np.pi / 3
-                px = int(t.center[0] + r * np.cos(angle))
-                py = int(t.center[1] + r * np.sin(angle))
-                pts.append([px, py])
-            pts_arr = np.array(pts, np.int32).reshape((-1, 1, 2))
-            cv2.polylines(annotated, [pts_arr], True, WINDOW_COLOR, 2)
-            cv2.putText(annotated, t.id, (t.center[0] - 15, t.center[1] - t.radius - 12),
-                        FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
+    for opening in door_openings:
+        x, y, w, h = opening.bbox
+        cv2.rectangle(annotated, (x, y), (x + w, y + h), DOOR_COLOR, 2)
+        cv2.putText(annotated, opening.id, (x, max(12, y - 6)), FONT, 0.4, DOOR_COLOR, 1, cv2.LINE_AA)
 
-    doors = [t for t in cv_result.tags if t.tag_class == TagClass.DOOR]
-    wins  = [t for t in cv_result.tags if t.tag_class == TagClass.WINDOW]
+    for opening in window_openings:
+        x, y, w, h = opening.bbox
+        cv2.rectangle(annotated, (x, y), (x + w, y + h), WINDOW_COLOR, 2)
+        cv2.putText(annotated, opening.id, (x, max(12, y - 6)), FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
+
     lx, ly = 20, 30
     cv2.rectangle(annotated, (10, 10), (320, 110), (255, 255, 255), -1)
     cv2.rectangle(annotated, (10, 10), (320, 110), (0, 0, 0), 1)
@@ -157,11 +148,11 @@ def _generate_annotated_image(
     cv2.rectangle(annotated, (lx, ly + 8), (lx + 30, ly + 16), WALL_COLOR, -1)
     cv2.putText(annotated, f"Walls ({len(cv_result.walls)})", (lx + 40, ly + 16), FONT, 0.4, WALL_COLOR, 1, cv2.LINE_AA)
     ly += 28
-    cv2.circle(annotated, (lx + 12, ly + 4), 8, DOOR_COLOR, 2)
-    cv2.putText(annotated, f"Door tags ({len(doors)})", (lx + 40, ly + 8), FONT, 0.4, DOOR_COLOR, 1, cv2.LINE_AA)
+    cv2.rectangle(annotated, (lx + 4, ly - 3), (lx + 20, ly + 11), DOOR_COLOR, 2)
+    cv2.putText(annotated, f"Doors ({len(door_openings)})", (lx + 40, ly + 8), FONT, 0.4, DOOR_COLOR, 1, cv2.LINE_AA)
     ly += 28
-    cv2.circle(annotated, (lx + 12, ly + 4), 8, WINDOW_COLOR, 2)
-    cv2.putText(annotated, f"Window tags ({len(wins)})", (lx + 40, ly + 8), FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
+    cv2.rectangle(annotated, (lx + 4, ly - 3), (lx + 20, ly + 11), WINDOW_COLOR, 2)
+    cv2.putText(annotated, f"Windows ({len(window_openings)})", (lx + 40, ly + 8), FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
 
     _, buf = cv2.imencode('.png', annotated)
     return base64.b64encode(buf.tobytes()).decode('utf-8')
@@ -284,25 +275,14 @@ async def analyze_takeoff(req: TakeoffRequest):
             crop_right=req.crop_right,
             crop_bottom=req.crop_bottom,
         )
-        cv_doors = sum(1 for t in cv_result.tags if t.tag_class == TagClass.DOOR)
-        cv_windows = sum(1 for t in cv_result.tags if t.tag_class == TagClass.WINDOW)
+        cv_doors = sum(1 for o in cv_result.openings if o.tag_class == TagClass.DOOR)
+        cv_windows = sum(1 for o in cv_result.openings if o.tag_class == TagClass.WINDOW)
         cv_walls = len(cv_result.walls)
         total_length_px = sum(w.length_px for w in cv_result.walls)
         print(f"[takeoff/cv] scale_px_per_ft={req.scale_px_per_ft} walls={cv_walls} doors={cv_doors} windows={cv_windows} total_length_px={total_length_px}")
 
-        # For deductions, prefer openings correlated to walls/gaps over raw tag count.
-        opening_doors = sum(
-            1 for o in cv_result.openings
-            if o.tag_class == TagClass.DOOR and len(o.tag_ids) > 0
-        )
-        opening_windows = sum(
-            1 for o in cv_result.openings
-            if o.tag_class == TagClass.WINDOW and len(o.tag_ids) > 0
-        )
-        min_door_coverage = max(1, int(cv_doors * 0.5))
-        min_window_coverage = max(1, int(cv_windows * 0.5))
-        deduction_doors = opening_doors if opening_doors >= min_door_coverage else cv_doors
-        deduction_windows = opening_windows if opening_windows >= min_window_coverage else cv_windows
+        deduction_doors = cv_doors
+        deduction_windows = cv_windows
 
         total_linear_ft, gross_drywall_sqft, opening_deduction_sqft, net_drywall_sqft = _compute_drywall(
             cv_result, deduction_doors, deduction_windows,
@@ -334,7 +314,7 @@ async def analyze_takeoff(req: TakeoffRequest):
 
     scale_note = " (provide scale_px_per_ft for drywall calculation)" if not req.scale_px_per_ft else ""
     analysis_lines = [
-        f"CV Pipeline: {cv_walls} walls, {cv_doors} doors, {cv_windows} windows.",
+        f"CV Pipeline: {cv_walls} walls, {cv_doors} verified doors, {cv_windows} verified windows.",
         f"Estimated total area: {total_area_sqft:.0f} sq ft{scale_note}.",
         (
             f"Net drywall: {net_drywall_sqft:.0f} sq ft "

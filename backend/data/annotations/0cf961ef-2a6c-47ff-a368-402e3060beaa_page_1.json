@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 358,
+  "latest_revision": 376,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -15,8 +15,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-02-27T21:59:48.862Z",
-      "revision": 358
+      "updatedAt": "2026-02-28T11:39:34.333Z",
+      "revision": 376
     },
     "layers": {
       "wall": true,
@@ -691,24 +691,35 @@
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": false,
-          "confidence": 0.66
+          "visible": true,
+          "confidence": 0.63
         },
         "geometry": {
           "kind": "rect",
-          "x": 3283,
-          "y": 1608,
-          "width": 46,
-          "height": 8,
+          "x": 3249,
+          "y": 1605,
+          "width": 156,
+          "height": 14,
           "rotationDeg": 0
         },
         "relations": {
-          "hostWallId": "wall_H-03",
-          "source": "tag_projected",
-          "confidence": 0.66,
+          "hostWallId": "wall_H-04",
+          "source": "gap_verified_tag_classified",
+          "confidence": 0.63,
           "tagIds": [
+            "D-04",
             "D-01"
-          ]
+          ],
+          "verification": {
+            "openingPixelsScore": 0.58,
+            "wallBreakScore": 0.73,
+            "classificationScore": 0.56,
+            "doorFeatureScore": 1,
+            "windowFeatureScore": 0,
+            "tagAlignmentScore": 0.58,
+            "verificationMode": "gap_only",
+            "hostGapId": "G-002"
+          }
         }
       },
       {
@@ -717,24 +728,34 @@
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": false,
-          "confidence": 0.6
+          "visible": true,
+          "confidence": 0.71
         },
         "geometry": {
           "kind": "rect",
-          "x": 2946,
-          "y": 2004,
-          "width": 43,
-          "height": 8,
+          "x": 3730,
+          "y": 2081,
+          "width": 12,
+          "height": 189,
           "rotationDeg": 0
         },
         "relations": {
-          "hostWallId": "wall_H-07",
-          "source": "tag_projected",
-          "confidence": 0.6,
+          "hostWallId": "wall_V-11",
+          "source": "gap_verified_tag_classified",
+          "confidence": 0.71,
           "tagIds": [
-            "D-02"
-          ]
+            "D-05"
+          ],
+          "verification": {
+            "openingPixelsScore": 0.68,
+            "wallBreakScore": 0.85,
+            "classificationScore": 0.58,
+            "doorFeatureScore": 1,
+            "windowFeatureScore": 0,
+            "tagAlignmentScore": 0.57,
+            "verificationMode": "gap_only",
+            "hostGapId": "G-004"
+          }
         }
       },
       {
@@ -743,24 +764,34 @@
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": false,
-          "confidence": 0.62
+          "visible": true,
+          "confidence": 0.61
         },
         "geometry": {
           "kind": "rect",
-          "x": 2244,
-          "y": 1502,
-          "width": 46,
-          "height": 24,
+          "x": 2237,
+          "y": 1498,
+          "width": 60,
+          "height": 32,
           "rotationDeg": 0
         },
         "relations": {
-          "hostWallId": "wall_H-02",
-          "source": "tag_projected",
-          "confidence": 0.62,
+          "hostWallId": "wall_H-03",
+          "source": "opening_feature_verified",
+          "confidence": 0.61,
           "tagIds": [
             "D-03"
-          ]
+          ],
+          "verification": {
+            "openingPixelsScore": 0.52,
+            "wallBreakScore": 0.52,
+            "classificationScore": 0.61,
+            "doorFeatureScore": 0.73,
+            "windowFeatureScore": 0,
+            "tagAlignmentScore": 0.55,
+            "verificationMode": "door_symbol_recovered",
+            "hostGapId": null
+          }
         }
       },
       {
@@ -769,24 +800,34 @@
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": false,
-          "confidence": 0.62
+          "visible": true,
+          "confidence": 0.56
         },
         "geometry": {
           "kind": "rect",
-          "x": 3367,
-          "y": 1821,
-          "width": 46,
-          "height": 20,
+          "x": 2833,
+          "y": 1806,
+          "width": 60,
+          "height": 28,
           "rotationDeg": 0
         },
         "relations": {
-          "hostWallId": "wall_H-06",
-          "source": "tag_projected",
-          "confidence": 0.62,
+          "hostWallId": "wall_H-05",
+          "source": "opening_feature_verified",
+          "confidence": 0.56,
           "tagIds": [
-            "D-04"
-          ]
+            "D-06"
+          ],
+          "verification": {
+            "openingPixelsScore": 0.51,
+            "wallBreakScore": 0.32,
+            "classificationScore": 0.56,
+            "doorFeatureScore": 0.7,
+            "windowFeatureScore": 0,
+            "tagAlignmentScore": 0.55,
+            "verificationMode": "door_symbol_recovered",
+            "hostGapId": null
+          }
         }
       },
       {
@@ -795,24 +836,34 @@
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": false,
-          "confidence": 0.61
+          "visible": true,
+          "confidence": 0.66
         },
         "geometry": {
           "kind": "rect",
-          "x": 2696,
-          "y": 2247,
-          "width": 46,
-          "height": 20,
+          "x": 2771,
+          "y": 1555,
+          "width": 28,
+          "height": 60,
           "rotationDeg": 0
         },
         "relations": {
-          "hostWallId": "wall_H-09",
-          "source": "tag_projected",
-          "confidence": 0.61,
+          "hostWallId": "wall_V-03",
+          "source": "opening_feature_verified",
+          "confidence": 0.66,
           "tagIds": [
-            "D-05"
-          ]
+            "D-07"
+          ],
+          "verification": {
+            "openingPixelsScore": 0.69,
+            "wallBreakScore": 0.5,
+            "classificationScore": 0.66,
+            "doorFeatureScore": 0.79,
+            "windowFeatureScore": 0,
+            "tagAlignmentScore": 0.55,
+            "verificationMode": "door_symbol_recovered",
+            "hostGapId": null
+          }
         }
       },
       {
@@ -821,206 +872,34 @@
         "attrs": {
           "status": "auto",
           "locked": false,
-          "visible": false,
-          "confidence": 0.61
+          "visible": true,
+          "confidence": 0.57
         },
         "geometry": {
           "kind": "rect",
-          "x": 2840,
-          "y": 1810,
-          "width": 46,
-          "height": 20,
+          "x": 2923,
+          "y": 2605,
+          "width": 28,
+          "height": 60,
           "rotationDeg": 0
         },
         "relations": {
-          "hostWallId": "wall_H-05",
-          "source": "tag_projected",
-          "confidence": 0.61,
-          "tagIds": [
-            "D-06"
-          ]
-        }
-      },
-      {
-        "id": "door_OP-07",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": false,
-          "confidence": 0.59
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2775,
-          "y": 1562,
-          "width": 20,
-          "height": 46,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_V-03",
-          "source": "tag_projected",
-          "confidence": 0.59,
-          "tagIds": [
-            "D-07"
-          ]
-        }
-      },
-      {
-        "id": "door_OP-08",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": false,
-          "confidence": 0.58
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3043,
-          "y": 2004,
-          "width": 46,
-          "height": 8,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_H-07",
-          "source": "tag_projected",
-          "confidence": 0.58,
-          "tagIds": [
-            "D-08"
-          ]
-        }
-      },
-      {
-        "id": "door_OP-09",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": false,
-          "confidence": 0.64
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2886,
-          "y": 1810,
-          "width": 34,
-          "height": 20,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_H-05",
-          "source": "tag_projected",
-          "confidence": 0.64,
-          "tagIds": [
-            "D-09"
-          ]
-        }
-      },
-      {
-        "id": "door_OP-10",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": false,
-          "confidence": 0.54
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3726,
-          "y": 2255,
-          "width": 20,
-          "height": 38,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_V-08",
-          "source": "tag_projected",
-          "confidence": 0.54,
-          "tagIds": [
-            "D-10"
-          ]
-        }
-      },
-      {
-        "id": "door_OP-11",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": false,
-          "confidence": 0.45
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2927,
-          "y": 2612,
-          "width": 20,
-          "height": 46,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_V-04",
-          "source": "tag_projected",
-          "confidence": 0.45,
+          "hostWallId": "wall_V-05",
+          "source": "opening_feature_verified",
+          "confidence": 0.57,
           "tagIds": [
             "D-11"
-          ]
-        }
-      },
-      {
-        "id": "window_OP-12",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": false,
-          "confidence": 0.6
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2182,
-          "y": 2035,
-          "width": 20,
-          "height": 65,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_V-01",
-          "source": "tag_projected",
-          "confidence": 0.6,
-          "tagIds": [
-            "W-01"
-          ]
-        }
-      },
-      {
-        "id": "window_OP-13",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": false,
-          "confidence": 0.55
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2407,
-          "y": 3440,
-          "width": 65,
-          "height": 20,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_H-10",
-          "source": "tag_projected",
-          "confidence": 0.55,
-          "tagIds": [
-            "W-02"
-          ]
+          ],
+          "verification": {
+            "openingPixelsScore": 0.58,
+            "wallBreakScore": 0.37,
+            "classificationScore": 0.57,
+            "doorFeatureScore": 0.69,
+            "windowFeatureScore": 0,
+            "tagAlignmentScore": 0.55,
+            "verificationMode": "door_symbol_recovered",
+            "hostGapId": null
+          }
         }
       }
     ],
@@ -18907,6 +18786,80 @@
               "x2": 3444,
               "y2": 2863,
               "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_system_cleanup_360",
+      "revisionId": 360,
+      "parentRevisionId": 359,
+      "actorId": "system_cleanup",
+      "timestamp": "2026-02-27T23:10:04.158545Z",
+      "operations": []
+    },
+    {
+      "id": "evt_1772233836204_osgbd",
+      "revisionId": 362,
+      "parentRevisionId": 361,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T23:10:36.204Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_V-14",
+          "element": {
+            "id": "wall_V-14",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4205,
+              "y1": 1394,
+              "x2": 4205,
+              "y2": 3481,
+              "thicknessPx": 31,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772233837762_txx6h",
+      "revisionId": 363,
+      "parentRevisionId": 362,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-27T23:10:37.762Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_V-14",
+          "element": {
+            "id": "wall_V-14",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4205,
+              "y1": 1394,
+              "x2": 4205,
+              "y2": 3481,
+              "thicknessPx": 31,
               "rotationDeg": 0
             },
             "relations": {}

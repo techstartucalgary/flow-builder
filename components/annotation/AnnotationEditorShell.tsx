@@ -15,7 +15,7 @@ import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import type {
   AnnotationDocument,
   AnnotationElement,
-  ProjectedOpeningVisibilityState,
+  AnnotationRenderHints,
   AnnotationStorePayload,
   CVTakeoffResultPayload,
   EditorTagOverlayState,
@@ -23,10 +23,6 @@ import type {
 } from '@/types/annotation';
 
 const BACKEND_URL = getBackendUrl();
-const PROJECTED_OPENING_VISIBILITY: ProjectedOpeningVisibilityState = {
-  projectedOpeningMinConfidence: 0.72,
-  showLowConfidenceProjectedOpenings: false,
-};
 
 function isLegacyTagMarkerOpenings(doc: AnnotationDocument): boolean {
   const openingElements = doc.elements.filter((e) => e.type === 'door' || e.type === 'window');
@@ -137,6 +133,18 @@ async function fetchCvDocument(
   };
 }
 
+async function fetchAnnotationStorePayload(
+  projectId: string,
+  pageNumber: number,
+): Promise<AnnotationStorePayload> {
+  const res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || `Failed to load annotation doc (${res.status})`);
+  }
+  return res.json() as Promise<AnnotationStorePayload>;
+}
+
 interface AnnotationEditorShellProps {
   projectId: string;
   fileUrl: string;
@@ -159,19 +167,20 @@ export default function AnnotationEditorShell({
   const [warning, setWarning] = useState<string | null>(null);
   const [showBaseImage, setShowBaseImage] = useState(true);
   const [tagOverlay, setTagOverlay] = useState<EditorTagOverlayState>({ showTags: false, tags: [] });
-  const [projectedOpeningVisibility, setProjectedOpeningVisibility] = useState<ProjectedOpeningVisibilityState>(PROJECTED_OPENING_VISIBILITY);
   const [pendingRebuild, setPendingRebuild] = useState<CvDocumentSnapshot | null>(null);
 
   const document = useAnnotationEditorStore((s) => s.document);
   const entities = useAnnotationEditorStore((s) => s.entities);
   const selection = useAnnotationEditorStore((s) => s.selection);
   const toolMode = useAnnotationEditorStore((s) => s.toolMode);
+  const viewPreset = useAnnotationEditorStore((s) => s.viewPreset);
   const gridEnabled = useAnnotationEditorStore((s) => s.gridEnabled);
   const wallSnapEnabled = useAnnotationEditorStore((s) => s.wallSnapEnabled);
   const saveStatus = useAnnotationEditorStore((s) => s.saveStatus);
 
   const initializeDocument = useAnnotationEditorStore((s) => s.initializeDocument);
   const setToolMode = useAnnotationEditorStore((s) => s.setToolMode);
+  const setViewPreset = useAnnotationEditorStore((s) => s.setViewPreset);
   const toggleLayer = useAnnotationEditorStore((s) => s.toggleLayer);
   const updateElement = useAnnotationEditorStore((s) => s.updateElement);
   const deleteSelected = useAnnotationEditorStore((s) => s.deleteSelected);
@@ -183,6 +192,7 @@ export default function AnnotationEditorShell({
   const setSelection = useAnnotationEditorStore((s) => s.setSelection);
   const markRevision = useAnnotationEditorStore((s) => s.markRevision);
   const flushPendingOps = useAnnotationEditorStore((s) => s.flushPendingOps);
+  const restorePendingOps = useAnnotationEditorStore((s) => s.restorePendingOps);
   const setSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
 
   const selectedElement = useMemo(() => {
@@ -190,45 +200,86 @@ export default function AnnotationEditorShell({
     return entities.byId[selection[0]] || null;
   }, [entities.byId, selection]);
 
-  const openingVisibilitySummary = useMemo(() => {
-    if (!document) {
-      return {
-        visibleOpenings: 0,
-        tentativeHiddenOpenings: 0,
-      };
+  const displayElements = useMemo(() => {
+    if (!document) return [] as AnnotationElement[];
+    const baseElements = document.elements.filter((element) => document.layers[element.type]);
+    if (viewPreset === 'final') return baseElements;
+    if (viewPreset === 'walls_qa') {
+      return baseElements.filter((element) => element.type === 'wall');
     }
-    const openings = document.elements.filter((element) => element.type === 'door' || element.type === 'window');
-    let visibleOpenings = 0;
-    let tentativeHiddenOpenings = 0;
+    return baseElements.filter((element) => element.type !== 'room');
+  }, [document, viewPreset]);
 
-    for (const opening of openings) {
-      if (opening.attrs.visible) {
-        visibleOpenings += 1;
-        continue;
-      }
-
-      const relations = opening.relations;
-      if (
-        relations
-        && typeof relations === 'object'
-        && 'source' in relations
-        && 'confidence' in relations
-        && relations.source === 'tag_projected'
-        && typeof relations.confidence === 'number'
-        && relations.confidence < PROJECTED_OPENING_VISIBILITY.projectedOpeningMinConfidence
-      ) {
-        tentativeHiddenOpenings += 1;
-      }
+  const matchedTagIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!document) return ids;
+    for (const element of document.elements) {
+      if (element.type !== 'door' && element.type !== 'window') continue;
+      const tagIds = Array.isArray((element.relations as { tagIds?: string[] } | undefined)?.tagIds)
+        ? ((element.relations as { tagIds?: string[] }).tagIds as string[])
+        : [];
+      for (const id of tagIds) ids.add(id);
     }
-
-    return {
-      visibleOpenings,
-      tentativeHiddenOpenings,
-    };
+    return ids;
   }, [document]);
 
-  const effectiveShowTentativeOpenings = projectedOpeningVisibility.showLowConfidenceProjectedOpenings
-    || (openingVisibilitySummary.visibleOpenings === 0 && openingVisibilitySummary.tentativeHiddenOpenings > 0);
+  const issuesByElementId = useMemo(() => {
+    if (!document) return new Set<string>();
+    if (viewPreset === 'walls_qa') {
+      return new Set(document.issues.filter((issue) => issue.code.toLowerCase().includes('wall')).map((issue) => issue.elementId));
+    }
+    return new Set(document.issues.map((issue) => issue.elementId));
+  }, [document, viewPreset]);
+
+  const effectiveShowTags = useMemo(() => {
+    if (viewPreset === 'tags_qa') return true;
+    if (viewPreset === 'walls_qa') return false;
+    if (viewPreset === 'final') return false;
+    return tagOverlay.showTags;
+  }, [tagOverlay.showTags, viewPreset]);
+
+  const renderHints = useMemo<AnnotationRenderHints>(() => ({
+    preset: viewPreset,
+    dimNonFocus: viewPreset === 'tags_qa' || viewPreset === 'openings_qa',
+    highlightIssues: viewPreset === 'tags_qa' || viewPreset === 'openings_qa',
+    showVerificationAccent: viewPreset === 'openings_qa',
+  }), [viewPreset]);
+
+  const putDocumentWithConflictRetry = useCallback(async (nextDoc: AnnotationDocument, baseRevision: number) => {
+    const makeBody = (revision: number) => JSON.stringify({
+      document: {
+        ...nextDoc,
+        meta: {
+          ...nextDoc.meta,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+      base_revision: revision,
+    });
+
+    let res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: makeBody(baseRevision),
+    });
+
+    if (res.status === 409) {
+      const latest = await fetchAnnotationStorePayload(projectId, pageNumber);
+      markRevision(latest.latest_revision);
+      res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: makeBody(latest.latest_revision),
+      });
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to save annotation document (${res.status})`);
+    }
+
+    return res.json() as Promise<AnnotationStorePayload>;
+  }, [markRevision, pageNumber, projectId]);
 
   const refreshOpeningsFromCV = useCallback(async (baseDoc: AnnotationDocument, baseRevision: number) => {
     const cvSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFt);
@@ -262,59 +313,21 @@ export default function AnnotationEditorShell({
     const upgradedDoc = sanitizeAnnotationDocument(mergeOpeningsFromCV(baseDoc, cvDoc));
     initializeDocument(upgradedDoc);
 
-    const saveRes = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        document: {
-          ...upgradedDoc,
-          meta: {
-            ...upgradedDoc.meta,
-            updatedAt: new Date().toISOString(),
-          },
-        },
-        base_revision: baseRevision,
-      }),
-    });
-    if (!saveRes.ok) {
-      const err = await saveRes.json().catch(() => ({ detail: saveRes.statusText }));
-      throw new Error(err.detail || `Failed to save refreshed openings (${saveRes.status})`);
-    }
-
-    const saved = (await saveRes.json()) as AnnotationStorePayload;
+    const saved = await putDocumentWithConflictRetry(upgradedDoc, baseRevision);
     markRevision(saved.latest_revision);
     return { blocked: false as const };
-  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, scalePxPerFt]);
+  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, putDocumentWithConflictRetry, scalePxPerFt]);
 
   const rebuildGeometryFromCV = useCallback(async () => {
     if (!pendingRebuild || !document) return;
     const nextDoc = sanitizeAnnotationDocument(pendingRebuild.document);
     initializeDocument(nextDoc);
 
-    const saveRes = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        document: {
-          ...nextDoc,
-          meta: {
-            ...nextDoc.meta,
-            updatedAt: new Date().toISOString(),
-          },
-        },
-        base_revision: document.meta.revision,
-      }),
-    });
-    if (!saveRes.ok) {
-      const err = await saveRes.json().catch(() => ({ detail: saveRes.statusText }));
-      throw new Error(err.detail || `Failed to rebuild geometry from CV (${saveRes.status})`);
-    }
-
-    const saved = (await saveRes.json()) as AnnotationStorePayload;
+    const saved = await putDocumentWithConflictRetry(nextDoc, document.meta.revision);
     markRevision(saved.latest_revision);
     setWarning(null);
     setPendingRebuild(null);
-  }, [document, initializeDocument, markRevision, pageNumber, pendingRebuild, projectId]);
+  }, [document, initializeDocument, markRevision, pendingRebuild, putDocumentWithConflictRetry]);
 
   const loadDocument = useCallback(async () => {
     setLoading(true);
@@ -324,9 +337,7 @@ export default function AnnotationEditorShell({
     setTagOverlay((current) => ({ ...current, tags: [], coordinateSpaceId: undefined }));
 
     try {
-      const existingRes = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`);
-      if (!existingRes.ok) throw new Error(`Failed to load annotation doc (${existingRes.status})`);
-      const existing = (await existingRes.json()) as AnnotationStorePayload;
+      const existing = await fetchAnnotationStorePayload(projectId, pageNumber);
 
       if (existing.document) {
         const existingDoc = sanitizeAnnotationDocument(existing.document);
@@ -353,39 +364,26 @@ export default function AnnotationEditorShell({
       }));
       initializeDocument(sanitizedDoc);
 
-      await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(toPersistencePayload(sanitizedDoc)),
-      });
+      await putDocumentWithConflictRetry(sanitizedDoc, sanitizedDoc.meta.revision);
     } catch (err: any) {
       setError(err?.message || 'Failed to load annotation editor');
     } finally {
       setLoading(false);
     }
-  }, [fileMime, fileUrl, initializeDocument, pageNumber, projectId, refreshOpeningsFromCV, scalePxPerFt]);
+  }, [fileMime, fileUrl, initializeDocument, pageNumber, projectId, putDocumentWithConflictRetry, refreshOpeningsFromCV, scalePxPerFt]);
 
   const saveSnapshot = useCallback(async () => {
     if (!document) return;
     setSaveStatus('syncing');
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(toPersistencePayload(document)),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || `Save failed (${res.status})`);
-      }
-      const data = (await res.json()) as AnnotationStorePayload;
+      const data = await putDocumentWithConflictRetry(document, document.meta.revision);
       markRevision(data.latest_revision);
       setSaveStatus('saved');
     } catch {
       setSaveStatus('error');
     }
-  }, [document, markRevision, pageNumber, projectId, setSaveStatus]);
+  }, [document, markRevision, putDocumentWithConflictRetry, setSaveStatus]);
 
   useEffect(() => {
     void loadDocument();
@@ -436,7 +434,7 @@ export default function AnnotationEditorShell({
       setSaveStatus('syncing');
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/annotations/${projectId}/revisions?page=${pageNumber}`, {
+        let response = await fetch(`${BACKEND_URL}/api/annotations/${projectId}/revisions?page=${pageNumber}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -446,17 +444,32 @@ export default function AnnotationEditorShell({
           }),
         });
 
+        if (response.status === 409) {
+          const latest = await fetchAnnotationStorePayload(projectId, pageNumber);
+          markRevision(latest.latest_revision);
+          response = await fetch(`${BACKEND_URL}/api/annotations/${projectId}/revisions?page=${pageNumber}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              parent_revision_id: latest.latest_revision,
+              actor_id: actorId,
+              events: pending,
+            }),
+          });
+        }
+
         if (!response.ok) throw new Error('Revision sync failed');
         const data = (await response.json()) as RevisionsResponse;
         markRevision(data.latest_revision);
         setSaveStatus('saved');
       } catch {
+        restorePendingOps(pending);
         setSaveStatus('error');
       }
     }, 1500);
 
     return () => clearInterval(interval);
-  }, [actorId, document, flushPendingOps, markRevision, pageNumber, projectId, setSaveStatus]);
+  }, [actorId, document, flushPendingOps, markRevision, pageNumber, projectId, restorePendingOps, setSaveStatus]);
 
   if (loading) {
     return <div className="w-full h-full grid place-items-center text-gray-400 text-sm">Loading annotation editor...</div>;
@@ -475,6 +488,8 @@ export default function AnnotationEditorShell({
       <EditorToolbar
         toolMode={toolMode}
         onToolChange={setToolMode}
+        viewPreset={viewPreset}
+        onViewPresetChange={setViewPreset}
         onUndo={undo}
         onRedo={redo}
         onDelete={deleteSelected}
@@ -493,11 +508,6 @@ export default function AnnotationEditorShell({
         onToggleBaseImage={() => setShowBaseImage((v) => !v)}
         showTags={tagOverlay.showTags}
         onToggleShowTags={() => setTagOverlay((current) => ({ ...current, showTags: !current.showTags }))}
-        showTentativeOpenings={effectiveShowTentativeOpenings}
-        onToggleTentativeOpenings={() => setProjectedOpeningVisibility((current) => ({
-          ...current,
-          showLowConfidenceProjectedOpenings: !current.showLowConfidenceProjectedOpenings,
-        }))}
         gridEnabled={gridEnabled}
         wallSnapEnabled={wallSnapEnabled}
         onToggleGrid={toggleGrid}
@@ -536,21 +546,19 @@ export default function AnnotationEditorShell({
         </div>
       )}
 
-      {!warning && openingVisibilitySummary.visibleOpenings === 0 && openingVisibilitySummary.tentativeHiddenOpenings > 0 && (
-        <div className="rounded-lg border border-sky-400/25 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
-          No high-confidence openings are currently visible. Showing {openingVisibilitySummary.tentativeHiddenOpenings} tentative projected openings for review.
-        </div>
-      )}
-
       <div className="flex-1 min-h-0 grid grid-cols-[1fr_320px] gap-2">
         <ViewportStage
           baseImageUrl={document.baseImage.sourceUrl}
           widthPx={document.baseImage.widthPx}
           heightPx={document.baseImage.heightPx}
           showBaseImage={showBaseImage}
-          showTags={tagOverlay.showTags}
+          showTags={effectiveShowTags}
           tags={tagOverlay.tags}
-          showLowConfidenceProjectedOpenings={effectiveShowTentativeOpenings}
+          matchedTagIds={matchedTagIds}
+          displayElements={displayElements}
+          viewPreset={viewPreset}
+          renderHints={renderHints}
+          issuesByElementId={issuesByElementId}
           issues={document.issues}
           onIssueSelect={(issue) => setSelection([issue.elementId])}
         />
@@ -559,7 +567,12 @@ export default function AnnotationEditorShell({
           <RevisionStatusBar revision={document.meta.revision} status={saveStatus} />
           <LayerVisibilityPanel document={document} onToggle={toggleLayer} />
           <IssueHighlighter issues={document.issues} onSelectIssue={(issue) => setSelection([issue.elementId])} />
-          <PropertyPanel element={selectedElement} onApply={updateElement} />
+          <PropertyPanel
+            element={selectedElement}
+            issues={selectedElement ? document.issues.filter((issue) => issue.elementId === selectedElement.id) : []}
+            revision={document.meta.revision}
+            onApply={updateElement}
+          />
         </div>
       </div>
     </div>

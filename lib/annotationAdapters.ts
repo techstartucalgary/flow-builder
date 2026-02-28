@@ -8,7 +8,6 @@ import type {
 } from '@/types/annotation';
 
 const SUPPORTED_TYPES: ReadonlySet<AnnotationElementType> = new Set(['wall', 'door', 'window', 'room']);
-const PROJECTED_OPENING_MIN_CONFIDENCE = 0.72;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -79,23 +78,13 @@ export function fromCVTakeoffResult(
       const [x, y, width, height] = opening.bbox;
       if (width <= 0 || height <= 0) continue;
       const confidence = typeof opening.confidence === 'number' ? opening.confidence : 0.5;
-      const source = opening.source || 'tag_projected';
-      const visible = source === 'gap_matched' || confidence >= PROJECTED_OPENING_MIN_CONFIDENCE;
-      if (source === 'tag_projected' && confidence < PROJECTED_OPENING_MIN_CONFIDENCE) {
-        issues.push({
-          id: `issue_${opening.id}_low_confidence`,
-          elementId: `${type}_${opening.id}`,
-          severity: 'warning',
-          code: 'LOW_CONFIDENCE_PROJECTED_OPENING',
-          message: `${type} opening is tentative and hidden by default.`,
-        });
-      }
-      if (source === 'tag_projected' && !opening.wall_id) {
+      const source = opening.source || 'gap_verified';
+      if (!opening.wall_id) {
         issues.push({
           id: `issue_${opening.id}_unhosted`,
           elementId: `${type}_${opening.id}`,
           severity: 'warning',
-          code: 'UNHOSTED_PROJECTED_OPENING',
+          code: 'UNHOSTED_OPENING',
           message: `${type} opening has no host wall and should be reviewed.`,
         });
       }
@@ -115,10 +104,22 @@ export function fromCVTakeoffResult(
           source,
           confidence,
           tagIds: Array.isArray(opening.tag_ids) ? opening.tag_ids : [],
+          verification: opening.verification
+            ? {
+                openingPixelsScore: opening.verification.opening_pixels_score,
+                wallBreakScore: opening.verification.wall_break_score,
+                classificationScore: opening.verification.classification_score,
+                doorFeatureScore: opening.verification.door_feature_score,
+                windowFeatureScore: opening.verification.window_feature_score,
+                tagAlignmentScore: opening.verification.tag_alignment_score,
+                verificationMode: opening.verification.verification_mode,
+                hostGapId: opening.verification.host_gap_id,
+              }
+            : undefined,
         },
         attrs: {
           ...makeBaseElement(type, `${type}_${opening.id}`).attrs,
-          visible,
+          visible: true,
           confidence,
         },
       });

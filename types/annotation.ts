@@ -14,6 +14,12 @@ export type ToolMode =
   | 'room'
   | 'delete';
 
+export type EditorViewPreset =
+  | 'final'
+  | 'openings_qa'
+  | 'tags_qa'
+  | 'walls_qa';
+
 export interface BaseElementAttrs {
   name?: string;
   confidence?: number;
@@ -44,13 +50,25 @@ export interface RectGeometry {
 
 export type ElementGeometry = SegmentGeometry | RectGeometry;
 
-export type OpeningSource = 'gap_matched' | 'tag_projected';
+export type OpeningSource = 'gap_verified' | 'gap_verified_tag_classified' | 'opening_feature_verified';
+
+export interface OpeningVerificationMeta {
+  openingPixelsScore?: number;
+  wallBreakScore?: number;
+  classificationScore?: number;
+  doorFeatureScore?: number;
+  windowFeatureScore?: number;
+  tagAlignmentScore?: number;
+  verificationMode?: 'gap_only' | 'door_symbol_recovered' | 'window_frame_recovered';
+  hostGapId?: string;
+}
 
 export interface OpeningRelations {
   hostWallId?: string;
   source?: OpeningSource;
   confidence?: number;
   tagIds?: string[];
+  verification?: OpeningVerificationMeta;
 }
 
 export interface BaseAnnotationElement {
@@ -137,6 +155,17 @@ export interface EditorCameraState {
   maxZoom: number;
 }
 
+export interface EditorViewState {
+  preset: EditorViewPreset;
+}
+
+export interface AnnotationRenderHints {
+  preset: EditorViewPreset;
+  dimNonFocus?: boolean;
+  highlightIssues?: boolean;
+  showVerificationAccent?: boolean;
+}
+
 export interface RevisionEvent {
   id: string;
   revisionId?: number;
@@ -212,6 +241,16 @@ export interface CVOpening {
   tag_ids?: string[];
   source?: OpeningSource;
   confidence?: number;
+  verification?: {
+    opening_pixels_score?: number;
+    wall_break_score?: number;
+    classification_score?: number;
+    door_feature_score?: number;
+    window_feature_score?: number;
+    tag_alignment_score?: number;
+    verification_mode?: 'gap_only' | 'door_symbol_recovered' | 'window_frame_recovered';
+    host_gap_id?: string;
+  };
 }
 
 export interface CVTakeoffResultPayload {
@@ -237,9 +276,4 @@ export interface EditorTagOverlayState {
   showTags: boolean;
   tags: CVTag[];
   coordinateSpaceId?: string;
-}
-
-export interface ProjectedOpeningVisibilityState {
-  projectedOpeningMinConfidence: number;
-  showLowConfidenceProjectedOpenings: boolean;
 }

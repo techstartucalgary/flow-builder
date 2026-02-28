@@ -4,10 +4,12 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { safeClone } from '@/lib/clone';
-import type { AnnotationElement } from '@/types/annotation';
+import type { AnnotationElement, AnnotationIssue, OpeningRelations } from '@/types/annotation';
 
 interface PropertyPanelProps {
   element: AnnotationElement | null;
+  issues: AnnotationIssue[];
+  revision: number;
   onApply: (element: AnnotationElement) => void;
 }
 
@@ -29,7 +31,7 @@ interface FormValues {
   thicknessPx: number;
 }
 
-export default function PropertyPanel({ element, onApply }: PropertyPanelProps) {
+export default function PropertyPanel({ element, issues, revision, onApply }: PropertyPanelProps) {
   const { register, handleSubmit, reset } = useForm<FormValues>({
     defaultValues: {
       name: '',
@@ -80,6 +82,12 @@ export default function PropertyPanel({ element, onApply }: PropertyPanelProps) 
     );
   }
 
+  const openingRelations =
+    element.type === 'door' || element.type === 'window'
+      ? (element.relations as OpeningRelations | undefined)
+      : undefined;
+  const verification = openingRelations?.verification;
+
   return (
     <form
       onSubmit={handleSubmit((values) => {
@@ -111,6 +119,105 @@ export default function PropertyPanel({ element, onApply }: PropertyPanelProps) 
       className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2 text-xs"
     >
       <div className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Properties</div>
+      <div className="rounded border border-white/10 bg-black/20 px-2 py-2 text-[11px] text-gray-300 space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="uppercase tracking-wide text-gray-500">Element</span>
+          <span className="font-mono text-gray-200">{element.id}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="uppercase tracking-wide text-gray-500">Type</span>
+          <span className="text-gray-200">{element.type}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="uppercase tracking-wide text-gray-500">Revision</span>
+          <span className="text-gray-200">{revision}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="uppercase tracking-wide text-gray-500">Status</span>
+          <span className="text-gray-200">{element.attrs.status}</span>
+        </div>
+        {openingRelations?.source && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="uppercase tracking-wide text-gray-500">Source</span>
+            <span className="text-gray-200">{openingRelations.source}</span>
+          </div>
+        )}
+        {openingRelations?.hostWallId && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="uppercase tracking-wide text-gray-500">Host Wall</span>
+            <span className="font-mono text-gray-200">{openingRelations.hostWallId}</span>
+          </div>
+        )}
+      </div>
+
+      {verification && (
+        <div className="rounded border border-cyan-500/20 bg-cyan-500/5 px-2 py-2 text-[11px] text-cyan-100 space-y-1">
+          <div className="font-semibold uppercase tracking-wide text-cyan-200/80">Verification</div>
+          {verification.verificationMode && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Mode</span>
+              <span>{verification.verificationMode}</span>
+            </div>
+          )}
+          {typeof verification.wallBreakScore === 'number' && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Wall break</span>
+              <span>{verification.wallBreakScore.toFixed(2)}</span>
+            </div>
+          )}
+          {typeof verification.openingPixelsScore === 'number' && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Opening pixels</span>
+              <span>{verification.openingPixelsScore.toFixed(2)}</span>
+            </div>
+          )}
+          {typeof verification.classificationScore === 'number' && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Classification</span>
+              <span>{verification.classificationScore.toFixed(2)}</span>
+            </div>
+          )}
+          {typeof verification.doorFeatureScore === 'number' && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Door feature</span>
+              <span>{verification.doorFeatureScore.toFixed(2)}</span>
+            </div>
+          )}
+          {typeof verification.windowFeatureScore === 'number' && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Window feature</span>
+              <span>{verification.windowFeatureScore.toFixed(2)}</span>
+            </div>
+          )}
+          {typeof verification.tagAlignmentScore === 'number' && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Tag alignment</span>
+              <span>{verification.tagAlignmentScore.toFixed(2)}</span>
+            </div>
+          )}
+          {verification.hostGapId && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-cyan-200/70">Host gap</span>
+              <span className="font-mono">{verification.hostGapId}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="rounded border border-white/10 bg-white/[0.03] px-2 py-2 text-[11px] text-gray-300 space-y-1">
+        <div className="font-semibold uppercase tracking-wide text-gray-300">Issues</div>
+        {issues.length === 0 ? (
+          <div className="text-gray-500">No issues attached to this element.</div>
+        ) : (
+          issues.map((issue) => (
+            <div key={issue.id} className="rounded border border-red-500/20 bg-red-500/5 px-2 py-1">
+              <div className="font-semibold text-red-200">{issue.code}</div>
+              <div className="text-red-300/80">{issue.message}</div>
+            </div>
+          ))
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         <label className="text-gray-400">Name<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('name')} /></label>
         <label className="text-gray-400">Confidence<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('confidence', { valueAsNumber: true })} /></label>

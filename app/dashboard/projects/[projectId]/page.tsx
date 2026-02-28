@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts';
 import { supabase } from '@/lib/supabase';
 import {
@@ -19,23 +18,13 @@ import { getBackendUrl } from '@/lib/backendUrl';
 import { parseTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
 import type { TakeoffData } from '@/lib/parseTakeoff';
 import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
+import PdfViewerClient from '@/components/pdf/PdfViewer';
+import AnnotationEditorShell from '@/components/annotation/AnnotationEditorShell';
 import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBoundary';
 
 const BACKEND_URL = getBackendUrl();
 const WASTE_FACTOR = 0.15;
 const SHEET_SQFT = 48; // 4' x 12' sheet = 48 sq ft
-
-const PdfViewerClient = dynamic(() => import('@/components/pdf/PdfViewer'), {
-  ssr: false,
-  loading: () => <div className="text-gray-400">Loading PDF viewer...</div>,
-});
-const AnnotationEditorShell = dynamic(
-  () => import('@/components/annotation/AnnotationEditorShell'),
-  {
-    ssr: false,
-    loading: () => <div className="text-gray-400">Loading annotation editor...</div>,
-  },
-);
 
 type ProjectRow = {
   id: string;

@@ -1,10 +1,12 @@
 'use client';
 
-import type { ToolMode } from '@/types/annotation';
+import type { EditorViewPreset, ToolMode } from '@/types/annotation';
 
 interface EditorToolbarProps {
   toolMode: ToolMode;
   onToolChange: (mode: ToolMode) => void;
+  viewPreset: EditorViewPreset;
+  onViewPresetChange: (preset: EditorViewPreset) => void;
   onUndo: () => void;
   onRedo: () => void;
   onDelete: () => void;
@@ -14,8 +16,6 @@ interface EditorToolbarProps {
   onToggleBaseImage: () => void;
   showTags: boolean;
   onToggleShowTags: () => void;
-  showTentativeOpenings: boolean;
-  onToggleTentativeOpenings: () => void;
   gridEnabled: boolean;
   wallSnapEnabled: boolean;
   onToggleGrid: () => void;
@@ -23,10 +23,18 @@ interface EditorToolbarProps {
 }
 
 const TOOLS: ToolMode[] = ['select', 'wall', 'door', 'window', 'room', 'delete'];
+const PRESETS: Array<{ value: EditorViewPreset; label: string }> = [
+  { value: 'final', label: 'Final' },
+  { value: 'openings_qa', label: 'Openings QA' },
+  { value: 'tags_qa', label: 'Tags QA' },
+  { value: 'walls_qa', label: 'Walls QA' },
+];
 
 export default function EditorToolbar({
   toolMode,
   onToolChange,
+  viewPreset,
+  onViewPresetChange,
   onUndo,
   onRedo,
   onDelete,
@@ -36,8 +44,6 @@ export default function EditorToolbar({
   onToggleBaseImage,
   showTags,
   onToggleShowTags,
-  showTentativeOpenings,
-  onToggleTentativeOpenings,
   gridEnabled,
   wallSnapEnabled,
   onToggleGrid,
@@ -45,6 +51,25 @@ export default function EditorToolbar({
 }: EditorToolbarProps) {
   return (
     <div className="rounded-lg border border-white/10 bg-[#0d1322] p-2 flex flex-wrap gap-2 items-center">
+      <div className="inline-flex rounded-lg border border-white/10 bg-black/20 p-1">
+        {PRESETS.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            onClick={() => onViewPresetChange(preset.value)}
+            className={`px-2.5 py-1 text-xs rounded transition ${
+              viewPreset === preset.value
+                ? 'bg-cyan-500/15 text-cyan-200 border border-cyan-400/60'
+                : 'text-gray-300 border border-transparent hover:text-white'
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      <span className="mx-1 h-5 w-px bg-white/10" />
+
       {TOOLS.map((tool) => (
         <button
           key={tool}
@@ -125,16 +150,6 @@ export default function EditorToolbar({
         }`}
       >
         {showTags ? 'Tags: On' : 'Tags: Off'}
-      </button>
-
-      <button
-        type="button"
-        onClick={onToggleTentativeOpenings}
-        className={`px-2 py-1 text-xs rounded border ${
-          showTentativeOpenings ? 'border-sky-400/60 text-sky-200 bg-sky-500/10' : 'border-white/10 text-gray-300'
-        }`}
-      >
-        {showTentativeOpenings ? 'Tentative: On' : 'Tentative: Off'}
       </button>
     </div>
   );

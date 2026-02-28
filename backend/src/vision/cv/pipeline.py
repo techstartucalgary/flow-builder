@@ -17,6 +17,8 @@ from typing import Optional
 import cv2
 import numpy as np
 
+from src.vision.cv.opening_classification import classify_verified_opening
+from src.vision.cv.opening_detection import recover_candidates_from_tags
 from src.vision.cv.models import (
     CVTakeoffResult,
     CropMetadata,
@@ -32,7 +34,7 @@ from src.vision.cv.preprocessing import binarise, crop_drawing_area, isolate_wal
 from src.vision.cv.tag_detection import detect_tags
 from src.vision.cv.wall_detection import (
     Gap,
-    detect_gaps,
+    detect_gaps_with_debug,
     extract_wall_segments,
     suppress_measurement_artifacts,
 )
@@ -51,14 +53,9 @@ ENDPOINT_MARGIN_MIN_PX = 40     # min along-axis margin from endpoints when samp
 ENDPOINT_MARGIN_FRAC = 0.15     # fraction of wall length to skip at each end
 HOST_WALL_DIST_DOOR_PX = 120
 HOST_WALL_DIST_WINDOW_PX = 180
-GAP_MATCH_RADIUS_MIN_PX = 28
-GAP_MATCH_RADIUS_MULT = 1.8
-GAP_MATCH_SCORE_THRESHOLD = 90.0
-PROJECTED_OPENING_MIN_SIZE_PX = 22
-PROJECTED_OPENING_MAX_SIZE_PX = 120
-DOOR_PROJECT_MIN_CONFIDENCE = 0.60
-WINDOW_PROJECT_MIN_CONFIDENCE = 0.68
-LOW_CONFIDENCE_PROJECTED_HIDDEN_THRESHOLD = 0.72
+GAP_ONLY_WALL_BREAK_MIN_SCORE = 0.60
+GAP_ONLY_OPENING_PIXELS_MIN_SCORE = 0.58
+GAP_ONLY_CLASSIFICATION_MIN_SCORE = 0.50
 
 
 # ---------------------------------------------------------------------------
@@ -189,34 +186,8 @@ def _wall_threshold(tag_class: TagClass) -> int:
     return HOST_WALL_DIST_DOOR_PX if tag_class == TagClass.DOOR else HOST_WALL_DIST_WINDOW_PX
 
 
-def _project_threshold(tag_class: TagClass) -> float:
-    return DOOR_PROJECT_MIN_CONFIDENCE if tag_class == TagClass.DOOR else WINDOW_PROJECT_MIN_CONFIDENCE
-
-
 def _axis_value(point: tuple[int, int] | tuple[float, float], orientation: Orientation) -> float:
     return point[0] if orientation == Orientation.HORIZONTAL else point[1]
-
-
-def _opening_extent_px(tags: list[TagAnchor], is_double: bool) -> int:
-    avg_radius = sum(max(8, int(t.radius)) for t in tags) / max(1, len(tags))
-    extent = int(round(avg_radius * (4.0 if is_double else 2.4)))
-    return max(PROJECTED_OPENING_MIN_SIZE_PX, min(PROJECTED_OPENING_MAX_SIZE_PX, extent))
-
-
-def _opening_bbox_from_center(
-    center: tuple[int, int],
-    wall: Optional[WallSegment],
-    width_px: int,
-) -> tuple[int, int, int, int]:
-    cx, cy = center
-    if wall is None:
-        half = max(10, width_px // 2)
-        return (cx - half, cy - half, half * 2, half * 2)
-
-    wall_thickness = max(8, int(wall.visual_thickness or wall.thickness))
-    if wall.orientation == Orientation.HORIZONTAL:
-        return (cx - width_px // 2, cy - wall_thickness // 2, width_px, wall_thickness)
-    return (cx - wall_thickness // 2, cy - width_px // 2, wall_thickness, width_px)
 
 
 def _assign_host_wall_for_point(
@@ -246,6 +217,38 @@ def _assign_host_wall_for_point(
     if best_dist > _wall_threshold(tag_class):
         return None, None, best_dist
     return best_wall, best_projection, best_dist
+
+
+def _find_host_wall_for_gap(gap: Gap, walls: list[WallSegment]) -> Optional[WallSegment]:
+    by_id = {wall.id: wall for wall in walls}
+    if gap.wall_id in by_id:
+        return by_id[gap.wall_id]
+
+    best_wall: Optional[WallSegment] = None
+    best_dist = float("inf")
+    for wall in walls:
+        if wall.orientation != gap.orientation:
+            continue
+        dist = _point_to_segment_dist(gap.center[0], gap.center[1], wall)
+        if dist < best_dist:
+            best_dist = dist
+            best_wall = wall
+    return best_wall
+
+
+def _rects_overlap(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> bool:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by and ay + ah > by
+
+
+def _has_opening_overlap(openings: list[Opening], wall_id: str, bbox: tuple[int, int, int, int]) -> bool:
+    for opening in openings:
+        if opening.wall_id != wall_id:
+            continue
+        if _rects_overlap(opening.bbox, bbox):
+            return True
+    return False
 
 
 def _split_walls_at_tags(
@@ -423,148 +426,196 @@ def _mark_double_doors(tags: list[TagAnchor]) -> int:
     return pairs
 
 
-def _correlate_gaps_and_tags(
+def _correlate_verified_openings(
     gaps: list[Gap],
     tags: list[TagAnchor],
     walls: list[WallSegment],
+    binary: np.ndarray,
+    wall_mask: np.ndarray,
 ) -> tuple[list[Opening], dict[str, int]]:
     """
-    Emit one opening per tag (or double-door pair), using gap correlation
-    only when a nearby wall-local gap is plausible.
+    Emit openings only from verified wall gaps.
+
+    Tags are used for classification only after a real opening candidate
+    already exists.
     """
     openings: list[Opening] = []
-    grouped_tags: list[list[TagAnchor]] = []
-    used: set[str] = set()
-    tag_by_id = {tag.id: tag for tag in tags}
+    matched_tag_ids: set[str] = set()
+    door_openings_emitted = 0
+    window_openings_emitted = 0
+    candidate_rejected = 0
+    opening_candidates_verified = 0
+    door_candidates_symbol_recovered = 0
+    window_candidates_frame_recovered = 0
+    door_candidates_rejected_after_symbol_check = 0
+    window_candidates_rejected_after_frame_check = 0
+    solid_wall_projection_rejections = 0
 
-    for tag in tags:
-        if tag.id in used:
+    next_opening_index = 1
+
+    for gap in gaps:
+        host_wall = _find_host_wall_for_gap(gap, walls)
+        if host_wall is None:
+            candidate_rejected += 1
             continue
-        if tag.tag_class == TagClass.DOOR and tag.is_double and tag.pair_id and tag.pair_id in tag_by_id:
-            pair = tag_by_id[tag.pair_id]
-            if pair.id not in used:
-                grouped_tags.append([tag, pair])
-                used.add(tag.id)
-                used.add(pair.id)
-                continue
-        grouped_tags.append([tag])
-        used.add(tag.id)
 
-    hosted = 0
-    unhosted = 0
-    openings_gap_matched = 0
-    openings_tag_projected = 0
-    openings_hidden_recommended = 0
-    gaps_considered = 0
-    gaps_matched = 0
-
-    for idx, group in enumerate(grouped_tags, 1):
-        is_double = len(group) == 2 and group[0].tag_class == TagClass.DOOR
-        tag_class = group[0].tag_class
-        center = (
-            int(round(sum(tag.center[0] for tag in group) / len(group))),
-            int(round(sum(tag.center[1] for tag in group) / len(group))),
+        opening_candidates_verified += 1
+        classification = classify_verified_opening(
+            binary=binary,
+            wall=host_wall,
+            gap=gap,
+            tags=tags,
         )
-        tag_ids = [tag.id for tag in group]
-        tag_confidence = min(tag.confidence for tag in group)
-
-        if tag_confidence < _project_threshold(tag_class):
-            unhosted += len(group)
+        opening_pixels_score = float(classification["opening_pixels_score"])
+        classification_score = float(classification["classification_score"])
+        tag_class_value = classification["tag_class"]
+        if (
+            gap.wall_break_score < GAP_ONLY_WALL_BREAK_MIN_SCORE
+            or opening_pixels_score < GAP_ONLY_OPENING_PIXELS_MIN_SCORE
+            or classification_score < GAP_ONLY_CLASSIFICATION_MIN_SCORE
+            or tag_class_value is None
+        ):
+            candidate_rejected += 1
             continue
 
-        host_wall, projected_center, host_dist = _assign_host_wall_for_point(tag_class, center, walls)
-        if host_wall is None or projected_center is None:
-            unhosted += len(group)
-            continue
-
-        hosted += len(group)
-        extent_px = _opening_extent_px(group, is_double)
-        if is_double:
-            axis_delta = abs(_axis_value(group[0].center, host_wall.orientation) - _axis_value(group[1].center, host_wall.orientation))
-            extent_px = max(extent_px, int(axis_delta + max(group[0].radius, group[1].radius) * 2.2))
-
-        candidate_radius = max(GAP_MATCH_RADIUS_MIN_PX, int(round(max(tag.radius for tag in group) * GAP_MATCH_RADIUS_MULT)))
-        projected_axis = _axis_value(projected_center, host_wall.orientation)
-        expected_width = extent_px
-        best_gap: Optional[Gap] = None
-        best_score = float("inf")
-        wall_gaps = [gap for gap in gaps if gap.wall_id == host_wall.id]
-
-        for gap in wall_gaps:
-            gap_axis = _axis_value(gap.center, host_wall.orientation)
-            axial_dist = abs(gap_axis - projected_axis)
-            if axial_dist > candidate_radius:
-                continue
-
-            perp_dist = abs(
-                (_axis_value(gap.center, Orientation.VERTICAL) - _axis_value(projected_center, Orientation.VERTICAL))
-                if host_wall.orientation == Orientation.HORIZONTAL
-                else (_axis_value(gap.center, Orientation.HORIZONTAL) - _axis_value(projected_center, Orientation.HORIZONTAL))
-            )
-            size_penalty = abs(gap.width_px - expected_width) * 0.25
-            score = axial_dist + (0.8 * perp_dist) + size_penalty
-            gaps_considered += 1
-
-            if score < best_score:
-                best_score = score
-                best_gap = gap
-
-        if best_gap is not None and best_score <= GAP_MATCH_SCORE_THRESHOLD:
-            bbox = best_gap.bbox
-            confidence = max(
-                0.75,
-                min(
-                    0.95,
-                    round((0.55 * tag_confidence) + (0.40 * (0.95 - (best_score / GAP_MATCH_SCORE_THRESHOLD) * 0.20)), 2),
+        tag_class = TagClass(tag_class_value)
+        tag_ids = list(classification["tag_ids"])
+        matched_tag_ids.update(tag_ids)
+        is_double = tag_class == TagClass.DOOR and len(tag_ids) >= 2
+        source = (
+            "gap_verified_tag_classified"
+            if tag_ids
+            else ("opening_feature_verified" if classification_score >= 0.68 else "gap_verified")
+        )
+        confidence = round(
+            min(
+                0.95,
+                max(
+                    0.55,
+                    (0.36 * gap.wall_break_score)
+                    + (0.34 * opening_pixels_score)
+                    + (0.30 * classification_score),
                 ),
-            )
-            openings.append(
-                Opening(
-                    id=f"OP-{idx:02d}",
-                    tag_class=tag_class,
-                    bbox=(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])),
-                    center=(int(best_gap.center[0]), int(best_gap.center[1])),
-                    wall_id=host_wall.id,
-                    tag_ids=tag_ids,
-                    is_double_door=is_double,
-                    source="gap_matched",
-                    confidence=confidence,
-                )
-            )
-            openings_gap_matched += 1
-            gaps_matched += 1
-            continue
-
-        bbox = _opening_bbox_from_center(projected_center, host_wall, extent_px)
-        host_threshold = float(_wall_threshold(tag_class))
-        distance_score = 1.0 - min(1.0, host_dist / max(1.0, host_threshold))
-        confidence = max(0.45, min(0.90, round((0.65 * tag_confidence) + (0.25 * distance_score), 2)))
+            ),
+            2,
+        )
         openings.append(
             Opening(
-                id=f"OP-{idx:02d}",
+                id=f"OP-{next_opening_index:02d}",
                 tag_class=tag_class,
-                bbox=tuple(int(v) for v in bbox),
-                center=projected_center,
+                bbox=(int(gap.bbox[0]), int(gap.bbox[1]), int(gap.bbox[2]), int(gap.bbox[3])),
+                center=(int(gap.center[0]), int(gap.center[1])),
                 wall_id=host_wall.id,
                 tag_ids=tag_ids,
                 is_double_door=is_double,
-                source="tag_projected",
+                source=source,
                 confidence=confidence,
+                verification={
+                    "opening_pixels_score": round(opening_pixels_score, 2),
+                    "wall_break_score": round(gap.wall_break_score, 2),
+                    "classification_score": round(classification_score, 2),
+                    "door_feature_score": classification["door_feature_score"],
+                    "window_feature_score": classification["window_feature_score"],
+                    "tag_alignment_score": classification["tag_alignment_score"],
+                    "verification_mode": "gap_only",
+                    "host_gap_id": gap.id,
+                },
             )
         )
-        openings_tag_projected += 1
-        if confidence < LOW_CONFIDENCE_PROJECTED_HIDDEN_THRESHOLD:
-            openings_hidden_recommended += 1
+        next_opening_index += 1
+        if tag_class == TagClass.DOOR:
+            door_openings_emitted += 1
+        else:
+            window_openings_emitted += 1
+
+    recovered_candidates, recovery_debug = recover_candidates_from_tags(
+        tags=tags,
+        matched_tag_ids=matched_tag_ids,
+        walls=walls,
+        binary=binary,
+        wall_mask=wall_mask,
+        host_wall_dist_door_px=HOST_WALL_DIST_DOOR_PX,
+        host_wall_dist_window_px=HOST_WALL_DIST_WINDOW_PX,
+    )
+    recovery_candidates_raw = len(recovered_candidates)
+    solid_wall_projection_rejections += recovery_debug["solid_wall_projection_rejections"]
+    door_candidates_rejected_after_symbol_check += recovery_debug["door_candidates_rejected_after_symbol_check"]
+    window_candidates_rejected_after_frame_check += recovery_debug["window_candidates_rejected_after_frame_check"]
+
+    for candidate in recovered_candidates:
+        if not candidate.verified or candidate.tag_class is None:
+            candidate_rejected += 1
+            continue
+        if _has_opening_overlap(openings, candidate.wall_id, candidate.bbox):
+            if candidate.tag_class == TagClass.DOOR:
+                door_candidates_rejected_after_symbol_check += 1
+            else:
+                window_candidates_rejected_after_frame_check += 1
+            continue
+        opening_candidates_verified += 1
+        matched_tag_ids.update(candidate.tag_ids)
+        openings.append(
+            Opening(
+                id=f"OP-{next_opening_index:02d}",
+                tag_class=candidate.tag_class,
+                bbox=(
+                    int(candidate.bbox[0]),
+                    int(candidate.bbox[1]),
+                    int(candidate.bbox[2]),
+                    int(candidate.bbox[3]),
+                ),
+                center=(int(candidate.center[0]), int(candidate.center[1])),
+                wall_id=candidate.wall_id,
+                tag_ids=list(candidate.tag_ids),
+                is_double_door=candidate.tag_class == TagClass.DOOR and len(candidate.tag_ids) >= 2,
+                source="opening_feature_verified",
+                confidence=round(candidate.confidence, 2),
+                verification={
+                    "opening_pixels_score": candidate.opening_pixels_score,
+                    "wall_break_score": candidate.wall_break_score,
+                    "classification_score": round(candidate.confidence, 2),
+                    "door_feature_score": candidate.door_feature_score,
+                    "window_feature_score": candidate.window_feature_score,
+                    "tag_alignment_score": candidate.tag_alignment_score,
+                    "verification_mode": candidate.verification_mode,
+                    "host_gap_id": candidate.host_gap_id,
+                },
+            )
+        )
+        next_opening_index += 1
+        if candidate.tag_class == TagClass.DOOR:
+            door_openings_emitted += 1
+            door_candidates_symbol_recovered += 1
+        else:
+            window_openings_emitted += 1
+            window_candidates_frame_recovered += 1
+
+    unmatched_tags = [tag for tag in tags if tag.id not in matched_tag_ids]
+    solid_wall_projection_rejections += sum(
+        1 for tag in unmatched_tags
+        if any(_point_to_segment_dist(tag.center[0], tag.center[1], wall) <= _wall_threshold(tag.tag_class) for wall in walls)
+    )
 
     return openings, {
         "tags_total": len(tags),
-        "tags_hosted": hosted,
-        "tags_unhosted": unhosted,
-        "openings_gap_matched": openings_gap_matched,
-        "openings_tag_projected": openings_tag_projected,
-        "gaps_considered": gaps_considered,
-        "gaps_matched": gaps_matched,
-        "openings_hidden_recommended": openings_hidden_recommended,
+        "tags_hosted": len(matched_tag_ids),
+        "tags_unhosted": len(unmatched_tags),
+        "openings_gap_matched": len(openings),
+        "openings_tag_projected": 0,
+        "gaps_considered": len(gaps),
+        "gaps_matched": len(openings),
+        "openings_hidden_recommended": 0,
+        "opening_candidates_verified": opening_candidates_verified,
+        "opening_candidates_rejected": candidate_rejected,
+        "recovery_candidates_raw": recovery_candidates_raw,
+        "door_openings_emitted": door_openings_emitted,
+        "window_openings_emitted": window_openings_emitted,
+        "door_candidates_symbol_recovered": door_candidates_symbol_recovered,
+        "window_candidates_frame_recovered": window_candidates_frame_recovered,
+        "door_candidates_rejected_after_symbol_check": door_candidates_rejected_after_symbol_check,
+        "window_candidates_rejected_after_frame_check": window_candidates_rejected_after_frame_check,
+        "tags_unmatched_to_verified_openings": len(unmatched_tags),
+        "solid_wall_projection_rejections": solid_wall_projection_rejections,
     }
 
 
@@ -664,17 +715,13 @@ def run(
     combined_wall_mask = cv2.bitwise_or(h_mask, v_mask)
 
     # ── 3. Detect gaps (opening candidates) ────────────────────────────
-    gaps = detect_gaps(walls, combined_wall_mask)
+    gaps, gap_debug = detect_gaps_with_debug(walls, combined_wall_mask)
 
     # ── 4. Detect tags (circles → doors, hexagons → windows) ──────────
     #       Tags are filtered to only those near a detected wall segment.
     tags, tag_debug = detect_tags(gray, binary, combined_wall_mask, walls)
 
-    # ── 4b. Split walls at tag positions ───────────────────────────────
-    #        Guarantees walls don't visually cross door/window openings.
-    walls = _split_walls_at_tags(walls, tags, gaps)
-
-    # ── 4c. Measure visual thickness (both faces) ────────────────────
+    # ── 4b. Measure visual thickness (both faces) ────────────────────
     #        Uses orientation-matched masks (h_mask for H walls,
     #        v_mask for V walls) to prevent perpendicular contamination.
     _measure_visual_thickness(walls, h_mask, v_mask)
@@ -683,7 +730,7 @@ def run(
     double_pairs = _mark_double_doors(tags)
 
     # ── 6. Correlate gaps with tags → openings ─────────────────────────
-    openings, opening_debug = _correlate_gaps_and_tags(gaps, tags, walls)
+    openings, opening_debug = _correlate_verified_openings(gaps, tags, walls, binary, combined_wall_mask)
 
     # ── 7. Apply scale conversion (if provided) ───────────────────────
     if scale_px_per_ft is not None:
@@ -745,6 +792,17 @@ def run(
         gaps_considered=opening_debug["gaps_considered"],
         gaps_matched=opening_debug["gaps_matched"],
         openings_hidden_recommended=opening_debug["openings_hidden_recommended"],
+        opening_candidates_raw=gap_debug["opening_candidates_raw"] + opening_debug["recovery_candidates_raw"],
+        opening_candidates_verified=opening_debug["opening_candidates_verified"],
+        opening_candidates_rejected=gap_debug["opening_candidates_rejected"] + opening_debug["opening_candidates_rejected"],
+        door_openings_emitted=opening_debug["door_openings_emitted"],
+        window_openings_emitted=opening_debug["window_openings_emitted"],
+        door_candidates_symbol_recovered=opening_debug["door_candidates_symbol_recovered"],
+        window_candidates_frame_recovered=opening_debug["window_candidates_frame_recovered"],
+        door_candidates_rejected_after_symbol_check=opening_debug["door_candidates_rejected_after_symbol_check"],
+        window_candidates_rejected_after_frame_check=opening_debug["window_candidates_rejected_after_frame_check"],
+        tags_unmatched_to_verified_openings=opening_debug["tags_unmatched_to_verified_openings"],
+        solid_wall_projection_rejections=opening_debug["solid_wall_projection_rejections"],
     )
 
     return CVTakeoffResult(

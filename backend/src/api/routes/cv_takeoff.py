@@ -136,9 +136,17 @@ def _log_debug_summary(result: CVTakeoffResult, context: str) -> None:
         f" door_tags_after_dedupe={debug.door_tags_after_dedupe}"
         f" window_tags_raw={debug.window_tags_raw}"
         f" window_tags_after_dedupe={debug.window_tags_after_dedupe}"
-        f" openings_gap_matched={debug.openings_gap_matched}"
-        f" openings_tag_projected={debug.openings_tag_projected}"
-        f" openings_hidden_recommended={debug.openings_hidden_recommended}"
+        f" opening_candidates_raw={debug.opening_candidates_raw}"
+        f" opening_candidates_verified={debug.opening_candidates_verified}"
+        f" opening_candidates_rejected={debug.opening_candidates_rejected}"
+        f" door_openings_emitted={debug.door_openings_emitted}"
+        f" window_openings_emitted={debug.window_openings_emitted}"
+        f" door_candidates_symbol_recovered={debug.door_candidates_symbol_recovered}"
+        f" window_candidates_frame_recovered={debug.window_candidates_frame_recovered}"
+        f" door_candidates_rejected_after_symbol_check={debug.door_candidates_rejected_after_symbol_check}"
+        f" window_candidates_rejected_after_frame_check={debug.window_candidates_rejected_after_frame_check}"
+        f" tags_unmatched_to_verified_openings={debug.tags_unmatched_to_verified_openings}"
+        f" solid_wall_projection_rejections={debug.solid_wall_projection_rejections}"
     )
 
 

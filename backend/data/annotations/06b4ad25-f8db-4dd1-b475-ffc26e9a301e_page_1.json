@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 2,
+  "latest_revision": 3,
   "document": {
     "documentId": "06b4ad25-f8db-4dd1-b475-ffc26e9a301e_page_1",
     "projectId": "06b4ad25-f8db-4dd1-b475-ffc26e9a301e",
@@ -15,8 +15,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:16:14.211Z",
-      "updatedAt": "2026-02-27T20:42:10.715641Z",
-      "revision": 2
+      "updatedAt": "2026-02-27T23:12:55.998Z",
+      "revision": 3
     },
     "layers": {
       "wall": true,
@@ -1286,422 +1286,78 @@
         "relations": {}
       },
       {
-        "id": "door_D-01",
+        "id": "door_OP-01",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
           "visible": true,
-          "confidence": 0.9
+          "confidence": 0.76
         },
         "geometry": {
           "kind": "rect",
-          "x": 4110,
-          "y": 1630,
-          "width": 38,
-          "height": 12.666666666666666,
+          "x": 3917,
+          "y": 1353,
+          "width": 184,
+          "height": 18,
           "rotationDeg": 0
         },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-07",
+          "source": "gap_verified_tag_classified",
+          "confidence": 0.76,
+          "tagIds": [
+            "D-01",
+            "D-03",
+            "D-06",
+            "D-10",
+            "D-11",
+            "D-20"
+          ],
+          "verification": {
+            "openingPixelsScore": 0.83,
+            "wallBreakScore": 0.86,
+            "classificationScore": 0.55,
+            "hostGapId": "G-001"
+          }
+        }
       },
       {
-        "id": "door_D-02",
+        "id": "door_OP-02",
         "type": "door",
         "attrs": {
           "status": "auto",
           "locked": false,
           "visible": true,
-          "confidence": 0.9
+          "confidence": 0.75
         },
         "geometry": {
           "kind": "rect",
-          "x": 3892,
-          "y": 2458,
-          "width": 38,
-          "height": 12.666666666666666,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-03",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 4019,
-          "y": 1891,
-          "width": 60,
-          "height": 20,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-04",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2676,
-          "y": 2715,
-          "width": 38,
-          "height": 12.666666666666666,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-05",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 608,
-          "y": 3428,
-          "width": 58,
-          "height": 19.333333333333332,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-06",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 4027,
-          "y": 3027,
-          "width": 36,
-          "height": 12,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-07",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3998,
-          "y": 778,
-          "width": 38,
-          "height": 12.666666666666666,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-08",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2088,
-          "y": 1798,
-          "width": 34,
-          "height": 11.333333333333334,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-09",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 634,
-          "y": 3628,
-          "width": 66,
-          "height": 22,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-10",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2916,
-          "y": 1412,
-          "width": 38,
-          "height": 12.666666666666666,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-11",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 509,
-          "y": 3401,
-          "width": 64,
-          "height": 21.333333333333332,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-12",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 648,
-          "y": 3926,
-          "width": 58,
-          "height": 19.333333333333332,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "door_D-13",
-        "type": "door",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2692,
-          "y": 3544,
-          "width": 42,
+          "x": 3918,
+          "y": 1381,
+          "width": 182,
           "height": 14,
           "rotationDeg": 0
         },
-        "relations": {}
-      },
-      {
-        "id": "window_W-01",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3128,
-          "y": 3545,
-          "width": 46,
-          "height": 15.333333333333334,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-02",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3074,
-          "y": 3545,
-          "width": 46,
-          "height": 15.333333333333334,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-03",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3024,
-          "y": 3545,
-          "width": 46,
-          "height": 15.333333333333334,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-04",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2048,
-          "y": 2384,
-          "width": 54,
-          "height": 18,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-05",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2602,
-          "y": 2308,
-          "width": 56,
-          "height": 18.666666666666668,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-06",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 2556,
-          "y": 2308,
-          "width": 56,
-          "height": 18.666666666666668,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-07",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 4261,
-          "y": 1452,
-          "width": 54,
-          "height": 18,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-08",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3633,
-          "y": 1442,
-          "width": 54,
-          "height": 18,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "window_W-09",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 4261,
-          "y": 503,
-          "width": 54,
-          "height": 18,
-          "rotationDeg": 0
-        },
-        "relations": {}
+        "relations": {
+          "hostWallId": "wall_H-10",
+          "source": "gap_verified_tag_classified",
+          "confidence": 0.75,
+          "tagIds": [
+            "D-01",
+            "D-03",
+            "D-06",
+            "D-10",
+            "D-11",
+            "D-20"
+          ],
+          "verification": {
+            "openingPixelsScore": 0.84,
+            "wallBreakScore": 0.83,
+            "classificationScore": 0.55,
+            "hostGapId": "G-002"
+          }
+        }
       }
     ],
     "issues": []

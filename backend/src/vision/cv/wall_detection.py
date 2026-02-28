@@ -341,11 +341,14 @@ def _gap_has_wall_pixels(
 class Gap:
     """A detected gap (opening candidate) in a wall segment."""
 
+    id: str
     wall_id: str
     orientation: Orientation
     center: tuple[int, int]
     width_px: int
     bbox: tuple[int, int, int, int]
+    wall_break_score: float
+    opening_fill_ratio: float
 
 
 def _fill_ratio(roi: np.ndarray) -> float:
@@ -389,6 +392,194 @@ def _gap_has_wall_continuity(
     return left_fill >= GAP_MIN_SIDE_FILL and right_fill >= GAP_MIN_SIDE_FILL
 
 
+def _cluster_segments_by_cross_axis(segments: list[WallSegment]) -> list[list[WallSegment]]:
+    if not segments:
+        return []
+
+    ordered = sorted(segments, key=lambda s: _cross(s))
+    clusters: list[list[WallSegment]] = []
+    for seg in ordered:
+        placed = False
+        for cluster in clusters:
+            avg_cross = sum(_cross(item) for item in cluster) / len(cluster)
+            if abs(_cross(seg) - avg_cross) <= MERGE_CROSS_AXIS_TOL:
+                cluster.append(seg)
+                placed = True
+                break
+        if not placed:
+            clusters.append([seg])
+    return clusters
+
+
+def _gap_band_fill(
+    mask: np.ndarray,
+    orientation: Orientation,
+    center_cross: int,
+    gap_start: int,
+    gap_end: int,
+    offset: int,
+    band_half: int = GAP_SCAN_HALF_BAND_PX,
+) -> float:
+    if gap_end <= gap_start:
+        return 1.0
+
+    if orientation == Orientation.HORIZONTAL:
+        row = max(0, min(mask.shape[0] - 1, center_cross + offset))
+        y0 = max(0, row - band_half)
+        y1 = min(mask.shape[0], row + band_half + 1)
+        roi = mask[y0:y1, max(0, gap_start):min(mask.shape[1], gap_end)]
+    else:
+        col = max(0, min(mask.shape[1] - 1, center_cross + offset))
+        x0 = max(0, col - band_half)
+        x1 = min(mask.shape[1], col + band_half + 1)
+        roi = mask[max(0, gap_start):min(mask.shape[0], gap_end), x0:x1]
+    return _fill_ratio(roi)
+
+
+def _gap_bbox(
+    orientation: Orientation,
+    center_cross: int,
+    gap_start: int,
+    gap_end: int,
+    thickness: int,
+) -> tuple[int, int, int, int]:
+    gap_len = max(1, gap_end - gap_start)
+    half = max(6, thickness // 2 + 4)
+    if orientation == Orientation.HORIZONTAL:
+        return (gap_start, center_cross - half, gap_len, half * 2)
+    return (center_cross - half, gap_start, half * 2, gap_len)
+
+
+def _verify_gap_candidate(
+    mask: np.ndarray,
+    orientation: Orientation,
+    center_cross: int,
+    gap_start: int,
+    gap_end: int,
+    thickness: int,
+    left_fill: float,
+    right_fill: float,
+) -> tuple[bool, float, float]:
+    offset = max(2, min(12, thickness // 3))
+    fills = [
+        _gap_band_fill(mask, orientation, center_cross, gap_start, gap_end, 0),
+        _gap_band_fill(mask, orientation, center_cross, gap_start, gap_end, offset),
+        _gap_band_fill(mask, orientation, center_cross, gap_start, gap_end, -offset),
+    ]
+    opening_fill = float(sum(fills) / len(fills))
+    consistency = 1.0 - min(1.0, max(fills) - min(fills))
+    continuity = min(left_fill, right_fill)
+    openness = 1.0 - min(1.0, opening_fill / 0.28)
+    score = (0.45 * openness) + (0.25 * consistency) + (0.30 * continuity)
+    verified = opening_fill <= 0.28 and continuity >= GAP_MIN_SIDE_FILL and score >= 0.58
+    return verified, round(score, 2), round(opening_fill, 2)
+
+
+def _segment_side_fill(
+    mask: np.ndarray,
+    orientation: Orientation,
+    center_cross: int,
+    along_start: int,
+    along_end: int,
+    thickness: int,
+) -> float:
+    sample_px = max(GAP_SIDE_SAMPLE_PX, thickness)
+    return _gap_band_fill(
+        mask,
+        orientation,
+        center_cross,
+        along_start,
+        min(along_end, along_start + sample_px),
+        0,
+    )
+
+
+def _detect_cluster_gaps(
+    segments: list[WallSegment],
+    combined_wall_mask: np.ndarray,
+    next_gap_id: int,
+) -> tuple[list[Gap], int, int, int, int]:
+    gaps: list[Gap] = []
+    raw_candidates = 0
+    verified_candidates = 0
+    rejected_candidates = 0
+
+    by_orientation = {
+        Orientation.HORIZONTAL: [seg for seg in segments if seg.orientation == Orientation.HORIZONTAL],
+        Orientation.VERTICAL: [seg for seg in segments if seg.orientation == Orientation.VERTICAL],
+    }
+
+    for orientation, oriented_segments in by_orientation.items():
+        for cluster in _cluster_segments_by_cross_axis(oriented_segments):
+            cluster.sort(key=lambda seg: _along_range(seg)[0])
+            for left_seg, right_seg in zip(cluster, cluster[1:]):
+                left_start, left_end = _along_range(left_seg)
+                right_start, right_end = _along_range(right_seg)
+                gap_len = right_start - left_end
+                if gap_len < MIN_GAP_SIZE_PX or gap_len > MAX_GAP_SIZE_PX:
+                    continue
+
+                raw_candidates += 1
+                center_cross = int(round((_cross(left_seg) + _cross(right_seg)) / 2))
+                left_fill = _segment_side_fill(
+                    combined_wall_mask,
+                    orientation,
+                    center_cross,
+                    max(left_start, left_end - GAP_SIDE_SAMPLE_PX),
+                    left_end,
+                    max(left_seg.thickness, right_seg.thickness),
+                )
+                right_fill = _segment_side_fill(
+                    combined_wall_mask,
+                    orientation,
+                    center_cross,
+                    right_start,
+                    min(right_end, right_start + GAP_SIDE_SAMPLE_PX),
+                    max(left_seg.thickness, right_seg.thickness),
+                )
+                verified, wall_break_score, opening_fill = _verify_gap_candidate(
+                    combined_wall_mask,
+                    orientation,
+                    center_cross,
+                    left_end,
+                    right_start,
+                    max(left_seg.thickness, right_seg.thickness),
+                    left_fill,
+                    right_fill,
+                )
+                if not verified:
+                    rejected_candidates += 1
+                    continue
+
+                verified_candidates += 1
+                gap_id = f"G-{next_gap_id:03d}"
+                next_gap_id += 1
+                if orientation == Orientation.HORIZONTAL:
+                    center = (left_end + gap_len // 2, center_cross)
+                else:
+                    center = (center_cross, left_end + gap_len // 2)
+                gaps.append(
+                    Gap(
+                        id=gap_id,
+                        wall_id=left_seg.parent_wall_id or left_seg.id,
+                        orientation=orientation,
+                        center=(int(center[0]), int(center[1])),
+                        width_px=int(gap_len),
+                        bbox=_gap_bbox(
+                            orientation,
+                            center_cross,
+                            left_end,
+                            right_start,
+                            max(left_seg.thickness, right_seg.thickness),
+                        ),
+                        wall_break_score=wall_break_score,
+                        opening_fill_ratio=opening_fill,
+                    )
+                )
+
+    return gaps, next_gap_id, raw_candidates, verified_candidates, rejected_candidates
+
+
 # ---------------------------------------------------------------------------
 # Public functions
 # ---------------------------------------------------------------------------
@@ -416,11 +607,33 @@ def detect_gaps(
     segments: list[WallSegment],
     combined_wall_mask: np.ndarray,
 ) -> list[Gap]:
+    gaps, _ = detect_gaps_with_debug(segments, combined_wall_mask)
+    return gaps
+
+
+def detect_gaps_with_debug(
+    segments: list[WallSegment],
+    combined_wall_mask: np.ndarray,
+) -> tuple[list[Gap], dict[str, int]]:
     """
     Walk along each wall segment and identify pixel-runs of *background*
     that represent door/window openings.
     """
     gaps: list[Gap] = []
+    next_gap_id = 1
+    raw_candidates = 0
+    verified_candidates = 0
+    rejected_candidates = 0
+
+    cluster_gaps, next_gap_id, cluster_raw, cluster_verified, cluster_rejected = _detect_cluster_gaps(
+        segments,
+        combined_wall_mask,
+        next_gap_id,
+    )
+    gaps.extend(cluster_gaps)
+    raw_candidates += cluster_raw
+    verified_candidates += cluster_verified
+    rejected_candidates += cluster_rejected
 
     for seg in segments:
         x1, y1 = seg.start
@@ -452,11 +665,44 @@ def detect_gaps(
             gap_len = int(ge - gs)
             if gap_len < MIN_GAP_SIZE_PX or gap_len > MAX_GAP_SIZE_PX:
                 continue
+            raw_candidates += 1
             if not _gap_has_wall_continuity(combined_wall_mask, seg, int(gs), int(ge)):
+                rejected_candidates += 1
                 continue
 
             mid = (gs + ge) // 2
             half = seg.thickness // 2 + 4
+
+            if seg.orientation == Orientation.HORIZONTAL:
+                left_fill = _fill_ratio(combined_wall_mask[y0:y1_band, max(lo_x, lo_x + gs - GAP_SIDE_SAMPLE_PX):lo_x + gs])
+                right_fill = _fill_ratio(combined_wall_mask[y0:y1_band, lo_x + ge:min(hi_x, lo_x + ge + GAP_SIDE_SAMPLE_PX)])
+                verified, wall_break_score, opening_fill = _verify_gap_candidate(
+                    combined_wall_mask,
+                    seg.orientation,
+                    row,
+                    lo_x + gs,
+                    lo_x + ge,
+                    seg.thickness,
+                    left_fill,
+                    right_fill,
+                )
+            else:
+                left_fill = _fill_ratio(combined_wall_mask[max(lo_y, lo_y + gs - GAP_SIDE_SAMPLE_PX):lo_y + gs, x0:x1_band])
+                right_fill = _fill_ratio(combined_wall_mask[lo_y + ge:min(hi_y, lo_y + ge + GAP_SIDE_SAMPLE_PX), x0:x1_band])
+                verified, wall_break_score, opening_fill = _verify_gap_candidate(
+                    combined_wall_mask,
+                    seg.orientation,
+                    col,
+                    lo_y + gs,
+                    lo_y + ge,
+                    seg.thickness,
+                    left_fill,
+                    right_fill,
+                )
+            if not verified:
+                rejected_candidates += 1
+                continue
+            verified_candidates += 1
 
             if seg.orientation == Orientation.HORIZONTAL:
                 cx = lo_x + mid
@@ -469,16 +715,33 @@ def detect_gaps(
 
             gaps.append(
                 Gap(
-                    wall_id=seg.id,
+                    id=f"G-{next_gap_id:03d}",
+                    wall_id=seg.parent_wall_id or seg.id,
                     orientation=seg.orientation,
                     center=(int(cx), int(cy)),
                     width_px=gap_len,
                     bbox=(int(bbox[0]), int(bbox[1]),
                           int(bbox[2]), int(bbox[3])),
+                    wall_break_score=wall_break_score,
+                    opening_fill_ratio=opening_fill,
                 )
             )
+            next_gap_id += 1
 
-    return gaps
+    deduped: list[Gap] = []
+    seen: set[tuple[str, int, int]] = set()
+    for gap in gaps:
+        key = (gap.wall_id, gap.center[0], gap.center[1])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(gap)
+
+    return deduped, {
+        "opening_candidates_raw": raw_candidates,
+        "opening_candidates_verified": len(deduped),
+        "opening_candidates_rejected": rejected_candidates,
+    }
 
 
 def _component_mask(binary: np.ndarray) -> np.ndarray:
