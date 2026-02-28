@@ -13,18 +13,20 @@ const STATUS_LABEL: Record<RevisionStatusBarProps['status'], string> = {
 };
 
 export default function RevisionStatusBar({ revision, status }: RevisionStatusBarProps) {
+  const tone =
+    status === 'error'
+      ? 'danger'
+      : status === 'saved'
+        ? 'good'
+        : 'warn';
+
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-gray-300 flex items-center justify-between">
-      <span>Revision: {revision}</span>
-      <span
-        className={
-          status === 'error'
-            ? 'text-red-300'
-            : status === 'saved'
-              ? 'text-emerald-300'
-              : 'text-amber-300'
-        }
-      >
+    <div className="ws-panel-elevated px-3 py-3 flex items-center justify-between gap-3">
+      <div>
+        <div className="ws-section-header">Document Status</div>
+        <div className="mt-1 text-sm text-white font-semibold">Revision {revision}</div>
+      </div>
+      <span className="ws-chip" data-tone={tone}>
         {STATUS_LABEL[status]}
       </span>
     </div>

@@ -116,10 +116,11 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
 
         onApply(updated);
       })}
-      className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2 text-xs"
+      className="ws-panel p-3 space-y-3 text-xs"
     >
-      <div className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Properties</div>
-      <div className="rounded border border-white/10 bg-black/20 px-2 py-2 text-[11px] text-gray-300 space-y-1">
+      <div className="ws-section-header">Selection / Evidence</div>
+      <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-[11px] text-gray-300 space-y-1.5">
+        <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold">Identity</div>
         <div className="flex items-center justify-between gap-2">
           <span className="uppercase tracking-wide text-gray-500">Element</span>
           <span className="font-mono text-gray-200">{element.id}</span>
@@ -151,8 +152,8 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
       </div>
 
       {verification && (
-        <div className="rounded border border-cyan-500/20 bg-cyan-500/5 px-2 py-2 text-[11px] text-cyan-100 space-y-1">
-          <div className="font-semibold uppercase tracking-wide text-cyan-200/80">Verification</div>
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-3 text-[11px] text-cyan-100 space-y-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-200/80">Verification</div>
           {verification.verificationMode && (
             <div className="flex items-center justify-between gap-2">
               <span className="text-cyan-200/70">Mode</span>
@@ -204,8 +205,8 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
         </div>
       )}
 
-      <div className="rounded border border-white/10 bg-white/[0.03] px-2 py-2 text-[11px] text-gray-300 space-y-1">
-        <div className="font-semibold uppercase tracking-wide text-gray-300">Issues</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-1.5">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Issues</div>
         {issues.length === 0 ? (
           <div className="text-gray-500">No issues attached to this element.</div>
         ) : (
@@ -218,6 +219,7 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
         )}
       </div>
 
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400">Editable Fields</div>
       <div className="grid grid-cols-2 gap-2">
         <label className="text-gray-400">Name<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('name')} /></label>
         <label className="text-gray-400">Confidence<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('confidence', { valueAsNumber: true })} /></label>

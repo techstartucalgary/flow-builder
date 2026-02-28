@@ -565,7 +565,6 @@ export default function AnnotationEditorShell({
 
         <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
           <RevisionStatusBar revision={document.meta.revision} status={saveStatus} />
-          <LayerVisibilityPanel document={document} onToggle={toggleLayer} />
           <IssueHighlighter issues={document.issues} onSelectIssue={(issue) => setSelection([issue.elementId])} />
           <PropertyPanel
             element={selectedElement}
@@ -573,6 +572,7 @@ export default function AnnotationEditorShell({
             revision={document.meta.revision}
             onApply={updateElement}
           />
+          <LayerVisibilityPanel document={document} onToggle={toggleLayer} />
         </div>
       </div>
     </div>

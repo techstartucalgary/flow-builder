@@ -9,10 +9,13 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
   ZoomIn,
   ZoomOut,
-  Sparkles,
   PencilRuler,
+  Ruler,
 } from 'lucide-react';
 import { getBackendUrl } from '@/lib/backendUrl';
 import { parseTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
@@ -21,6 +24,7 @@ import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
 import PdfViewerClient from '@/components/pdf/PdfViewer';
 import AnnotationEditorShell from '@/components/annotation/AnnotationEditorShell';
 import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBoundary';
+import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 
 const BACKEND_URL = getBackendUrl();
 const WASTE_FACTOR = 0.15;
@@ -34,6 +38,45 @@ type ProjectRow = {
   file_mime: string;
   created_at: string;
 };
+
+function presetLabel(preset: string): string {
+  switch (preset) {
+    case 'openings_qa':
+      return 'Openings QA';
+    case 'tags_qa':
+      return 'Tags QA';
+    case 'walls_qa':
+      return 'Walls QA';
+    default:
+      return 'Editor';
+  }
+}
+
+function saveTone(status: 'saved' | 'unsaved' | 'syncing' | 'error'): 'good' | 'warn' | 'accent' | 'danger' {
+  switch (status) {
+    case 'saved':
+      return 'good';
+    case 'unsaved':
+      return 'warn';
+    case 'syncing':
+      return 'accent';
+    default:
+      return 'danger';
+  }
+}
+
+function saveLabel(status: 'saved' | 'unsaved' | 'syncing' | 'error'): string {
+  switch (status) {
+    case 'saved':
+      return 'Saved';
+    case 'unsaved':
+      return 'Unsaved';
+    case 'syncing':
+      return 'Syncing';
+    default:
+      return 'Attention';
+  }
+}
 
 export default function ProjectViewerPage() {
   const { user } = useAuth();
@@ -69,6 +112,9 @@ export default function ProjectViewerPage() {
   ];
   const [overlayStatus, setOverlayStatus] = useState(ANALYSIS_STEPS[0]);
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const editorDocument = useAnnotationEditorStore((s) => s.document);
+  const editorSaveStatus = useAnnotationEditorStore((s) => s.saveStatus);
+  const editorViewPreset = useAnnotationEditorStore((s) => s.viewPreset);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -194,6 +240,51 @@ export default function ProjectViewerPage() {
 
   const isPdf = useMemo(() => project?.file_mime === 'application/pdf', [project?.file_mime]);
   const isImage = useMemo(() => project?.file_mime?.startsWith('image/'), [project?.file_mime]);
+  const modeLabel = editorMode ? presetLabel(editorViewPreset) : 'Review';
+  const scaleValue = scalePxPerFt.trim() ? Number(scalePxPerFt) : null;
+  const hasScale = typeof scaleValue === 'number' && Number.isFinite(scaleValue) && scaleValue > 0;
+  const sheets = takeoff.netDrywall > 0 ? Math.ceil((takeoff.netDrywall * (1 + WASTE_FACTOR)) / SHEET_SQFT) : 0;
+  const wasteSqFt = takeoff.netDrywall > 0 ? Math.round(takeoff.netDrywall * WASTE_FACTOR) : 0;
+  const openingDeductionEstimate = generated ? Math.max(0, Math.round((takeoff.doors * 21) + (takeoff.windows * 12))) : 0;
+  const reviewWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (!hasScale) {
+      warnings.push('Scale missing. Area and drywall outputs should be treated as provisional.');
+    }
+    if (editorMode && editorSaveStatus !== 'saved') {
+      warnings.push('Editor changes are not fully committed yet. Regenerate after saving if you want takeoff numbers to reflect geometry updates.');
+    }
+    if (takeoffError) {
+      warnings.push(takeoffError);
+    }
+    if (generated && takeoff.netDrywall === 0 && hasScale) {
+      warnings.push('Takeoff completed with zero drywall. Inspect geometry and backend debug counters before trusting the result.');
+    }
+    return warnings;
+  }, [editorMode, editorSaveStatus, generated, hasScale, takeoff.netDrywall, takeoffError]);
+
+  const readinessRows = useMemo(() => ([
+    {
+      label: 'Document',
+      value: isPdf ? 'PDF drawing set' : 'Raster plan image',
+      tone: 'accent' as const,
+    },
+    {
+      label: 'Page',
+      value: isPdf && numPages > 0 ? `${pageNumber} of ${numPages}` : `Page ${pageNumber}`,
+      tone: 'accent' as const,
+    },
+    {
+      label: 'Scale',
+      value: hasScale ? `${scaleValue} px/ft` : 'Missing',
+      tone: hasScale ? ('good' as const) : ('warn' as const),
+    },
+    {
+      label: 'Geometry',
+      value: editorDocument ? `Revision ${editorDocument.meta.revision}` : 'No annotation doc',
+      tone: editorDocument ? ('good' as const) : ('warn' as const),
+    },
+  ]), [editorDocument, hasScale, isPdf, numPages, pageNumber, scaleValue]);
 
   if (loading) {
     return (
@@ -207,341 +298,389 @@ export default function ProjectViewerPage() {
   if (!project || !fileUrl) return null;
 
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden">
-      {/* Top bar */}
-      <div className="flex items-center gap-1 min-w-0 px-3 py-2 shrink-0">
-        <button
-          onClick={() => router.push('/dashboard/projects')}
-          className="inline-flex items-center text-gray-300 hover:text-white transition shrink-0"
-          aria-label="Back to projects"
-        >
-          <ChevronLeft size={18} />
-        </button>
-
-        <div className="text-white font-semibold text-lg truncate">{project.name}</div>
-
-        <div className="ml-auto flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setEditorMode((v) => !v)}
-            className={`h-8 px-3 rounded-lg border text-xs inline-flex items-center gap-1.5 transition ${
-              editorMode
-                ? 'border-cyan-400/60 bg-cyan-500/10 text-cyan-200'
-                : 'border-white/10 bg-white/5 text-gray-300'
-            }`}
-            title="Toggle annotation editor"
-          >
-            <PencilRuler size={14} />
-            {editorMode ? 'Editor On' : 'Editor Off'}
-          </button>
-
-          {isPdf && numPages > 1 && (
-            <>
+    <div className="absolute inset-0 overflow-hidden bg-[var(--ws-bg)] text-[var(--ws-text)]">
+      <div className="flex h-full flex-col gap-3 px-3 py-3">
+        <header className="ws-panel-elevated flex shrink-0 items-center justify-between gap-4 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
             <button
-              onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-              className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 grid place-items-center text-gray-200"
-              disabled={pageNumber <= 1}
+              onClick={() => router.push('/dashboard/projects')}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--ws-border)] bg-white/5 text-[var(--ws-text-secondary)] transition hover:bg-white/10 hover:text-[var(--ws-text)]"
+              aria-label="Back to projects"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={18} />
             </button>
-            <span className="text-xs text-gray-400">
-              {pageNumber} / {numPages}
-            </span>
-            <button
-              onClick={() => setPageNumber((p) => Math.min(numPages || p, p + 1))}
-              className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 grid place-items-center text-gray-200"
-              disabled={numPages > 0 && pageNumber >= numPages}
-            >
-              <ChevronRight size={16} />
-            </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* 2-panel layout — takes all remaining height */}
-      <div className="flex-1 min-h-0 flex">
-        {/* Left — PDF with zoom bar */}
-        <div className="flex-1 min-w-0 flex flex-col min-h-0">
-          {editorMode ? (
-            <div className="flex-1 min-h-0 p-2">
-              <AnnotationEditorBoundary
-                key={`${project.id}:${pageNumber}`}
-                onDisableEditor={() => setEditorMode(false)}
-              >
-                <AnnotationEditorShell
-                  projectId={project.id}
-                  fileUrl={fileUrl}
-                  fileMime={project.file_mime}
-                  pageNumber={pageNumber}
-                  scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
-                  actorId={user?.id}
-                />
-              </AnnotationEditorBoundary>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-lg font-semibold text-white">{project.name}</h1>
+                <span className="ws-chip" data-tone={saveTone(editorSaveStatus)}>
+                  {saveLabel(editorSaveStatus)}
+                </span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--ws-text-muted)]">
+                <span className="ws-chip">{isPdf ? 'PDF plan' : 'Image plan'}</span>
+                <span className="ws-chip">Sheet {pageNumber}</span>
+                {editorDocument ? <span className="ws-chip">Revision {editorDocument.meta.revision}</span> : null}
+              </div>
             </div>
-          ) : (
-            <>
-              {/* Zoom bar */}
-              <div className="flex items-center gap-3 px-3 py-1.5 text-gray-300 text-xs shrink-0">
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="hidden items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-white/5 px-3 py-2 md:flex">
+              <span className="text-[11px] uppercase tracking-[0.24em] text-[var(--ws-text-muted)]">Mode</span>
+              <span className="ws-chip" data-tone={editorMode ? 'accent' : 'good'}>
+                {modeLabel}
+              </span>
+            </div>
+
+            {isPdf && numPages > 1 ? (
+              <div className="flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-white/5 px-2 py-1.5">
                 <button
-                  onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
-                  className="flex items-center justify-center hover:text-white transition"
-                  aria-label="Zoom out"
+                  onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--ws-text-secondary)] transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+                  disabled={pageNumber <= 1}
+                  aria-label="Previous page"
                 >
-                  <ZoomOut size={16} />
+                  <ChevronLeft size={16} />
                 </button>
+                <span className="min-w-[4.5rem] text-center text-xs text-[var(--ws-text-secondary)]">
+                  {pageNumber} / {numPages}
+                </span>
                 <button
-                  onClick={() => setZoom(1)}
-                  className="hover:text-white transition min-w-[3rem] text-center"
-                  aria-label="Reset zoom"
-                  title="Reset to 100%"
+                  onClick={() => setPageNumber((p) => Math.min(numPages || p, p + 1))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--ws-text-secondary)] transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+                  disabled={numPages > 0 && pageNumber >= numPages}
+                  aria-label="Next page"
                 >
-                  {Math.round(zoom * 100)}%
-                </button>
-                <button
-                  onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
-                  className="flex items-center justify-center hover:text-white transition"
-                  aria-label="Zoom in"
-                >
-                  <ZoomIn size={16} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
+            ) : null}
 
-              {/* PDF / Image — or annotated overlay after takeoff */}
-              <div className="flex-1 min-h-0 overflow-auto relative">
-                {annotatedImage && generated ? (
-                  /* Show CV-annotated floor plan after takeoff */
-                  <div className="w-full h-full flex items-center justify-center p-2">
-                    <img
-                      src={annotatedImage}
-                      alt="Annotated floor plan"
-                      className="max-h-full max-w-full object-contain"
-                      style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-                    />
+            <button
+              type="button"
+              onClick={() => setEditorMode((v) => !v)}
+              className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition ${
+                editorMode
+                  ? 'border-cyan-400/60 bg-cyan-500/12 text-cyan-100'
+                  : 'border-[var(--ws-border)] bg-white/5 text-[var(--ws-text-secondary)] hover:bg-white/10'
+              }`}
+              title="Toggle annotation editor"
+            >
+              <PencilRuler size={16} />
+              {editorMode ? 'Editor On' : 'Editor Off'}
+            </button>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 gap-3">
+          <section className="flex min-w-0 flex-1 flex-col">
+            <div className="ws-panel-elevated flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--ws-border)] px-4 py-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--ws-text-muted)]">Plan Workspace</div>
+                  <div className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                    {editorMode
+                      ? 'Inspect geometry, review issues, and adjust annotations before trusting takeoff output.'
+                      : 'Review the source plan, zoom into details, and compare the drawing against generated results.'}
                   </div>
-                ) : isPdf ? (
-                  <PdfViewerClient
-                    fileUrl={fileUrl}
-                    pageNumber={pageNumber}
-                    zoom={zoom}
-                    onLoadNumPages={(n) => {
-                      setNumPages(n);
-                      setPageNumber((p) => Math.min(p, n));
-                    }}
-                  />
+                </div>
+                {!editorMode ? (
+                  <div className="flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-white/5 px-2 py-1.5 text-[var(--ws-text-secondary)]">
+                    <button
+                      onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                      aria-label="Zoom out"
+                    >
+                      <ZoomOut size={16} />
+                    </button>
+                    <button
+                      onClick={() => setZoom(1)}
+                      className="min-w-[3.5rem] rounded-lg px-2 py-1 text-center text-xs transition hover:bg-white/10 hover:text-white"
+                      aria-label="Reset zoom"
+                      title="Reset to 100%"
+                    >
+                      {Math.round(zoom * 100)}%
+                    </button>
+                    <button
+                      onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                      aria-label="Zoom in"
+                    >
+                      <ZoomIn size={16} />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="relative min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(39,212,255,0.09),_transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))]">
+                {editorMode ? (
+                  <div className="h-full min-h-0 p-2">
+                    <AnnotationEditorBoundary
+                      key={`${project.id}:${pageNumber}`}
+                      onDisableEditor={() => setEditorMode(false)}
+                    >
+                      <AnnotationEditorShell
+                        projectId={project.id}
+                        fileUrl={fileUrl}
+                        fileMime={project.file_mime}
+                        pageNumber={pageNumber}
+                        scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
+                        actorId={user?.id}
+                      />
+                    </AnnotationEditorBoundary>
+                  </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <img
-                      src={fileUrl}
-                      alt={project.name}
-                      className="max-h-full max-w-full object-contain"
-                      style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-                    />
+                  <div className="relative h-full overflow-auto">
+                    {annotatedImage && generated ? (
+                      <div className="flex h-full w-full items-center justify-center p-4">
+                        <img
+                          src={annotatedImage}
+                          alt="Annotated floor plan"
+                          className="max-h-full max-w-full object-contain"
+                          style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                        />
+                      </div>
+                    ) : isPdf ? (
+                      <PdfViewerClient
+                        fileUrl={fileUrl}
+                        pageNumber={pageNumber}
+                        zoom={zoom}
+                        onLoadNumPages={(n) => {
+                          setNumPages(n);
+                          setPageNumber((p) => Math.min(p, n));
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center p-4">
+                        <img
+                          src={fileUrl}
+                          alt={project.name}
+                          className="max-h-full max-w-full object-contain"
+                          style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                        />
+                      </div>
+                    )}
+                    <TakeoffAnalyzingOverlay isOpen={generating} statusText={overlayStatus} />
                   </div>
                 )}
-
-                {/* Takeoff analyzing overlay */}
-                <TakeoffAnalyzingOverlay isOpen={generating} statusText={overlayStatus} />
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Right — Takeoff Panel */}
-        <aside className="w-[420px] shrink-0 border-l border-white/10 bg-[#0a0f1a] flex flex-col min-h-0 overflow-hidden">
-          {/* Scale input */}
-          <div className="px-4 pt-4 pb-2 shrink-0">
-            <label className="text-xs text-gray-400 block mb-1.5">
-              Scale (px/ft) — required for area & drywall
-            </label>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              placeholder="e.g. 50"
-              value={scalePxPerFt}
-              onChange={(e) => setScalePxPerFt(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          {/* Header row */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
-            <span className="text-white font-semibold text-sm">AI Takeoff</span>
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-400 hover:to-blue-500 disabled:opacity-50 text-white text-xs font-semibold transition shadow-lg shadow-indigo-500/20"
-            >
-              {generating ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  
-                  Generate Takeoff
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Error */}
-          {takeoffError && (
-            <div className="mx-4 mb-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 shrink-0">
-              <div className="flex items-start gap-2">
-                <AlertCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
-                <p className="text-red-300 text-xs">{takeoffError}</p>
               </div>
             </div>
-          )}
+          </section>
 
-          {/* Metric cards — 3 top, 3 bottom */}
-          <div className="px-4 py-3 shrink-0 space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-3 text-center">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Total Area</div>
-                <div className="text-white font-bold text-xl leading-none">
-                  {takeoff.totalArea > 0 ? takeoff.totalArea.toLocaleString() : '0'}
-                </div>
-                <div className="text-[10px] text-gray-500 mt-0.5">sq ft</div>
+          <aside className="flex w-[420px] shrink-0 flex-col gap-3 overflow-hidden">
+            <section className="ws-panel-elevated shrink-0 px-4 py-4">
+              <div className="ws-section-header">
+                <span>Run / Inputs</span>
+                <span className="ws-chip" data-tone={generating ? 'accent' : generated ? 'good' : 'warn'}>
+                  {generating ? 'Analyzing' : generated ? 'Takeoff Ready' : 'Awaiting Run'}
+                </span>
               </div>
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-3 text-center">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Net Drywall</div>
-                <div className="text-white font-bold text-xl leading-none">
-                  {takeoff.netDrywall > 0 ? takeoff.netDrywall.toLocaleString() : '0'}
-                </div>
-                <div className="text-[10px] text-gray-500 mt-0.5">sq ft</div>
-              </div>
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-3 text-center">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Waste</div>
-                <div className="text-white font-bold text-xl leading-none">
-                  {takeoff.waste > 0 ? takeoff.waste : '0'}
-                </div>
-                <div className="text-[10px] text-gray-500 mt-0.5">%</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-3 text-center">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Doors</div>
-                <div className="text-white font-bold text-xl leading-none">
-                  {takeoff.doors}
-                </div>
-              </div>
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-3 text-center">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Windows</div>
-                <div className="text-white font-bold text-xl leading-none">
-                  {takeoff.windows}
-                </div>
-              </div>
-              <div className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-3 text-center">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Sheets</div>
-                <div className="text-white font-bold text-xl leading-none">
-                  {takeoff.netDrywall > 0 ? Math.ceil((takeoff.netDrywall * (1 + WASTE_FACTOR)) / SHEET_SQFT) : '0'}
-                </div>
-                <div className="text-[10px] text-gray-500 mt-0.5">4x12</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-white/10 mx-4 shrink-0" />
-
-          {/* Summary section */}
-          <div className="flex-1 min-h-0 flex flex-col px-4 pt-3 pb-4 overflow-hidden">
-            <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3 shrink-0">Summary</div>
-            {generated && takeoff.netDrywall > 0 ? (
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
-                {/* Overview card */}
-                <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white font-semibold text-sm tracking-wide">TAKEOFF OVERVIEW</span>
+              <div className="mt-4 grid gap-3">
+                {readinessRows.map((row) => (
+                  <div key={row.label} className="flex items-center justify-between rounded-xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-2">
+                    <span className="text-xs text-[var(--ws-text-muted)]">{row.label}</span>
+                    <span className="ws-chip" data-tone={row.tone}>{row.value}</span>
                   </div>
-
-                  {/* Key figures row */}
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div>
-                      <div className="text-[10px] text-gray-500 mb-0.5">Net Drywall</div>
-                      <div className="text-white font-bold text-lg">{takeoff.netDrywall.toLocaleString()}</div>
-                      <div className="text-[10px] text-gray-500">sq ft</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-gray-500 mb-0.5">Sheets (4x12)</div>
-                      <div className="text-white font-bold text-lg">{Math.ceil((takeoff.netDrywall * (1 + WASTE_FACTOR)) / SHEET_SQFT)}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-gray-500 mb-0.5">Total Area</div>
-                      <div className="text-white font-bold text-lg">{takeoff.totalArea > 0 ? takeoff.totalArea.toLocaleString() : '---'}</div>
-                      <div className="text-[10px] text-gray-500">sq ft</div>
-                    </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <label className="mb-1.5 block text-xs text-[var(--ws-text-secondary)]">
+                  Scale (px/ft)
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Ruler size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ws-text-muted)]" />
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      placeholder="e.g. 50"
+                      value={scalePxPerFt}
+                      onChange={(e) => setScalePxPerFt(e.target.value)}
+                      className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    />
                   </div>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={generating}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:opacity-60"
+                  >
+                    {generating ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                    {generating ? 'Running' : 'Generate'}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-[var(--ws-text-muted)]">
+                  Run the current page through the CV pipeline, then review geometry and material output before trusting the estimate.
+                </p>
+              </div>
+            </section>
 
-                  {/* Breakdown bars */}
-                  <div className="space-y-3 pt-2 border-t border-white/10">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-400">Exterior walls</span>
-                        <span className="text-gray-300">{takeoff.netDrywall > 0 ? Math.round(takeoff.netDrywall * 0.45).toLocaleString() : '0'} sq ft</span>
+            <section className="ws-panel flex-1 min-h-0 overflow-hidden px-4 py-4">
+              <div className="ws-section-header">
+                <span>Review Rail</span>
+                <span className="ws-chip">{modeLabel}</span>
+              </div>
+
+              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+                <div className="ws-section">
+                  <div className="ws-section-header">
+                    <span>Key Metrics</span>
+                    <span className="text-xs text-[var(--ws-text-muted)]">Current page</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-4">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Net Drywall</div>
+                      <div className="mt-2 text-3xl font-semibold text-white">
+                        {takeoff.netDrywall > 0 ? takeoff.netDrywall.toLocaleString() : '0'}
                       </div>
-                      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full rounded-full bg-indigo-500" style={{ width: '45%' }} />
+                      <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Total Area</div>
+                      <div className="mt-2 text-2xl font-semibold text-white">
+                        {takeoff.totalArea > 0 ? takeoff.totalArea.toLocaleString() : '0'}
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Openings</div>
+                      <div className="mt-2 flex items-end gap-3">
+                        <div>
+                          <div className="text-xl font-semibold text-white">{takeoff.doors}</div>
+                          <div className="text-[11px] text-[var(--ws-text-muted)]">doors</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-semibold text-white">{takeoff.windows}</div>
+                          <div className="text-[11px] text-[var(--ws-text-muted)]">windows</div>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-400">Partition walls</span>
-                        <span className="text-gray-300">{takeoff.netDrywall > 0 ? Math.round(takeoff.netDrywall * 0.55).toLocaleString() : '0'} sq ft</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full rounded-full bg-indigo-500" style={{ width: '55%' }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-400">Waste ({takeoff.waste}%)</span>
-                        <span className="text-gray-300">{takeoff.netDrywall > 0 ? Math.round(takeoff.netDrywall * WASTE_FACTOR).toLocaleString() : '0'} sq ft</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full rounded-full bg-indigo-500/60" style={{ width: '15%' }} />
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Sheets / Waste</div>
+                      <div className="mt-2 flex items-end gap-3">
+                        <div>
+                          <div className="text-xl font-semibold text-white">{sheets}</div>
+                          <div className="text-[11px] text-[var(--ws-text-muted)]">4x12 sheets</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-semibold text-white">{takeoff.waste || 0}%</div>
+                          <div className="text-[11px] text-[var(--ws-text-muted)]">waste</div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : generating ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="flex items-center gap-2 text-gray-500 text-xs">
-                  <Loader2 size={14} className="animate-spin" />
-                  Analyzing plan...
+
+                <div className="ws-section">
+                  <div className="ws-section-header">
+                    <span>Trust / Warnings</span>
+                    <span className="ws-chip" data-tone={reviewWarnings.length ? 'warn' : 'good'}>
+                      {reviewWarnings.length ? `${reviewWarnings.length} review` : 'Clear'}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {takeoffError ? (
+                      <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm text-red-200">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-300" />
+                          <span>{takeoffError}</span>
+                        </div>
+                      </div>
+                    ) : null}
+                    {reviewWarnings.length ? reviewWarnings.map((warning) => (
+                      <div key={warning} className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-3 text-sm text-amber-100">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-300" />
+                          <span>{warning}</span>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3 text-sm text-emerald-100">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-300" />
+                          <span>The current page has scale, geometry, and persisted editor state aligned for review.</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : generated ? (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-gray-500 text-xs text-center px-4">
-                  {takeoff.netDrywall === 0 ? (
-                    scalePxPerFt.trim() ? (
-                      <>
-                        Scale was sent but drywall is 0. Check browser console and backend terminal for <code>scale_px_per_ft</code>, <code>total_length_px</code>, <code>walls</code>.
-                      </>
-                    ) : (
-                      <>
-                        Add <strong>Scale (px/ft)</strong> (e.g. <strong>50</strong> for 1/4&quot;=1&apos;) and click <strong>Generate Takeoff</strong> again.
-                      </>
-                    )
+
+                <div className="ws-section">
+                  <div className="ws-section-header">
+                    <span>Breakdown</span>
+                    <span className="text-xs text-[var(--ws-text-muted)]">Audit-oriented</span>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-[var(--ws-text-secondary)]">Gross wall area basis</span>
+                        <span className="font-medium text-white">{takeoff.netDrywall > 0 ? (takeoff.netDrywall + openingDeductionEstimate).toLocaleString() : '0'} sq ft</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--ws-text-muted)]">Net drywall plus estimated deductions from emitted openings on this page.</p>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-[var(--ws-text-secondary)]">Opening deductions</span>
+                        <span className="font-medium text-white">{openingDeductionEstimate.toLocaleString()} sq ft</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--ws-text-muted)]">Derived from current door/window counts. Replace this with per-opening audit data once backend breakdowns land.</p>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-[var(--ws-text-secondary)]">Waste-adjusted total</span>
+                        <span className="font-medium text-white">{takeoff.netDrywall > 0 ? (takeoff.netDrywall + wasteSqFt).toLocaleString() : '0'} sq ft</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--ws-text-muted)]">Net drywall plus configured waste allowance before sheet conversion.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ws-section">
+                  <div className="ws-section-header">
+                    <span>Summary</span>
+                    <span className="text-xs text-[var(--ws-text-muted)]">Why these numbers move</span>
+                  </div>
+                  {generating ? (
+                    <div className="mt-3 rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-6 text-center text-sm text-[var(--ws-text-secondary)]">
+                      <Loader2 size={16} className="mx-auto mb-2 animate-spin" />
+                      {overlayStatus}
+                    </div>
+                  ) : generated ? (
+                    <div className="mt-3 space-y-3">
+                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                        <div className="text-sm font-medium text-white">How this was calculated</div>
+                        <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                          The current estimate uses detected wall geometry on this page, subtracts emitted openings, applies the waste factor, and converts the result into 4x12 sheet counts.
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                        <div className="text-sm font-medium text-white">What affects this result</div>
+                        <ul className="mt-2 space-y-1 text-sm text-[var(--ws-text-secondary)]">
+                          <li>Scale accuracy determines whether area and drywall values are trustworthy.</li>
+                          <li>Door/window verification changes deduction totals and sheet counts.</li>
+                          <li>Unsaved editor changes do not automatically recalculate takeoff output.</li>
+                        </ul>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                        <div className="text-sm font-medium text-white">What needs review</div>
+                        <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                          {takeoff.summary || 'Use the editor QA presets to inspect walls, openings, and unmatched tags before treating the estimate as final.'}
+                        </p>
+                      </div>
+                    </div>
                   ) : (
-                    'Analysis complete.'
+                    <div className="mt-3 rounded-2xl border border-dashed border-[var(--ws-border-strong)] bg-white/[0.02] px-4 py-5">
+                      <div className="text-sm font-medium text-white">Ready to analyze</div>
+                      <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                        Generate takeoff to extract geometry, estimate drywall, and populate the review rail. Add a valid scale first if you want area and drywall numbers to be actionable.
+                      </p>
+                    </div>
                   )}
-                </p>
+                </div>
               </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-gray-600 text-xs text-center px-4">
-                  Click &quot;Generate Takeoff&quot; to extract rooms, walls, doors, windows, and get a material estimate.
-                </p>
-              </div>
-            )}
-          </div>
-        </aside>
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );

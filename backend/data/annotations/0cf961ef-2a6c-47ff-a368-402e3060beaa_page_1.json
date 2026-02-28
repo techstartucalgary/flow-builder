@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 376,
+  "latest_revision": 388,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -15,8 +15,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-02-28T11:39:34.333Z",
-      "revision": 376
+      "updatedAt": "2026-02-28T11:56:07.031Z",
+      "revision": 388
     },
     "layers": {
       "wall": true,
@@ -18863,6 +18863,70 @@
               "rotationDeg": 0
             },
             "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772279774775_6d81z",
+      "revisionId": 387,
+      "parentRevisionId": 386,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-28T11:56:14.775Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "room_y6elrg4",
+          "element": {
+            "id": "room_y6elrg4",
+            "attrs": {
+              "status": "new",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "room",
+            "geometry": {
+              "kind": "rect",
+              "x": 3872,
+              "y": 1760,
+              "width": 72,
+              "height": 24,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772279776446_8orwi",
+      "revisionId": 388,
+      "parentRevisionId": 387,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-02-28T11:56:16.446Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "room_y6elrg4",
+          "element": {
+            "id": "room_y6elrg4",
+            "attrs": {
+              "status": "new",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "room",
+            "geometry": {
+              "kind": "rect",
+              "x": 3872,
+              "y": 1760,
+              "width": 72,
+              "height": 24,
+              "rotationDeg": 0
+            }
           }
         }
       ]
