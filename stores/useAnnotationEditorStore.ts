@@ -88,6 +88,11 @@ interface AnnotationEditorState {
   setSelection: (ids: string[]) => void;
   setCamera: (partial: Partial<EditorCameraState>) => void;
   setSaveStatus: (status: AnnotationEditorState['saveStatus']) => void;
+  setBaseImageScale: (
+    scalePxPerFt: number | undefined,
+    scaleSource?: 'manual' | 'pdf_dimension_inference',
+    scaleLocked?: boolean,
+  ) => void;
   toggleLayer: (type: AnnotationElementType) => void;
   toggleGrid: () => void;
   toggleWallSnap: () => void;
@@ -136,6 +141,18 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
   setSelection: (selection) => set({ selection }),
   setCamera: (partial) => set((state) => ({ camera: { ...state.camera, ...partial } })),
   setSaveStatus: (saveStatus) => set({ saveStatus }),
+  setBaseImageScale: (scalePxPerFt, scaleSource, scaleLocked) => {
+    set(
+      produce((state: AnnotationEditorState) => {
+        if (!state.document) return;
+        state.document.baseImage.scalePxPerFt = scalePxPerFt;
+        state.document.baseImage.scaleSource = scaleSource;
+        state.document.baseImage.scaleLocked = scaleLocked;
+        state.document.meta.updatedAt = new Date().toISOString();
+        state.saveStatus = 'unsaved';
+      }),
+    );
+  },
   toggleGrid: () => set((state) => ({ gridEnabled: !state.gridEnabled })),
   toggleWallSnap: () => set((state) => ({ wallSnapEnabled: !state.wallSnapEnabled })),
 

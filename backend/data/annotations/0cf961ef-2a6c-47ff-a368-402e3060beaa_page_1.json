@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 388,
+  "latest_revision": 529,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -15,8 +15,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-02-28T11:56:07.031Z",
-      "revision": 388
+      "updatedAt": "2026-03-05T23:27:31.056Z",
+      "revision": 529
     },
     "layers": {
       "wall": true,
@@ -41,26 +41,6 @@
           "x2": 4184,
           "y2": 1422,
           "thicknessPx": 20,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "wall_H-03",
-        "type": "wall",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "segment",
-          "x1": 2215,
-          "y1": 1514,
-          "x2": 2335,
-          "y2": 1514,
-          "thicknessPx": 24,
           "rotationDeg": 0
         },
         "relations": {}
@@ -109,17 +89,17 @@
         "id": "wall_H-06",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
         },
         "geometry": {
           "kind": "segment",
-          "x1": 2802,
-          "y1": 1820,
-          "x2": 3017,
-          "y2": 1820,
+          "x1": 2794.201658167819,
+          "y1": 1829.5313066837762,
+          "x2": 3009.201658167819,
+          "y2": 1829.5313066837762,
           "thicknessPx": 20,
           "rotationDeg": 0
         },
@@ -141,26 +121,6 @@
           "x2": 3521,
           "y2": 1831,
           "thicknessPx": 20,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "wall_H-08",
-        "type": "wall",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "segment",
-          "x1": 2802,
-          "y1": 1852,
-          "x2": 3017,
-          "y2": 1852,
-          "thicknessPx": 24,
           "rotationDeg": 0
         },
         "relations": {}
@@ -269,17 +229,17 @@
         "id": "wall_H-14",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
         },
         "geometry": {
           "kind": "segment",
-          "x1": 2578,
-          "y1": 2447,
-          "x2": 2942,
-          "y2": 2447,
+          "x1": 2573.7894343980956,
+          "y1": 2457.5264140047593,
+          "x2": 2937.7894343980956,
+          "y2": 2457.5264140047593,
           "thicknessPx": 20,
           "rotationDeg": 0
         },
@@ -366,46 +326,6 @@
         "relations": {}
       },
       {
-        "id": "wall_H-19",
-        "type": "wall",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "segment",
-          "x1": 2164,
-          "y1": 3475,
-          "x2": 2439,
-          "y2": 3475,
-          "thicknessPx": 28,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "wall_H-20",
-        "type": "wall",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "segment",
-          "x1": 3208,
-          "y1": 3475,
-          "x2": 4210,
-          "y2": 3475,
-          "thicknessPx": 28,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
         "id": "wall_V-01",
         "type": "wall",
         "attrs": {
@@ -449,17 +369,17 @@
         "id": "wall_V-03",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
         },
         "geometry": {
           "kind": "segment",
-          "x1": 2785,
-          "y1": 1421,
-          "x2": 2785,
-          "y2": 1540,
+          "x1": 2789.216833432937,
+          "y1": 286.6566380837405,
+          "x2": 2789.216833432937,
+          "y2": 405.6566380837405,
           "thicknessPx": 20,
           "rotationDeg": 0
         },
@@ -509,16 +429,16 @@
         "id": "wall_V-06",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
         },
         "geometry": {
           "kind": "segment",
-          "x1": 2937,
+          "x1": 2928.57886879619,
           "y1": 2446,
-          "x2": 2937,
+          "x2": 2928.57886879619,
           "y2": 2651,
           "thicknessPx": 20,
           "rotationDeg": 0
@@ -661,26 +581,6 @@
           "x2": 4180,
           "y2": 3454,
           "thicknessPx": 20,
-          "rotationDeg": 0
-        },
-        "relations": {}
-      },
-      {
-        "id": "wall_V-14",
-        "type": "wall",
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.9
-        },
-        "geometry": {
-          "kind": "segment",
-          "x1": 4205,
-          "y1": 1394,
-          "x2": 4205,
-          "y2": 3481,
-          "thicknessPx": 31,
           "rotationDeg": 0
         },
         "relations": {}
@@ -18927,6 +18827,2339 @@
               "height": 24,
               "rotationDeg": 0
             }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745453691_1vozj",
+      "revisionId": 407,
+      "parentRevisionId": 406,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:17:33.691Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-03",
+          "element": {
+            "id": "door_OP-03",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.61
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2237,
+              "y": 1498,
+              "width": 60,
+              "height": 32,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.61,
+              "tagIds": [
+                "D-03"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.52,
+                "wallBreakScore": 0.52,
+                "classificationScore": 0.61,
+                "doorFeatureScore": 0.73,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745455576_kgjgn",
+      "revisionId": 408,
+      "parentRevisionId": 407,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:17:35.576Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_H-03",
+          "element": {
+            "id": "wall_H-03",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2215,
+              "y1": 1514,
+              "x2": 2335,
+              "y2": 1514,
+              "thicknessPx": 24,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745457954_f4bc2",
+      "revisionId": 409,
+      "parentRevisionId": 408,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:17:37.954Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-05",
+          "element": {
+            "id": "door_OP-05",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.66
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2771,
+              "y": 1555,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.66,
+              "tagIds": [
+                "D-07"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.69,
+                "wallBreakScore": 0.5,
+                "classificationScore": 0.66,
+                "doorFeatureScore": 0.79,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745460330_m5nr5",
+      "revisionId": 410,
+      "parentRevisionId": 409,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:17:40.330Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-08",
+          "before": {
+            "id": "wall_H-08",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2802,
+              "y1": 1852,
+              "x2": 3017,
+              "y2": 1852,
+              "thicknessPx": 24,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-08",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2802,
+              "y1": 1835.561457864813,
+              "x2": 3017,
+              "y2": 1835.561457864813,
+              "thicknessPx": 24,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745464448_xkchi",
+      "revisionId": 411,
+      "parentRevisionId": 410,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:17:44.448Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_H-08",
+          "element": {
+            "id": "wall_H-08",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2802,
+              "y1": 1835.561457864813,
+              "x2": 3017,
+              "y2": 1835.561457864813,
+              "thicknessPx": 24,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745466023_meprl",
+      "revisionId": 412,
+      "parentRevisionId": 411,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:17:46.023Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-04",
+          "element": {
+            "id": "door_OP-04",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.56
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2833,
+              "y": 1806,
+              "width": 60,
+              "height": 28,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.56,
+              "tagIds": [
+                "D-06"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.51,
+                "wallBreakScore": 0.32,
+                "classificationScore": 0.56,
+                "doorFeatureScore": 0.7,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745468722_2y6fc",
+      "revisionId": 413,
+      "parentRevisionId": 412,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:17:48.722Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-06",
+          "element": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.57
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2923,
+              "y": 2605,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.57,
+              "tagIds": [
+                "D-11"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.37,
+                "classificationScore": 0.57,
+                "doorFeatureScore": 0.69,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772745485298_uqlym",
+      "revisionId": 414,
+      "parentRevisionId": 413,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:18:05.298Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-02",
+          "element": {
+            "id": "door_OP-02",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.71
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3730,
+              "y": 2081,
+              "width": 12,
+              "height": 189,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.71,
+              "tagIds": [
+                "D-05"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.68,
+                "wallBreakScore": 0.85,
+                "classificationScore": 0.58,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.57,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-004"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746421018_pkfc9",
+      "revisionId": 423,
+      "parentRevisionId": 422,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:33:41.018Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-03",
+          "element": {
+            "id": "door_OP-03",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.61
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2237,
+              "y": 1498,
+              "width": 60,
+              "height": 32,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.61,
+              "tagIds": [
+                "D-03"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.52,
+                "wallBreakScore": 0.52,
+                "classificationScore": 0.61,
+                "doorFeatureScore": 0.73,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746424165_vyzm1",
+      "revisionId": 424,
+      "parentRevisionId": 423,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:33:44.165Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_H-03",
+          "element": {
+            "id": "wall_H-03",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2215,
+              "y1": 1514,
+              "x2": 2335,
+              "y2": 1514,
+              "thicknessPx": 24,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746443291_62tyj",
+      "revisionId": 425,
+      "parentRevisionId": 424,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:34:03.291Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-05",
+          "element": {
+            "id": "door_OP-05",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.66
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2771,
+              "y": 1555,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.66,
+              "tagIds": [
+                "D-07"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.69,
+                "wallBreakScore": 0.5,
+                "classificationScore": 0.66,
+                "doorFeatureScore": 0.79,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746450716_qyqmc",
+      "revisionId": 426,
+      "parentRevisionId": 425,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:34:10.716Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-03",
+          "before": {
+            "id": "wall_V-03",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2785,
+              "y1": 1421,
+              "x2": 2785,
+              "y2": 1540,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-03",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2789.216833432937,
+              "y1": 286.6566380837405,
+              "x2": 2789.216833432937,
+              "y2": 405.6566380837405,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746457044_4bcwu",
+      "revisionId": 427,
+      "parentRevisionId": 426,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:34:17.044Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_H-08",
+          "element": {
+            "id": "wall_H-08",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2802,
+              "y1": 1852,
+              "x2": 3017,
+              "y2": 1852,
+              "thicknessPx": 24,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746458920_xaa8d",
+      "revisionId": 428,
+      "parentRevisionId": 427,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:34:18.920Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-04",
+          "element": {
+            "id": "door_OP-04",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.56
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2833,
+              "y": 1806,
+              "width": 60,
+              "height": 28,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.56,
+              "tagIds": [
+                "D-06"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.51,
+                "wallBreakScore": 0.32,
+                "classificationScore": 0.56,
+                "doorFeatureScore": 0.7,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746483907_apfhy",
+      "revisionId": 429,
+      "parentRevisionId": 428,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:34:43.907Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-06",
+          "element": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.57
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2923,
+              "y": 2605,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.57,
+              "tagIds": [
+                "D-11"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.37,
+                "classificationScore": 0.57,
+                "doorFeatureScore": 0.69,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746485673_penry",
+      "revisionId": 430,
+      "parentRevisionId": 429,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:34:45.673Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-02",
+          "element": {
+            "id": "door_OP-02",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.71
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3730,
+              "y": 2081,
+              "width": 12,
+              "height": 189,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.71,
+              "tagIds": [
+                "D-05"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.68,
+                "wallBreakScore": 0.85,
+                "classificationScore": 0.58,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.57,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-004"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746503502_g1zms",
+      "revisionId": 431,
+      "parentRevisionId": 430,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:35:03.502Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-14",
+          "before": {
+            "id": "wall_H-14",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2578,
+              "y1": 2447,
+              "x2": 2942,
+              "y2": 2447,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-14",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2573.7894343980956,
+              "y1": 2457.5264140047593,
+              "x2": 2937.7894343980956,
+              "y2": 2457.5264140047593,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746513927_wk4c4",
+      "revisionId": 432,
+      "parentRevisionId": 431,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:35:13.927Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-06",
+          "before": {
+            "id": "wall_V-06",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2937,
+              "y1": 2446,
+              "x2": 2937,
+              "y2": 2651,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-06",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2928.57886879619,
+              "y1": 2446,
+              "x2": 2928.57886879619,
+              "y2": 2651,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772746537752_7dftv",
+      "revisionId": 434,
+      "parentRevisionId": 433,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:35:37.752Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-04",
+          "before": {
+            "id": "wall_V-04",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2785,
+              "y1": 1630,
+              "x2": 2785,
+              "y2": 1670,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-04",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": -7190.446589704194,
+              "y1": -5973.302082309536,
+              "x2": -7190.446589704194,
+              "y2": -5933.302082309536,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772747771189_t66b2",
+      "revisionId": 441,
+      "parentRevisionId": 440,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:56:11.189Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-06",
+          "element": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.57
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2923,
+              "y": 2605,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.57,
+              "tagIds": [
+                "D-11"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.37,
+                "classificationScore": 0.57,
+                "doorFeatureScore": 0.69,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772747792955_a9wnh",
+      "revisionId": 445,
+      "parentRevisionId": 444,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:56:32.955Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-04",
+          "element": {
+            "id": "door_OP-04",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.56
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2833,
+              "y": 1806,
+              "width": 60,
+              "height": 28,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.56,
+              "tagIds": [
+                "D-06"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.51,
+                "wallBreakScore": 0.32,
+                "classificationScore": 0.56,
+                "doorFeatureScore": 0.7,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772747795350_ivzs8",
+      "revisionId": 446,
+      "parentRevisionId": 445,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:56:35.350Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-06",
+          "before": {
+            "id": "wall_H-06",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2802,
+              "y1": 1820,
+              "x2": 3017,
+              "y2": 1820,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-06",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2794.201658167819,
+              "y1": 1829.5313066837762,
+              "x2": 3009.201658167819,
+              "y2": 1829.5313066837762,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772747800966_c8nwl",
+      "revisionId": 447,
+      "parentRevisionId": 446,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:56:40.966Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-03",
+          "element": {
+            "id": "door_OP-03",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.61
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2237,
+              "y": 1498,
+              "width": 60,
+              "height": 32,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.61,
+              "tagIds": [
+                "D-03"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.52,
+                "wallBreakScore": 0.52,
+                "classificationScore": 0.61,
+                "doorFeatureScore": 0.73,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772747802898_oktd5",
+      "revisionId": 448,
+      "parentRevisionId": 447,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:56:42.898Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-05",
+          "element": {
+            "id": "door_OP-05",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.66
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2771,
+              "y": 1555,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.66,
+              "tagIds": [
+                "D-07"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.69,
+                "wallBreakScore": 0.5,
+                "classificationScore": 0.66,
+                "doorFeatureScore": 0.79,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772747819979_vd015",
+      "revisionId": 449,
+      "parentRevisionId": 448,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:56:59.980Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-06",
+          "element": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.57
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2923,
+              "y": 2605,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.57,
+              "tagIds": [
+                "D-11"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.37,
+                "classificationScore": 0.57,
+                "doorFeatureScore": 0.69,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772747838123_ngrgm",
+      "revisionId": 450,
+      "parentRevisionId": 449,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T21:57:18.123Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-02",
+          "element": {
+            "id": "door_OP-02",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.71
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3730,
+              "y": 2081,
+              "width": 12,
+              "height": 189,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.71,
+              "tagIds": [
+                "D-05"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.68,
+                "wallBreakScore": 0.85,
+                "classificationScore": 0.58,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.57,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-004"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748079762_5bat7",
+      "revisionId": 458,
+      "parentRevisionId": 457,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:01:19.762Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-06",
+          "element": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.57
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2923,
+              "y": 2605,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.57,
+              "tagIds": [
+                "D-11"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.37,
+                "classificationScore": 0.57,
+                "doorFeatureScore": 0.69,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748083033_n0ux9",
+      "revisionId": 459,
+      "parentRevisionId": 458,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:01:23.033Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-03",
+          "element": {
+            "id": "door_OP-03",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.61
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2237,
+              "y": 1498,
+              "width": 60,
+              "height": 32,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.61,
+              "tagIds": [
+                "D-03"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.52,
+                "wallBreakScore": 0.52,
+                "classificationScore": 0.61,
+                "doorFeatureScore": 0.73,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748084772_89y0m",
+      "revisionId": 460,
+      "parentRevisionId": 459,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:01:24.772Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-05",
+          "element": {
+            "id": "door_OP-05",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.66
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2771,
+              "y": 1555,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.66,
+              "tagIds": [
+                "D-07"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.69,
+                "wallBreakScore": 0.5,
+                "classificationScore": 0.66,
+                "doorFeatureScore": 0.79,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748105812_4t4kk",
+      "revisionId": 461,
+      "parentRevisionId": 460,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:01:45.812Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-02",
+          "element": {
+            "id": "door_OP-02",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.71
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3730,
+              "y": 2081,
+              "width": 12,
+              "height": 189,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.71,
+              "tagIds": [
+                "D-05"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.68,
+                "wallBreakScore": 0.85,
+                "classificationScore": 0.58,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.57,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-004"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748151206_0cyo3",
+      "revisionId": 463,
+      "parentRevisionId": 462,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:31.206Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "door_OP-02",
+          "element": {
+            "id": "door_OP-02",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.71
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3730,
+              "y": 2081,
+              "width": 12,
+              "height": 189,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.71,
+              "tagIds": [
+                "D-05"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.68,
+                "wallBreakScore": 0.85,
+                "classificationScore": 0.58,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.57,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-004"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748152401_v2reb",
+      "revisionId": 464,
+      "parentRevisionId": 462,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:32.402Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "door_OP-05",
+          "element": {
+            "id": "door_OP-05",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.66
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2771,
+              "y": 1555,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.66,
+              "tagIds": [
+                "D-07"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.69,
+                "wallBreakScore": 0.5,
+                "classificationScore": 0.66,
+                "doorFeatureScore": 0.79,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748153673_p72md",
+      "revisionId": 465,
+      "parentRevisionId": 462,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:33.673Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "door_OP-03",
+          "element": {
+            "id": "door_OP-03",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.61
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2237,
+              "y": 1498,
+              "width": 60,
+              "height": 32,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.61,
+              "tagIds": [
+                "D-03"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.52,
+                "wallBreakScore": 0.52,
+                "classificationScore": 0.61,
+                "doorFeatureScore": 0.73,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748155871_n4toq",
+      "revisionId": 466,
+      "parentRevisionId": 465,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:35.871Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-03",
+          "element": {
+            "id": "door_OP-03",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.61
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2237,
+              "y": 1498,
+              "width": 60,
+              "height": 32,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.61,
+              "tagIds": [
+                "D-03"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.52,
+                "wallBreakScore": 0.52,
+                "classificationScore": 0.61,
+                "doorFeatureScore": 0.73,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748157993_grlay",
+      "revisionId": 467,
+      "parentRevisionId": 466,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:37.993Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-05",
+          "element": {
+            "id": "door_OP-05",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.66
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2771,
+              "y": 1555,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-03",
+              "source": "opening_feature_verified",
+              "confidence": 0.66,
+              "tagIds": [
+                "D-07"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.69,
+                "wallBreakScore": 0.5,
+                "classificationScore": 0.66,
+                "doorFeatureScore": 0.79,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748164202_wch4r",
+      "revisionId": 469,
+      "parentRevisionId": 468,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:44.202Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_V-14",
+          "element": {
+            "id": "wall_V-14",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4205,
+              "y1": 1394,
+              "x2": 4205,
+              "y2": 3481,
+              "thicknessPx": 31,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748171008_hv9r1",
+      "revisionId": 471,
+      "parentRevisionId": 470,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:51.008Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_V-13",
+          "element": {
+            "id": "wall_V-13",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4180,
+              "y1": 1421,
+              "x2": 4180,
+              "y2": 3454,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748174941_wsia4",
+      "revisionId": 472,
+      "parentRevisionId": 471,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:02:54.941Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_V-13",
+          "element": {
+            "id": "wall_V-13",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4180,
+              "y1": 1421,
+              "x2": 4180,
+              "y2": 3454,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748180943_pzgjr",
+      "revisionId": 473,
+      "parentRevisionId": 472,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:03:00.943Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_H-20",
+          "element": {
+            "id": "wall_H-20",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3208,
+              "y1": 3475,
+              "x2": 4210,
+              "y2": 3475,
+              "thicknessPx": 28,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748189605_4h0g3",
+      "revisionId": 475,
+      "parentRevisionId": 474,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:03:09.605Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_H-19",
+          "element": {
+            "id": "wall_H-19",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2164,
+              "y1": 3475,
+              "x2": 2439,
+              "y2": 3475,
+              "thicknessPx": 28,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748201474_kbcjr",
+      "revisionId": 476,
+      "parentRevisionId": 475,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:03:21.474Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_H-19",
+          "element": {
+            "id": "wall_H-19",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2164,
+              "y1": 3475,
+              "x2": 2439,
+              "y2": 3475,
+              "thicknessPx": 28,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748333578_tc7n6",
+      "revisionId": 479,
+      "parentRevisionId": 478,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:05:33.578Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-02",
+          "element": {
+            "id": "door_OP-02",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.71
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3730,
+              "y": 2081,
+              "width": 12,
+              "height": 189,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.71,
+              "tagIds": [
+                "D-05"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.68,
+                "wallBreakScore": 0.85,
+                "classificationScore": 0.58,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.57,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-004"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748907601_6uh50",
+      "revisionId": 488,
+      "parentRevisionId": 487,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:15:07.601Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_H-19",
+          "element": {
+            "id": "wall_H-19",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2164,
+              "y1": 3475,
+              "x2": 2439,
+              "y2": 3475,
+              "thicknessPx": 28,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748939428_vijxl",
+      "revisionId": 489,
+      "parentRevisionId": 488,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:15:39.428Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-02",
+          "element": {
+            "id": "door_OP-02",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.71
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3730,
+              "y": 2081,
+              "width": 12,
+              "height": 189,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.71,
+              "tagIds": [
+                "D-05"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.68,
+                "wallBreakScore": 0.85,
+                "classificationScore": 0.58,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.57,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-004"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772748941734_j325e",
+      "revisionId": 490,
+      "parentRevisionId": 489,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:15:41.734Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "door_OP-06",
+          "element": {
+            "id": "door_OP-06",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.57
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2923,
+              "y": 2605,
+              "width": 28,
+              "height": 60,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-05",
+              "source": "opening_feature_verified",
+              "confidence": 0.57,
+              "tagIds": [
+                "D-11"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.37,
+                "classificationScore": 0.57,
+                "doorFeatureScore": 0.69,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "door_symbol_recovered",
+                "hostGapId": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772750495203_mantd",
+      "revisionId": 503,
+      "parentRevisionId": 502,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:41:35.203Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-13",
+          "before": {
+            "id": "wall_V-13",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4180,
+              "y1": 1421,
+              "x2": 4180,
+              "y2": 3454,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-13",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4814.20623495822,
+              "y1": 1545.9194099160131,
+              "x2": 4814.20623495822,
+              "y2": 3578.919409916013,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772750498028_yxdi4",
+      "revisionId": 504,
+      "parentRevisionId": 503,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:41:38.029Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "door_OP-01",
+          "before": {
+            "id": "door_OP-01",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.63
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3249,
+              "y": 1605,
+              "width": 156,
+              "height": 14,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-04",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.63,
+              "tagIds": [
+                "D-04",
+                "D-01"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.73,
+                "classificationScore": 0.56,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.58,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-002"
+              }
+            }
+          },
+          "after": {
+            "id": "door_OP-01",
+            "type": "door",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.63
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2220.817164537431,
+              "y": 1033.2534699997866,
+              "width": 156,
+              "height": 14,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-04",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.63,
+              "tagIds": [
+                "D-04",
+                "D-01"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.73,
+                "classificationScore": 0.56,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.58,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-002"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772750500051_sf5qq",
+      "revisionId": 505,
+      "parentRevisionId": 504,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:41:40.051Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "door_OP-01",
+          "before": {
+            "id": "door_OP-01",
+            "type": "door",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.63
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 2220.817164537431,
+              "y": 1033.2534699997866,
+              "width": 156,
+              "height": 14,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-04",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.63,
+              "tagIds": [
+                "D-04",
+                "D-01"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.73,
+                "classificationScore": 0.56,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.58,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-002"
+              }
+            }
+          },
+          "after": {
+            "id": "door_OP-01",
+            "type": "door",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.63
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3249,
+              "y": 1605,
+              "width": 156,
+              "height": 14,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_H-04",
+              "source": "gap_verified_tag_classified",
+              "confidence": 0.63,
+              "tagIds": [
+                "D-04",
+                "D-01"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.58,
+                "wallBreakScore": 0.73,
+                "classificationScore": 0.56,
+                "doorFeatureScore": 1,
+                "windowFeatureScore": 0,
+                "tagAlignmentScore": 0.58,
+                "verificationMode": "gap_only",
+                "hostGapId": "G-002"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1772750500634_qwgkv",
+      "revisionId": 506,
+      "parentRevisionId": 505,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-05T22:41:40.634Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-13",
+          "before": {
+            "id": "wall_V-13",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4814.20623495822,
+              "y1": 1545.9194099160131,
+              "x2": 4814.20623495822,
+              "y2": 3578.919409916013,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-13",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 4180,
+              "y1": 1421,
+              "x2": 4180,
+              "y2": 3454,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
           }
         }
       ]

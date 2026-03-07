@@ -125,6 +125,8 @@ export interface BaseImageRef {
   widthPx: number;
   heightPx: number;
   scalePxPerFt?: number;
+  scaleSource?: 'manual' | 'pdf_dimension_inference';
+  scaleLocked?: boolean;
 }
 
 export interface AnnotationDocumentMeta {

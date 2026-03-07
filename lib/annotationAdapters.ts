@@ -160,6 +160,8 @@ export function fromCVTakeoffResult(
       widthPx: cv.metadata.image_width,
       heightPx: cv.metadata.image_height,
       scalePxPerFt: cv.metadata.scale_px_per_ft,
+      scaleSource: cv.metadata.scale_px_per_ft ? 'manual' : undefined,
+      scaleLocked: Boolean(cv.metadata.scale_px_per_ft),
     },
     meta: {
       schemaVersion: 1,

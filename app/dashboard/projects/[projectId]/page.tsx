@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   AlertCircle,
   AlertTriangle,
@@ -18,7 +20,8 @@ import {
   Ruler,
 } from 'lucide-react';
 import { getBackendUrl } from '@/lib/backendUrl';
-import { parseTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
+import { saveAnnotationDocumentWithConflictRetry } from '@/lib/annotationPersistence';
+import { parseTakeoff, mapStructuredTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
 import type { TakeoffData } from '@/lib/parseTakeoff';
 import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
 import PdfViewerClient from '@/components/pdf/PdfViewer';
@@ -27,8 +30,10 @@ import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBo
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 
 const BACKEND_URL = getBackendUrl();
-const WASTE_FACTOR = 0.15;
-const SHEET_SQFT = 48; // 4' x 12' sheet = 48 sq ft
+const DEFAULT_CEILING_HEIGHT_FT = '9';
+const DEFAULT_WASTE_FACTOR = 0.15;
+const DEFAULT_SHEET_WIDTH_FT = 4;
+const DEFAULT_SHEET_LENGTH_FT = 12;
 
 type ProjectRow = {
   id: string;
@@ -78,6 +83,129 @@ function saveLabel(status: 'saved' | 'unsaved' | 'syncing' | 'error'): string {
   }
 }
 
+function floorAreaMethodLabel(method: TakeoffData['floorAreaMethod']): string {
+  switch (method) {
+    case 'enclosed_regions':
+      return 'Enclosed regions';
+    case 'legacy_convex_hull_fallback':
+      return 'Legacy convex hull fallback';
+    case 'missing_scale':
+      return 'Missing scale';
+    default:
+      return 'Failed';
+  }
+}
+
+function geometrySourceLabel(source: TakeoffData['geometrySource']): string {
+  switch (source) {
+    case 'annotation_document':
+      return 'Saved Geometry';
+    default:
+      return 'CV Geometry';
+  }
+}
+
+function formatSqFt(value: number): string {
+  return value > 0 ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0';
+}
+
+function formatDelta(value: number): string {
+  const sign = value >= 0 ? '+' : '-';
+  const abs = Math.abs(value);
+  return `${sign}${abs.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function roomClosureLabel(status: TakeoffData['roomClosureStatus']): string {
+  switch (status) {
+    case 'closed':
+      return 'Closed';
+    case 'ambiguous':
+      return 'Ambiguous';
+    default:
+      return 'Open';
+  }
+}
+
+function confidenceTone(confidence: TakeoffData['takeoffConfidence']): 'good' | 'warn' | 'danger' {
+  switch (confidence) {
+    case 'high':
+      return 'good';
+    case 'medium':
+      return 'warn';
+    default:
+      return 'danger';
+  }
+}
+
+type TakeoffDeltaSummary = {
+  floorArea: number;
+  totalLinearFt: number;
+  openingDeduction: number;
+  netWallBoard: number;
+  sheetsRequired: number;
+};
+
+function compareTakeoffRuns(previous: TakeoffData | null, next: TakeoffData): {
+  message: string;
+  reason: string | null;
+  deltas: TakeoffDeltaSummary;
+} {
+  const deltas: TakeoffDeltaSummary = {
+    floorArea: next.floorArea - (previous?.floorArea ?? 0),
+    totalLinearFt: next.totalLinearFt - (previous?.totalLinearFt ?? 0),
+    openingDeduction: next.openingDeduction - (previous?.openingDeduction ?? 0),
+    netWallBoard: next.netWallBoard - (previous?.netWallBoard ?? 0),
+    sheetsRequired: next.sheetsRequired - (previous?.sheetsRequired ?? 0),
+  };
+
+  if (!previous || !previous.geometryHash) {
+    return {
+      message: 'Geometry changed, metrics changed',
+      reason: 'This is the first generated baseline for the current page.',
+      deltas,
+    };
+  }
+
+  if (previous.geometryHash === next.geometryHash) {
+    return {
+      message: 'No geometry change since last run',
+      reason: null,
+      deltas,
+    };
+  }
+
+  const metricsChanged = (
+    Math.abs(deltas.floorArea) >= 0.1
+    || Math.abs(deltas.totalLinearFt) >= 0.1
+    || Math.abs(deltas.openingDeduction) >= 0.1
+    || Math.abs(deltas.netWallBoard) >= 0.1
+    || deltas.sheetsRequired !== 0
+  );
+
+  if (metricsChanged) {
+    return {
+      message: 'Geometry changed, metrics changed',
+      reason: null,
+      deltas,
+    };
+  }
+
+  let reason = 'Edit was absorbed by geometry normalization.';
+  if (next.roomClosureStatus !== 'closed') {
+    reason = 'Boundary still open or ambiguous, so floor area stayed provisional.';
+  } else if (next.unmatchedOpeningCount > 0) {
+    reason = 'Edit affected unmatched opening geometry that was excluded from deductions.';
+  } else if (Math.abs(deltas.totalLinearFt) < 0.1) {
+    reason = 'Wall moved without changing normalized wall length.';
+  }
+
+  return {
+    message: 'Geometry changed, but not enough to materially affect current totals',
+    reason,
+    deltas,
+  };
+}
+
 export default function ProjectViewerPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -92,16 +220,22 @@ export default function ProjectViewerPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [editorMode, setEditorMode] = useState(true);
+  const [inputsCollapsed, setInputsCollapsed] = useState(false);
 
   // Takeoff state
   const [generating, setGenerating] = useState(false);
   const [takeoff, setTakeoff] = useState<TakeoffData>(EMPTY_TAKEOFF);
   const [generated, setGenerated] = useState(false);
   const [takeoffError, setTakeoffError] = useState<string | null>(null);
+  const [runComparisonMessage, setRunComparisonMessage] = useState<string | null>(null);
+  const [runComparisonReason, setRunComparisonReason] = useState<string | null>(null);
+  const [metricDeltas, setMetricDeltas] = useState<TakeoffDeltaSummary | null>(null);
   // CV pipeline annotated image (base64 PNG, displayed over PDF)
   const [annotatedImage, setAnnotatedImage] = useState<string | null>(null);
   // Optional scale (px/ft) for drywall calculation — e.g. 50 for 1/4"=1' at 200 DPI
   const [scalePxPerFt, setScalePxPerFt] = useState<string>('');
+  const [ceilingHeightFt, setCeilingHeightFt] = useState<string>(DEFAULT_CEILING_HEIGHT_FT);
+  const [referenceFloorAreaSqFt, setReferenceFloorAreaSqFt] = useState<string>('');
 
   // Overlay stepper
   const ANALYSIS_STEPS = [
@@ -114,13 +248,38 @@ export default function ProjectViewerPage() {
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const editorDocument = useAnnotationEditorStore((s) => s.document);
   const editorSaveStatus = useAnnotationEditorStore((s) => s.saveStatus);
+  const editorPendingOpsCount = useAnnotationEditorStore((s) => s.history.pendingOps.length);
   const editorViewPreset = useAnnotationEditorStore((s) => s.viewPreset);
+  const markEditorRevision = useAnnotationEditorStore((s) => s.markRevision);
+  const setEditorSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
+  const setEditorBaseImageScale = useAnnotationEditorStore((s) => s.setBaseImageScale);
 
   useEffect(() => {
     if (!user?.id) return;
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, projectId]);
+
+  useEffect(() => {
+    if (!editorDocument) return;
+    const documentScale = editorDocument.baseImage.scalePxPerFt;
+    const nextScale = typeof documentScale === 'number' && Number.isFinite(documentScale) && documentScale > 0
+      ? String(documentScale)
+      : '';
+    if (scalePxPerFt !== nextScale) {
+      setScalePxPerFt(nextScale);
+    }
+  }, [editorDocument, scalePxPerFt]);
+
+  useEffect(() => {
+    setTakeoff(EMPTY_TAKEOFF);
+    setGenerated(false);
+    setAnnotatedImage(null);
+    setTakeoffError(null);
+    setRunComparisonMessage(null);
+    setRunComparisonReason(null);
+    setMetricDeltas(null);
+  }, [pageNumber, projectId]);
 
   async function load() {
     try {
@@ -185,15 +344,55 @@ export default function ProjectViewerPage() {
     startStepper();
 
     try {
+      let geometryRevision = 0;
       const body: Record<string, unknown> = {
         file_url: fileUrl,
         file_mime: project.file_mime,
         page_number: pageNumber,
+        include_ceiling: true,
+        waste_factor: DEFAULT_WASTE_FACTOR,
+        sheet_width_ft: DEFAULT_SHEET_WIDTH_FT,
+        sheet_length_ft: DEFAULT_SHEET_LENGTH_FT,
       };
       const scale = scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined;
       if (typeof scale === 'number' && !Number.isNaN(scale) && scale > 0) {
         body.scale_px_per_ft = scale;
       }
+      const ceilingHeight = ceilingHeightFt.trim() ? parseFloat(ceilingHeightFt) : undefined;
+      if (typeof ceilingHeight === 'number' && !Number.isNaN(ceilingHeight) && ceilingHeight > 0) {
+        body.ceiling_height_ft = ceilingHeight;
+      }
+      const referenceFloorArea = referenceFloorAreaSqFt.trim() ? parseFloat(referenceFloorAreaSqFt) : undefined;
+      if (typeof referenceFloorArea === 'number' && !Number.isNaN(referenceFloorArea) && referenceFloorArea > 0) {
+        body.reference_floor_area_sqft = referenceFloorArea;
+      }
+
+      if (editorDocument) {
+        geometryRevision = editorDocument.meta.revision;
+
+        if (editorSaveStatus !== 'saved' || editorPendingOpsCount > 0) {
+          setEditorSaveStatus('syncing');
+          try {
+            const saved = await saveAnnotationDocumentWithConflictRetry({
+              projectId: project.id,
+              pageNumber,
+              document: editorDocument,
+              onConflictRevision: markEditorRevision,
+            });
+            geometryRevision = saved.latest_revision;
+            markEditorRevision(saved.latest_revision);
+            setEditorSaveStatus('saved');
+          } catch {
+            setEditorSaveStatus('error');
+            throw new Error("Couldn't save editor changes before generate. Resolve the editor save issue and try again.");
+          }
+        }
+
+        body.project_id = project.id;
+        body.use_saved_annotations = true;
+        body.annotation_revision = geometryRevision;
+      }
+
       console.log('[takeoff] request:', { ...body, file_url: '(hidden)' });
       const res = await fetch(`${BACKEND_URL}/api/takeoff/analyze`, {
         method: 'POST',
@@ -203,33 +402,32 @@ export default function ProjectViewerPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
+        if (res.status === 409 && body.use_saved_annotations) {
+          throw new Error('The saved annotation revision changed before takeoff ran. Save again and regenerate.');
+        }
         throw new Error(err.detail || `Server error ${res.status}`);
       }
 
       const data = await res.json();
-      console.log('[takeoff] response:', { net_drywall_sqft: data.net_drywall_sqft, scale: scale, cv_walls: data.cv_walls });
-      const hasStructured =
-        typeof data.net_drywall_sqft === 'number' ||
-        typeof data.cv_doors === 'number' ||
-        typeof data.cv_windows === 'number';
-      const parsed: TakeoffData = hasStructured
-        ? {
-            totalArea: typeof data.total_area_sqft === 'number' ? data.total_area_sqft : 0,
-            netDrywall: typeof data.net_drywall_sqft === 'number' ? data.net_drywall_sqft : 0,
-            doors: typeof data.cv_doors === 'number' ? data.cv_doors : 0,
-            windows: typeof data.cv_windows === 'number' ? data.cv_windows : 0,
-            waste: Math.round(WASTE_FACTOR * 100),
-            summary: data.analysis || '',
-          }
-        : parseTakeoff(data.analysis || '');
+      console.log('[takeoff] response:', {
+        floor_area_sqft: data.floor_area_sqft,
+        net_wall_board_sqft: data.net_wall_board_sqft,
+        sheets_required: data.sheets_required,
+        scale,
+        cv_walls: data.cv_walls,
+      });
+      const parsed: TakeoffData = mapStructuredTakeoff(data) ?? parseTakeoff(data.analysis || '');
+      const comparison = compareTakeoffRuns(generated ? takeoff : null, parsed);
 
       setTakeoff(parsed);
       setGenerated(true);
+      setInputsCollapsed(true);
+      setRunComparisonMessage(comparison.message);
+      setRunComparisonReason(comparison.reason);
+      setMetricDeltas(comparison.deltas);
 
       // Store annotated image for overlay (no Supabase)
-      if (data.annotated_image) {
-        setAnnotatedImage(`data:image/png;base64,${data.annotated_image}`);
-      }
+      setAnnotatedImage(data.annotated_image ? `data:image/png;base64,${data.annotated_image}` : null);
     } catch (e: any) {
       setTakeoffError(e.message || 'Generation failed');
     } finally {
@@ -239,29 +437,70 @@ export default function ProjectViewerPage() {
   }
 
   const isPdf = useMemo(() => project?.file_mime === 'application/pdf', [project?.file_mime]);
-  const isImage = useMemo(() => project?.file_mime?.startsWith('image/'), [project?.file_mime]);
   const modeLabel = editorMode ? presetLabel(editorViewPreset) : 'Review';
   const scaleValue = scalePxPerFt.trim() ? Number(scalePxPerFt) : null;
+  const ceilingHeightValue = ceilingHeightFt.trim() ? Number(ceilingHeightFt) : null;
   const hasScale = typeof scaleValue === 'number' && Number.isFinite(scaleValue) && scaleValue > 0;
-  const sheets = takeoff.netDrywall > 0 ? Math.ceil((takeoff.netDrywall * (1 + WASTE_FACTOR)) / SHEET_SQFT) : 0;
-  const wasteSqFt = takeoff.netDrywall > 0 ? Math.round(takeoff.netDrywall * WASTE_FACTOR) : 0;
-  const openingDeductionEstimate = generated ? Math.max(0, Math.round((takeoff.doors * 21) + (takeoff.windows * 12))) : 0;
+  const hasCeilingHeight = typeof ceilingHeightValue === 'number' && Number.isFinite(ceilingHeightValue) && ceilingHeightValue > 0;
+  const hasReferenceFloorArea = takeoff.referenceFloorArea > 0;
+  const takeoffSourceDisplay = generated
+    ? geometrySourceLabel(takeoff.geometrySource)
+    : editorDocument
+      ? 'Saved Geometry'
+      : 'CV Geometry';
   const reviewWarnings = useMemo(() => {
     const warnings: string[] = [];
     if (!hasScale) {
-      warnings.push('Scale missing. Area and drywall outputs should be treated as provisional.');
+      warnings.push('Scale missing. Floor area, wall lengths, and deductions are provisional.');
     }
-    if (editorMode && editorSaveStatus !== 'saved') {
-      warnings.push('Editor changes are not fully committed yet. Regenerate after saving if you want takeoff numbers to reflect geometry updates.');
+    if (!hasCeilingHeight) {
+      warnings.push('Ceiling height drives sheet count. Confirm before trusting material output.');
+    }
+    if (generated && takeoff.floorAreaMethod === 'legacy_convex_hull_fallback') {
+      warnings.push('Floor area fell back to legacy geometry. Review outer wall closure before trusting this page.');
+    }
+    if (generated && hasReferenceFloorArea && takeoff.referenceAreaDeltaPct > 5) {
+      warnings.push('Calculated floor area differs from the reference by more than 5%.');
+    }
+    if (generated && takeoff.takeoffConfidence === 'low') {
+      warnings.push('Takeoff confidence is low. Review closure status, unmatched openings, and scale before trusting totals.');
+    }
+    if (generated && takeoff.roomClosureStatus !== 'closed') {
+      warnings.push(`Room boundary is ${roomClosureLabel(takeoff.roomClosureStatus).toLowerCase()}. Floor area and ceiling board remain provisional until closure is stable.`);
+    }
+    if (generated && takeoff.unmatchedOpeningCount > 0) {
+      warnings.push(`${takeoff.unmatchedOpeningCount} opening${takeoff.unmatchedOpeningCount === 1 ? '' : 's'} could not be hosted to a wall and were excluded from deductions.`);
+    }
+    if (editorDocument && editorSaveStatus !== 'saved') {
+      warnings.push('Generate will save the current editor geometry before recalculating takeoff.');
     }
     if (takeoffError) {
       warnings.push(takeoffError);
     }
-    if (generated && takeoff.netDrywall === 0 && hasScale) {
-      warnings.push('Takeoff completed with zero drywall. Inspect geometry and backend debug counters before trusting the result.');
+    if (generated && takeoff.sheetsRequired === 0 && takeoff.netWallBoard > 0) {
+      warnings.push('Material totals are inconsistent. Review scale, ceiling height, and detected openings.');
+    }
+    if (generated && editorDocument && takeoff.geometrySource === 'cv_pipeline') {
+      warnings.push('Takeoff used the CV fallback instead of saved editor geometry for this run.');
     }
     return warnings;
-  }, [editorMode, editorSaveStatus, generated, hasScale, takeoff.netDrywall, takeoffError]);
+  }, [
+    editorDocument,
+    editorSaveStatus,
+    generated,
+    hasCeilingHeight,
+    hasReferenceFloorArea,
+    hasScale,
+    takeoff.geometrySource,
+    takeoff.roomClosureStatus,
+    takeoff.takeoffConfidence,
+    takeoff.floorAreaMethod,
+    takeoff.netWallBoard,
+    takeoff.unmatchedOpeningCount,
+    takeoff.referenceAreaDeltaPct,
+    takeoff.sheetsRequired,
+    takeoffError,
+  ]);
 
   const readinessRows = useMemo(() => ([
     {
@@ -280,11 +519,63 @@ export default function ProjectViewerPage() {
       tone: hasScale ? ('good' as const) : ('warn' as const),
     },
     {
+      label: 'Ceiling',
+      value: hasCeilingHeight ? `${ceilingHeightValue} ft` : 'Missing',
+      tone: hasCeilingHeight ? ('good' as const) : ('warn' as const),
+    },
+    {
       label: 'Geometry',
       value: editorDocument ? `Revision ${editorDocument.meta.revision}` : 'No annotation doc',
       tone: editorDocument ? ('good' as const) : ('warn' as const),
     },
-  ]), [editorDocument, hasScale, isPdf, numPages, pageNumber, scaleValue]);
+    {
+      label: 'Takeoff Source',
+      value: takeoffSourceDisplay,
+      tone: generated && takeoff.geometrySource === 'annotation_document'
+        ? ('good' as const)
+        : ('accent' as const),
+    },
+    {
+      label: 'Confidence',
+      value: generated ? takeoff.takeoffConfidence : 'Pending',
+      tone: generated ? confidenceTone(takeoff.takeoffConfidence) : ('accent' as const),
+    },
+  ]), [
+    ceilingHeightValue,
+    editorDocument,
+    generated,
+    hasCeilingHeight,
+    hasScale,
+    isPdf,
+    numPages,
+    pageNumber,
+    scaleValue,
+    takeoff.takeoffConfidence,
+    takeoff.geometrySource,
+    takeoffSourceDisplay,
+  ]);
+  const compactReadinessRows = useMemo(() => ([
+    {
+      label: 'Page',
+      value: isPdf && numPages > 0 ? `${pageNumber} of ${numPages}` : `Page ${pageNumber}`,
+    },
+    {
+      label: 'Scale',
+      value: hasScale ? `${scaleValue} px/ft` : 'Missing',
+    },
+    {
+      label: 'Ceiling',
+      value: hasCeilingHeight ? `${ceilingHeightValue} ft` : 'Missing',
+    },
+    {
+      label: 'Source',
+      value: takeoffSourceDisplay,
+    },
+    {
+      label: 'Status',
+      value: generating ? 'Analyzing' : generated ? 'Takeoff Ready' : 'Awaiting Run',
+    },
+  ]), [ceilingHeightValue, generated, generating, hasCeilingHeight, hasScale, isPdf, numPages, pageNumber, scaleValue, takeoffSourceDisplay]);
 
   if (loading) {
     return (
@@ -467,84 +758,230 @@ export default function ProjectViewerPage() {
             </div>
           </section>
 
-          <aside className="flex w-[420px] shrink-0 flex-col gap-3 overflow-hidden">
-            <section className="ws-panel-elevated shrink-0 px-4 py-4">
-              <div className="ws-section-header">
-                <span>Run / Inputs</span>
-                <span className="ws-chip" data-tone={generating ? 'accent' : generated ? 'good' : 'warn'}>
-                  {generating ? 'Analyzing' : generated ? 'Takeoff Ready' : 'Awaiting Run'}
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {readinessRows.map((row) => (
-                  <div key={row.label} className="flex items-center justify-between rounded-xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-2">
-                    <span className="text-xs text-[var(--ws-text-muted)]">{row.label}</span>
-                    <span className="ws-chip" data-tone={row.tone}>{row.value}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4">
-                <label className="mb-1.5 block text-xs text-[var(--ws-text-secondary)]">
-                  Scale (px/ft)
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Ruler size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ws-text-muted)]" />
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      placeholder="e.g. 50"
-                      value={scalePxPerFt}
-                      onChange={(e) => setScalePxPerFt(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-                    />
-                  </div>
-                  <button
-                    onClick={handleGenerate}
-                    disabled={generating}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:opacity-60"
-                  >
-                    {generating ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-                    {generating ? 'Running' : 'Generate'}
-                  </button>
+          <aside className="flex min-h-0 w-[clamp(28rem,34vw,36rem)] shrink-0 flex-col gap-3 overflow-hidden">
+            <section className="ws-panel-elevated shrink-0 overflow-hidden px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="ws-section-header">
+                  <span>Run / Inputs</span>
+                  <span className="ws-chip ml-2" data-tone={generating ? 'accent' : generated ? 'good' : 'warn'}>
+                    {generating ? 'Analyzing' : generated ? 'Takeoff Ready' : 'Awaiting Run'}
+                  </span>
                 </div>
-                <p className="mt-2 text-xs text-[var(--ws-text-muted)]">
-                  Run the current page through the CV pipeline, then review geometry and material output before trusting the estimate.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setInputsCollapsed((value) => !value)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--ws-border)] bg-white/5 px-3 py-1.5 text-xs font-medium text-[var(--ws-text-secondary)] transition hover:bg-white/10 hover:text-white"
+                  aria-expanded={!inputsCollapsed}
+                  aria-label={inputsCollapsed ? 'Expand run inputs' : 'Collapse run inputs'}
+                >
+                  <span>{inputsCollapsed ? 'Inputs' : 'Collapse'}</span>
+                  {inputsCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                </button>
               </div>
+
+              {inputsCollapsed ? (
+                <div className="mt-3">
+                  <div className="review-inputs-summary">
+                    {compactReadinessRows.map((row) => (
+                      <div key={row.label} className="review-inputs-summary-item rounded-xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-2.5">
+                        <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--ws-text-muted)]">{row.label}</div>
+                        <div className="mt-1 text-sm font-medium text-white">{row.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:opacity-60"
+                    >
+                      {generating ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                      {generating ? 'Running' : 'Generate'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <div className="grid gap-2.5">
+                    {readinessRows.map((row) => (
+                      <div key={row.label} className="flex items-center justify-between rounded-xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-2">
+                        <span className="text-xs text-[var(--ws-text-muted)]">{row.label}</span>
+                        <span className="ws-chip" data-tone={row.tone}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3">
+                    <div className="grid gap-3">
+                      <div>
+                        <label htmlFor="scale-px-per-ft" className="mb-1.5 block text-xs text-[var(--ws-text-secondary)]">
+                          Scale (px/ft)
+                        </label>
+                        <div className="relative">
+                          <Ruler size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ws-text-muted)]" />
+                          <input
+                            id="scale-px-per-ft"
+                            type="number"
+                            min={1}
+                            step={1}
+                            placeholder="e.g. 50"
+                            value={scalePxPerFt}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setScalePxPerFt(value);
+                              if (!editorDocument) return;
+                              const parsed = value.trim() ? Number(value) : undefined;
+                              if (typeof parsed === 'number' && Number.isFinite(parsed) && parsed > 0) {
+                                setEditorBaseImageScale(parsed, 'manual', true);
+                              } else {
+                                setEditorBaseImageScale(undefined, undefined, false);
+                              }
+                            }}
+                            className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="ceiling-height-ft" className="mb-1.5 block text-xs text-[var(--ws-text-secondary)]">
+                            Ceiling Height (ft)
+                          </label>
+                          <input
+                            id="ceiling-height-ft"
+                            type="number"
+                            min={1}
+                            step={0.5}
+                            placeholder="e.g. 9"
+                            value={ceilingHeightFt}
+                            onChange={(e) => setCeilingHeightFt(e.target.value)}
+                            className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 px-3 py-2.5 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="reference-floor-area" className="mb-1.5 block text-xs text-[var(--ws-text-secondary)]">
+                            Reference Floor Area
+                          </label>
+                          <input
+                            id="reference-floor-area"
+                            type="number"
+                            min={1}
+                            step={1}
+                            placeholder="Optional"
+                            value={referenceFloorAreaSqFt}
+                            onChange={(e) => setReferenceFloorAreaSqFt(e.target.value)}
+                            className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 px-3 py-2.5 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        onClick={handleGenerate}
+                        disabled={generating}
+                        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:opacity-60"
+                      >
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                        {generating ? 'Running' : 'Generate'}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--ws-text-muted)]">
+                      Run the current page through the CV pipeline and review the board breakdown before trusting the estimate.
+                    </p>
+                  </div>
+                </div>
+              )}
             </section>
 
-            <section className="ws-panel flex-1 min-h-0 overflow-hidden px-4 py-4">
-              <div className="ws-section-header">
-                <span>Review Rail</span>
-                <span className="ws-chip">{modeLabel}</span>
+            <section className="ws-panel flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex shrink-0 items-center justify-between px-4 py-4">
+                <div className="ws-section-header">
+                  <span>Review Rail</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="ws-chip">{modeLabel}</span>
+                  <span className="ws-chip" data-tone={generated && takeoff.geometrySource === 'annotation_document' ? 'good' : 'accent'}>
+                    {takeoffSourceDisplay}
+                  </span>
+                  {generated ? (
+                    <span className="ws-chip" data-tone={confidenceTone(takeoff.takeoffConfidence)}>
+                      {takeoff.takeoffConfidence}
+                    </span>
+                  ) : null}
+                  {generated && takeoff.geometrySource === 'annotation_document' && takeoff.geometryRevisionUsed > 0 ? (
+                    <span className="ws-chip">Rev {takeoff.geometryRevisionUsed}</span>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-                <div className="ws-section">
-                  <div className="ws-section-header">
-                    <span>Key Metrics</span>
-                    <span className="text-xs text-[var(--ws-text-muted)]">Current page</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-4">
-                      <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Net Drywall</div>
-                      <div className="mt-2 text-3xl font-semibold text-white">
-                        {takeoff.netDrywall > 0 ? takeoff.netDrywall.toLocaleString() : '0'}
-                      </div>
-                      <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
+              <div className="review-rail-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 pr-3">
+                <div className="ws-section shrink-0">
+                  <div className="p-4">
+                    <div className="ws-section-header">
+                      <span>Key Metrics</span>
+                      <span className="text-xs text-[var(--ws-text-muted)]">
+                        {generated && takeoff.geometrySource === 'annotation_document' && takeoff.geometryRevisionUsed > 0
+                          ? `Saved geometry · Rev ${takeoff.geometryRevisionUsed}`
+                          : 'Current page'}
+                      </span>
                     </div>
-                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
-                      <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Total Area</div>
-                      <div className="mt-2 text-2xl font-semibold text-white">
-                        {takeoff.totalArea > 0 ? takeoff.totalArea.toLocaleString() : '0'}
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-4">
+                        <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Floor Area</div>
+                        <div className="mt-2 text-3xl font-semibold text-white">
+                          {formatSqFt(takeoff.floorArea)}
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
                       </div>
-                      <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
+                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                        <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Net Wall Board</div>
+                        <div className="mt-2 text-2xl font-semibold text-white">
+                          {formatSqFt(takeoff.netWallBoard)}
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                        <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Ceiling Board</div>
+                        <div className="mt-2 text-2xl font-semibold text-white">
+                          {formatSqFt(takeoff.ceilingBoard)}
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                        <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Sheets / Waste</div>
+                        <div className="mt-2 flex items-end gap-3">
+                          <div>
+                            <div className="text-xl font-semibold text-white">{takeoff.sheetsRequired}</div>
+                            <div className="text-[11px] text-[var(--ws-text-muted)]">{takeoff.sheetSizeSqFt.toLocaleString()} sq ft sheets</div>
+                          </div>
+                          <div>
+                            <div className="text-xl font-semibold text-white">{takeoff.waste || 0}%</div>
+                            <div className="text-[11px] text-[var(--ws-text-muted)]">waste</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                    {generated ? (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                          <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Closure</div>
+                          <div className="mt-2 text-xl font-semibold text-white">{roomClosureLabel(takeoff.roomClosureStatus)}</div>
+                          <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                            {takeoff.unclosedGapCount} gap{takeoff.unclosedGapCount === 1 ? '' : 's'} · {takeoff.largestBoundaryGapFt.toFixed(2)} ft max
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+                          <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Normalization</div>
+                          <div className="mt-2 text-xl font-semibold text-white">
+                            {takeoff.normalizedWallCount} / {takeoff.normalizedOpeningCount}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                            walls / openings · {takeoff.unmatchedOpeningCount} unmatched
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="mt-3 rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
                       <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Openings</div>
-                      <div className="mt-2 flex items-end gap-3">
+                      <div className="mt-2 flex items-end gap-4">
                         <div>
                           <div className="text-xl font-semibold text-white">{takeoff.doors}</div>
                           <div className="text-[11px] text-[var(--ws-text-muted)]">doors</div>
@@ -555,127 +992,145 @@ export default function ProjectViewerPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
-                      <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Sheets / Waste</div>
-                      <div className="mt-2 flex items-end gap-3">
-                        <div>
-                          <div className="text-xl font-semibold text-white">{sheets}</div>
-                          <div className="text-[11px] text-[var(--ws-text-muted)]">4x12 sheets</div>
+                  </div>
+                </div>
+
+                <div className="ws-section shrink-0">
+                  <div className="p-4">
+                    <div className="ws-section-header">
+                      <span>Trust / Warnings</span>
+                      <span className="ws-chip" data-tone={reviewWarnings.length ? 'warn' : 'good'}>
+                        {reviewWarnings.length ? `${reviewWarnings.length} review` : 'Clear'}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {takeoffError ? (
+                        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm text-red-200">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-300" />
+                            <span>{takeoffError}</span>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-xl font-semibold text-white">{takeoff.waste || 0}%</div>
-                          <div className="text-[11px] text-[var(--ws-text-muted)]">waste</div>
+                      ) : null}
+                      {reviewWarnings.length ? reviewWarnings.map((warning) => (
+                        <div key={warning} className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-3 text-sm text-amber-100">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-300" />
+                            <span>{warning}</span>
+                          </div>
                         </div>
-                      </div>
+                      )) : (
+                        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3 text-sm text-emerald-100">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-300" />
+                            <span>The current page has scale, geometry, and persisted editor state aligned for review.</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="ws-section">
-                  <div className="ws-section-header">
-                    <span>Trust / Warnings</span>
-                    <span className="ws-chip" data-tone={reviewWarnings.length ? 'warn' : 'good'}>
-                      {reviewWarnings.length ? `${reviewWarnings.length} review` : 'Clear'}
-                    </span>
+                <div className="ws-section shrink-0">
+                  <div className="p-4">
+                    <div className="ws-section-header">
+                      <span>Breakdown</span>
+                      <span className="text-xs text-[var(--ws-text-muted)]">Audit-oriented</span>
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {[
+                        ['Geometry source', takeoffSourceDisplay],
+                        ['Geometry revision', generated && takeoff.geometryRevisionUsed > 0 ? `${takeoff.geometryRevisionUsed}` : 'Not pinned'],
+                        ['Geometry change', runComparisonMessage || 'Awaiting comparison'],
+                        ['Takeoff confidence', generated ? takeoff.takeoffConfidence : 'Pending'],
+                        ['Room closure', roomClosureLabel(takeoff.roomClosureStatus)],
+                        ['Boundary gaps', `${takeoff.unclosedGapCount} (${takeoff.largestBoundaryGapFt.toFixed(2)} ft max)`],
+                        ['Unmatched openings', `${takeoff.unmatchedOpeningCount}`],
+                        ['Floor area', `${formatSqFt(takeoff.floorArea)} sq ft`],
+                        ['Floor area method', floorAreaMethodLabel(takeoff.floorAreaMethod)],
+                        ['Reference area', hasReferenceFloorArea ? `${formatSqFt(takeoff.referenceFloorArea)} sq ft` : 'Not provided'],
+                        ['Reference variance', hasReferenceFloorArea ? `${formatSqFt(Math.abs(takeoff.referenceAreaDeltaSqFt))} sq ft (${takeoff.referenceAreaDeltaPct.toFixed(2)}%)` : 'Not provided'],
+                        ['Total linear feet', `${formatSqFt(takeoff.totalLinearFt)} ft`],
+                        ['Gross wall board', `${formatSqFt(takeoff.grossWallBoard)} sq ft`],
+                        ['Opening deductions', `${formatSqFt(takeoff.openingDeduction)} sq ft`],
+                        ['Net wall board', `${formatSqFt(takeoff.netWallBoard)} sq ft`],
+                        ['Ceiling board', `${formatSqFt(takeoff.ceilingBoard)} sq ft`],
+                        ['Board before waste', `${formatSqFt(takeoff.netBoardArea)} sq ft`],
+                        ['Waste', `${formatSqFt(takeoff.wasteSqFt)} sq ft (${takeoff.waste}%)`],
+                        ['Area with waste', `${formatSqFt(takeoff.areaWithWaste)} sq ft`],
+                        ['Sheets required', `${takeoff.sheetsRequired}`],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="text-[var(--ws-text-secondary)]">{label}</span>
+                            <span className="text-right font-medium text-white">{value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {takeoffError ? (
-                      <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm text-red-200">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-300" />
-                          <span>{takeoffError}</span>
+                </div>
+
+                <div className="ws-section shrink-0">
+                  <div className="p-4">
+                    <div className="ws-section-header">
+                      <span>Summary</span>
+                      <span className="text-xs text-[var(--ws-text-muted)]">Why these numbers move</span>
+                    </div>
+                    {generating ? (
+                      <div className="mt-3 rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-6 text-center text-sm text-[var(--ws-text-secondary)]">
+                        <Loader2 size={16} className="mx-auto mb-2 animate-spin" />
+                        {overlayStatus}
+                      </div>
+                    ) : generated ? (
+                      <div className="mt-3 space-y-3">
+                        <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                          <div className="text-sm font-medium text-white">{runComparisonMessage || 'Current run diagnostics'}</div>
+                          <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                            {runComparisonReason || 'This run used the latest pinned geometry revision for the current page.'}
+                          </p>
+                          {metricDeltas ? (
+                            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[var(--ws-text-secondary)]">
+                              <div>Floor area: {formatDelta(metricDeltas.floorArea)}</div>
+                              <div>Linear feet: {formatDelta(metricDeltas.totalLinearFt)}</div>
+                              <div>Opening deduction: {formatDelta(metricDeltas.openingDeduction)}</div>
+                              <div>Net wall board: {formatDelta(metricDeltas.netWallBoard)}</div>
+                              <div>Sheets: {metricDeltas.sheetsRequired >= 0 ? '+' : ''}{metricDeltas.sheetsRequired}</div>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                          <div className="text-sm font-medium text-white">How this was calculated</div>
+                          <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                            {takeoff.geometrySource === 'annotation_document'
+                              ? 'The current estimate uses the normalized saved annotation document as the geometry source, derives wall board from normalized wall lengths and hosted openings, and only includes floor area when room closure is stable.'
+                              : 'The current estimate computes floor area from the deterministic CV pipeline, derives wall board from measured wall lengths and opening areas, adds ceiling board, applies waste, and converts the result into sheet counts on the backend.'}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                          <div className="text-sm font-medium text-white">What affects this result</div>
+                          <ul className="mt-2 space-y-1 text-sm text-[var(--ws-text-secondary)]">
+                            <li>Scale accuracy controls floor area, wall lengths, and measured opening deductions.</li>
+                            <li>Ceiling height directly changes gross wall board and final sheet count.</li>
+                            <li>{takeoff.geometrySource === 'annotation_document' ? 'Saved wall and opening edits change the normalized geometry snapshot used by regenerate.' : 'Without saved editor geometry, the takeoff falls back to the original CV-derived layout.'}</li>
+                          </ul>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
+                          <div className="text-sm font-medium text-white">What needs review</div>
+                          <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                            {takeoff.summary || 'Use the editor QA presets to inspect walls, openings, and unmatched tags before treating the estimate as final.'}
+                          </p>
                         </div>
                       </div>
-                    ) : null}
-                    {reviewWarnings.length ? reviewWarnings.map((warning) => (
-                      <div key={warning} className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-3 text-sm text-amber-100">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-300" />
-                          <span>{warning}</span>
-                        </div>
-                      </div>
-                    )) : (
-                      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3 text-sm text-emerald-100">
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-300" />
-                          <span>The current page has scale, geometry, and persisted editor state aligned for review.</span>
-                        </div>
+                    ) : (
+                      <div className="mt-3 rounded-2xl border border-dashed border-[var(--ws-border-strong)] bg-white/[0.02] px-4 py-5">
+                        <div className="text-sm font-medium text-white">Ready to analyze</div>
+                        <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                          Generate takeoff to extract geometry, compute enclosed floor area, and populate the builder-style material breakdown. Add a valid scale and ceiling height first if you want the numbers to be actionable.
+                        </p>
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div className="ws-section">
-                  <div className="ws-section-header">
-                    <span>Breakdown</span>
-                    <span className="text-xs text-[var(--ws-text-muted)]">Audit-oriented</span>
-                  </div>
-                  <div className="mt-3 space-y-3">
-                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-[var(--ws-text-secondary)]">Gross wall area basis</span>
-                        <span className="font-medium text-white">{takeoff.netDrywall > 0 ? (takeoff.netDrywall + openingDeductionEstimate).toLocaleString() : '0'} sq ft</span>
-                      </div>
-                      <p className="mt-1 text-xs text-[var(--ws-text-muted)]">Net drywall plus estimated deductions from emitted openings on this page.</p>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-[var(--ws-text-secondary)]">Opening deductions</span>
-                        <span className="font-medium text-white">{openingDeductionEstimate.toLocaleString()} sq ft</span>
-                      </div>
-                      <p className="mt-1 text-xs text-[var(--ws-text-muted)]">Derived from current door/window counts. Replace this with per-opening audit data once backend breakdowns land.</p>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-[var(--ws-text-secondary)]">Waste-adjusted total</span>
-                        <span className="font-medium text-white">{takeoff.netDrywall > 0 ? (takeoff.netDrywall + wasteSqFt).toLocaleString() : '0'} sq ft</span>
-                      </div>
-                      <p className="mt-1 text-xs text-[var(--ws-text-muted)]">Net drywall plus configured waste allowance before sheet conversion.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ws-section">
-                  <div className="ws-section-header">
-                    <span>Summary</span>
-                    <span className="text-xs text-[var(--ws-text-muted)]">Why these numbers move</span>
-                  </div>
-                  {generating ? (
-                    <div className="mt-3 rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-6 text-center text-sm text-[var(--ws-text-secondary)]">
-                      <Loader2 size={16} className="mx-auto mb-2 animate-spin" />
-                      {overlayStatus}
-                    </div>
-                  ) : generated ? (
-                    <div className="mt-3 space-y-3">
-                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
-                        <div className="text-sm font-medium text-white">How this was calculated</div>
-                        <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
-                          The current estimate uses detected wall geometry on this page, subtracts emitted openings, applies the waste factor, and converts the result into 4x12 sheet counts.
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
-                        <div className="text-sm font-medium text-white">What affects this result</div>
-                        <ul className="mt-2 space-y-1 text-sm text-[var(--ws-text-secondary)]">
-                          <li>Scale accuracy determines whether area and drywall values are trustworthy.</li>
-                          <li>Door/window verification changes deduction totals and sheet counts.</li>
-                          <li>Unsaved editor changes do not automatically recalculate takeoff output.</li>
-                        </ul>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
-                        <div className="text-sm font-medium text-white">What needs review</div>
-                        <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
-                          {takeoff.summary || 'Use the editor QA presets to inspect walls, openings, and unmatched tags before treating the estimate as final.'}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3 rounded-2xl border border-dashed border-[var(--ws-border-strong)] bg-white/[0.02] px-4 py-5">
-                      <div className="text-sm font-medium text-white">Ready to analyze</div>
-                      <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
-                        Generate takeoff to extract geometry, estimate drywall, and populate the review rail. Add a valid scale first if you want area and drywall numbers to be actionable.
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             </section>

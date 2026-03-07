@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { fromCVTakeoffResult, toPersistencePayload } from '@/lib/annotationAdapters';
+import { fromCVTakeoffResult } from '@/lib/annotationAdapters';
 import { getBackendUrl } from '@/lib/backendUrl';
+import {
+  fetchAnnotationStorePayload,
+  postAnnotationRevisionsWithConflictRetry,
+  saveAnnotationDocumentWithConflictRetry,
+} from '@/lib/annotationPersistence';
 import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import EditorToolbar from '@/components/annotation/EditorToolbar';
 import IssueHighlighter from '@/components/annotation/IssueHighlighter';
@@ -16,10 +21,8 @@ import type {
   AnnotationDocument,
   AnnotationElement,
   AnnotationRenderHints,
-  AnnotationStorePayload,
   CVTakeoffResultPayload,
   EditorTagOverlayState,
-  RevisionsResponse,
 } from '@/types/annotation';
 
 const BACKEND_URL = getBackendUrl();
@@ -133,18 +136,6 @@ async function fetchCvDocument(
   };
 }
 
-async function fetchAnnotationStorePayload(
-  projectId: string,
-  pageNumber: number,
-): Promise<AnnotationStorePayload> {
-  const res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `Failed to load annotation doc (${res.status})`);
-  }
-  return res.json() as Promise<AnnotationStorePayload>;
-}
-
 interface AnnotationEditorShellProps {
   projectId: string;
   fileUrl: string;
@@ -245,42 +236,6 @@ export default function AnnotationEditorShell({
     showVerificationAccent: viewPreset === 'openings_qa',
   }), [viewPreset]);
 
-  const putDocumentWithConflictRetry = useCallback(async (nextDoc: AnnotationDocument, baseRevision: number) => {
-    const makeBody = (revision: number) => JSON.stringify({
-      document: {
-        ...nextDoc,
-        meta: {
-          ...nextDoc.meta,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-      base_revision: revision,
-    });
-
-    let res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: makeBody(baseRevision),
-    });
-
-    if (res.status === 409) {
-      const latest = await fetchAnnotationStorePayload(projectId, pageNumber);
-      markRevision(latest.latest_revision);
-      res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: makeBody(latest.latest_revision),
-      });
-    }
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || `Failed to save annotation document (${res.status})`);
-    }
-
-    return res.json() as Promise<AnnotationStorePayload>;
-  }, [markRevision, pageNumber, projectId]);
-
   const refreshOpeningsFromCV = useCallback(async (baseDoc: AnnotationDocument, baseRevision: number) => {
     const cvSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFt);
     const cvDoc = sanitizeAnnotationDocument(cvSnapshot.document);
@@ -313,21 +268,43 @@ export default function AnnotationEditorShell({
     const upgradedDoc = sanitizeAnnotationDocument(mergeOpeningsFromCV(baseDoc, cvDoc));
     initializeDocument(upgradedDoc);
 
-    const saved = await putDocumentWithConflictRetry(upgradedDoc, baseRevision);
+    const saved = await saveAnnotationDocumentWithConflictRetry({
+      projectId,
+      pageNumber,
+      document: {
+        ...upgradedDoc,
+        meta: {
+          ...upgradedDoc.meta,
+          revision: baseRevision,
+        },
+      },
+      onConflictRevision: markRevision,
+    });
     markRevision(saved.latest_revision);
     return { blocked: false as const };
-  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, putDocumentWithConflictRetry, scalePxPerFt]);
+  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, scalePxPerFt]);
 
   const rebuildGeometryFromCV = useCallback(async () => {
     if (!pendingRebuild || !document) return;
     const nextDoc = sanitizeAnnotationDocument(pendingRebuild.document);
     initializeDocument(nextDoc);
 
-    const saved = await putDocumentWithConflictRetry(nextDoc, document.meta.revision);
+    const saved = await saveAnnotationDocumentWithConflictRetry({
+      projectId,
+      pageNumber,
+      document: {
+        ...nextDoc,
+        meta: {
+          ...nextDoc.meta,
+          revision: document.meta.revision,
+        },
+      },
+      onConflictRevision: markRevision,
+    });
     markRevision(saved.latest_revision);
     setWarning(null);
     setPendingRebuild(null);
-  }, [document, initializeDocument, markRevision, pendingRebuild, putDocumentWithConflictRetry]);
+  }, [document, initializeDocument, markRevision, pageNumber, pendingRebuild, projectId]);
 
   const loadDocument = useCallback(async () => {
     setLoading(true);
@@ -364,26 +341,37 @@ export default function AnnotationEditorShell({
       }));
       initializeDocument(sanitizedDoc);
 
-      await putDocumentWithConflictRetry(sanitizedDoc, sanitizedDoc.meta.revision);
+      const saved = await saveAnnotationDocumentWithConflictRetry({
+        projectId,
+        pageNumber,
+        document: sanitizedDoc,
+        onConflictRevision: markRevision,
+      });
+      markRevision(saved.latest_revision);
     } catch (err: any) {
       setError(err?.message || 'Failed to load annotation editor');
     } finally {
       setLoading(false);
     }
-  }, [fileMime, fileUrl, initializeDocument, pageNumber, projectId, putDocumentWithConflictRetry, refreshOpeningsFromCV, scalePxPerFt]);
+  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, refreshOpeningsFromCV, scalePxPerFt]);
 
   const saveSnapshot = useCallback(async () => {
     if (!document) return;
     setSaveStatus('syncing');
 
     try {
-      const data = await putDocumentWithConflictRetry(document, document.meta.revision);
+      const data = await saveAnnotationDocumentWithConflictRetry({
+        projectId,
+        pageNumber,
+        document,
+        onConflictRevision: markRevision,
+      });
       markRevision(data.latest_revision);
       setSaveStatus('saved');
     } catch {
       setSaveStatus('error');
     }
-  }, [document, markRevision, putDocumentWithConflictRetry, setSaveStatus]);
+  }, [document, markRevision, pageNumber, projectId, setSaveStatus]);
 
   useEffect(() => {
     void loadDocument();
@@ -429,47 +417,36 @@ export default function AnnotationEditorShell({
     const interval = setInterval(async () => {
       if (!document) return;
       const pending = flushPendingOps();
-      if (!pending.length) return;
+      if (pending.length) {
+        setSaveStatus('syncing');
 
-      setSaveStatus('syncing');
-
-      try {
-        let response = await fetch(`${BACKEND_URL}/api/annotations/${projectId}/revisions?page=${pageNumber}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            parent_revision_id: document.meta.revision,
-            actor_id: actorId,
-            events: pending,
-          }),
-        });
-
-        if (response.status === 409) {
-          const latest = await fetchAnnotationStorePayload(projectId, pageNumber);
-          markRevision(latest.latest_revision);
-          response = await fetch(`${BACKEND_URL}/api/annotations/${projectId}/revisions?page=${pageNumber}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              parent_revision_id: latest.latest_revision,
+        try {
+          const data = await postAnnotationRevisionsWithConflictRetry({
+            projectId,
+            pageNumber,
+            payload: {
+              parent_revision_id: document.meta.revision,
               actor_id: actorId,
               events: pending,
-            }),
+            },
+            onConflictRevision: markRevision,
           });
+          markRevision(data.latest_revision);
+          setSaveStatus('saved');
+        } catch {
+          restorePendingOps(pending);
+          setSaveStatus('error');
         }
+        return;
+      }
 
-        if (!response.ok) throw new Error('Revision sync failed');
-        const data = (await response.json()) as RevisionsResponse;
-        markRevision(data.latest_revision);
-        setSaveStatus('saved');
-      } catch {
-        restorePendingOps(pending);
-        setSaveStatus('error');
+      if (saveStatus === 'unsaved') {
+        void saveSnapshot();
       }
     }, 1500);
 
     return () => clearInterval(interval);
-  }, [actorId, document, flushPendingOps, markRevision, pageNumber, projectId, restorePendingOps, setSaveStatus]);
+  }, [actorId, document, flushPendingOps, markRevision, pageNumber, projectId, restorePendingOps, saveSnapshot, saveStatus, setSaveStatus]);
 
   if (loading) {
     return <div className="w-full h-full grid place-items-center text-gray-400 text-sm">Loading annotation editor...</div>;

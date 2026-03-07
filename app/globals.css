@@ -123,6 +123,21 @@ body {
     background: rgba(251, 113, 133, 0.12);
     color: #fecdd3;
   }
+
+  .review-rail-scroll {
+    scrollbar-gutter: stable;
+  }
+
+  .review-inputs-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .review-inputs-summary-item {
+    min-width: 0;
+    flex: 1 1 10rem;
+  }
 }
 
 /* ── Takeoff Analyzing Overlay ── */
