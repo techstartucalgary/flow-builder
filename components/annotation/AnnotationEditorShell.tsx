@@ -20,6 +20,7 @@ import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import type {
   AnnotationDocument,
   AnnotationElement,
+  AnnotationIssue,
   AnnotationRenderHints,
   CVTakeoffResultPayload,
   EditorTagOverlayState,
@@ -92,6 +93,14 @@ function hasCoordinateMismatch(existingDoc: AnnotationDocument, cvDoc: Annotatio
     existingDoc.baseImage.widthPx !== cvDoc.baseImage.widthPx ||
     existingDoc.baseImage.heightPx !== cvDoc.baseImage.heightPx
   );
+}
+
+function presetForIssue(issue: AnnotationIssue, element: AnnotationElement | null): AnnotationRenderHints['preset'] {
+  if (element?.type === 'door' || element?.type === 'window') return 'openings_qa';
+  if (element?.type === 'wall') return 'walls_qa';
+  if (issue.code.toLowerCase().includes('opening')) return 'openings_qa';
+  if (issue.code.toLowerCase().includes('wall')) return 'walls_qa';
+  return 'final';
 }
 
 interface CvDocumentSnapshot {
@@ -186,6 +195,7 @@ export default function AnnotationEditorShell({
   const flushPendingOps = useAnnotationEditorStore((s) => s.flushPendingOps);
   const restorePendingOps = useAnnotationEditorStore((s) => s.restorePendingOps);
   const setSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
+  const requestFocusOnElements = useAnnotationEditorStore((s) => s.requestFocusOnElements);
 
   useEffect(() => {
     scalePxPerFtRef.current = scalePxPerFt;
@@ -378,6 +388,14 @@ export default function AnnotationEditorShell({
     }
   }, [document, markRevision, pageNumber, projectId, setSaveStatus]);
 
+  const focusIssue = useCallback((issue: AnnotationIssue) => {
+    const element = entities.byId[issue.elementId] || null;
+    const preset = presetForIssue(issue, element);
+    setViewPreset(preset);
+    setSelection([issue.elementId]);
+    requestFocusOnElements([issue.elementId], element?.type === 'wall' ? 148 : 120);
+  }, [entities.byId, requestFocusOnElements, setSelection, setViewPreset]);
+
   useEffect(() => {
     void loadDocument();
   }, [loadDocument]);
@@ -542,12 +560,12 @@ export default function AnnotationEditorShell({
           renderHints={renderHints}
           issuesByElementId={issuesByElementId}
           issues={document.issues}
-          onIssueSelect={(issue) => setSelection([issue.elementId])}
+          onIssueSelect={focusIssue}
         />
 
         <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
           <RevisionStatusBar revision={document.meta.revision} status={saveStatus} />
-          <IssueHighlighter issues={document.issues} onSelectIssue={(issue) => setSelection([issue.elementId])} />
+          <IssueHighlighter issues={document.issues} onSelectIssue={focusIssue} />
           <PropertyPanel
             element={selectedElement}
             issues={selectedElement ? document.issues.filter((issue) => issue.elementId === selectedElement.id) : []}

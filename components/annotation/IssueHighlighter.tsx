@@ -60,7 +60,10 @@ export default function IssueHighlighter({ issues, onSelectIssue }: IssueHighlig
                       : 'border-cyan-400/20 bg-cyan-500/8 text-cyan-100 hover:bg-cyan-500/12'
                 }`}
               >
-                <div className="font-semibold">{issue.code}</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-semibold">{issue.code}</div>
+                  <span className="text-[10px] uppercase tracking-[0.14em] opacity-70">Jump to issue</span>
+                </div>
                 <div className="mt-1 opacity-80">{issue.message}</div>
               </button>
             ))}
