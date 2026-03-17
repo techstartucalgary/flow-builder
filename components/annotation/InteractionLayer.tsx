@@ -7,9 +7,10 @@ import type { WallElement } from '@/types/annotation';
 interface InteractionLayerProps {
   selectedWall: WallElement | null;
   onWallEndpointChange: (id: string, endpoint: 'start' | 'end', x: number, y: number) => void;
+  onWallEndpointCommit: () => void;
 }
 
-export default function InteractionLayer({ selectedWall, onWallEndpointChange }: InteractionLayerProps) {
+export default function InteractionLayer({ selectedWall, onWallEndpointChange, onWallEndpointCommit }: InteractionLayerProps) {
   if (!selectedWall) return null;
 
   const seg = selectedWall.geometry;
@@ -30,6 +31,7 @@ export default function InteractionLayer({ selectedWall, onWallEndpointChange }:
         fill="#facc15"
         draggable
         onDragMove={(e) => onWallEndpointChange(selectedWall.id, 'start', e.target.x(), e.target.y())}
+        onDragEnd={onWallEndpointCommit}
       />
       <Circle
         x={seg.x2}
@@ -38,6 +40,7 @@ export default function InteractionLayer({ selectedWall, onWallEndpointChange }:
         fill="#facc15"
         draggable
         onDragMove={(e) => onWallEndpointChange(selectedWall.id, 'end', e.target.x(), e.target.y())}
+        onDragEnd={onWallEndpointCommit}
       />
     </>
   );

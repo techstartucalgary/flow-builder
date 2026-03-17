@@ -1,12 +1,13 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Circle, Layer, Stage, Text } from 'react-konva';
+import { Circle, Layer, Line, Stage, Text } from 'react-konva';
 import type Konva from 'konva';
 
 import { safeClone } from '@/lib/clone';
 import { clamp, worldFromScreen } from '@/lib/geometry';
 import { isObjectUrl, normalizeBaseImageUrl } from '@/lib/imageUrl';
+import { snapPointToWalls, snapToGrid, snapWallEndpointAngle } from '@/lib/snapping';
 import type {
   AnnotationElement,
   AnnotationElementType,
@@ -69,6 +70,10 @@ export default function ViewportStage({
   const selection = useAnnotationEditorStore((s) => s.selection);
   const toolMode = useAnnotationEditorStore((s) => s.toolMode);
   const camera = useAnnotationEditorStore((s) => s.camera);
+  const gridEnabled = useAnnotationEditorStore((s) => s.gridEnabled);
+  const gridSize = useAnnotationEditorStore((s) => s.gridSize);
+  const wallSnapEnabled = useAnnotationEditorStore((s) => s.wallSnapEnabled);
+  const wallSnapThreshold = useAnnotationEditorStore((s) => s.wallSnapThreshold);
   const focusRequest = useAnnotationEditorStore((s) => s.focusRequest);
   const setCamera = useAnnotationEditorStore((s) => s.setCamera);
   const setSelection = useAnnotationEditorStore((s) => s.setSelection);
@@ -76,6 +81,8 @@ export default function ViewportStage({
   const createElementAt = useAnnotationEditorStore((s) => s.createElementAt);
   const moveElementBy = useAnnotationEditorStore((s) => s.moveElementBy);
   const updateElement = useAnnotationEditorStore((s) => s.updateElement);
+  const [pointerWorld, setPointerWorld] = useState<{ x: number; y: number } | null>(null);
+  const [endpointSnapGuide, setEndpointSnapGuide] = useState<Array<{ id: string; points: number[] }>>([]);
   const displayedElementIds = useMemo(() => new Set(displayElements.map((element) => element.id)), [displayElements]);
   const hasVisibleSelection = useMemo(
     () => selection.some((id) => displayedElementIds.has(id)),
@@ -212,6 +219,63 @@ export default function ViewportStage({
     return el;
   }, [displayedElementIds, entities.byId, selection]);
 
+  const placementFeedback = useMemo(() => {
+    if (!pointerWorld) return null;
+    if (toolMode !== 'door' && toolMode !== 'window' && toolMode !== 'room') return null;
+
+    let point = pointerWorld;
+    const guides: Array<{ id: string; points: number[] }> = [];
+    let hostWallId: string | undefined;
+
+    if (gridEnabled) {
+      const snappedGridPoint = snapToGrid(point.x, point.y, gridSize);
+      if (snappedGridPoint.x !== point.x || snappedGridPoint.y !== point.y) {
+        guides.push({
+          id: 'grid-snap',
+          points: [point.x, point.y, snappedGridPoint.x, snappedGridPoint.y],
+        });
+        point = snappedGridPoint;
+      }
+    }
+
+    if (wallSnapEnabled && (toolMode === 'door' || toolMode === 'window')) {
+      const walls = entities.byType.wall.map((wallId) => entities.byId[wallId]);
+      const wallSnap = snapPointToWalls(point.x, point.y, walls, wallSnapThreshold);
+      if (wallSnap.snapped) {
+        point = { x: wallSnap.x, y: wallSnap.y };
+        hostWallId = wallSnap.wallId;
+        if (wallSnap.guidePoints) {
+          guides.push({ id: `host-wall-${wallSnap.wallId ?? 'preview'}`, points: wallSnap.guidePoints });
+        }
+      }
+    }
+
+    return { point, guides, hostWallId };
+  }, [
+    entities.byId,
+    entities.byType.wall,
+    gridEnabled,
+    gridSize,
+    pointerWorld,
+    toolMode,
+    wallSnapEnabled,
+    wallSnapThreshold,
+  ]);
+
+  const activeSnapGuides = useMemo(() => {
+    const guides: Array<{ id: string; points: number[] }> = [];
+    if (placementFeedback?.guides.length) guides.push(...placementFeedback.guides);
+    if (endpointSnapGuide.length) guides.push(...endpointSnapGuide);
+    return guides;
+  }, [endpointSnapGuide, placementFeedback]);
+
+  const previewHostWall = useMemo(() => {
+    if (!placementFeedback?.hostWallId) return null;
+    const wall = entities.byId[placementFeedback.hostWallId];
+    if (!wall || wall.type !== 'wall' || wall.geometry.kind !== 'segment') return null;
+    return wall;
+  }, [entities.byId, placementFeedback?.hostWallId]);
+
   const isViewportReady = container.width > 0 && container.height > 0 && widthPx > 0 && heightPx > 0;
   const shouldMountStage = isViewportReady && (!showBaseImage || baseImageReady);
   const stageKey = useMemo(() => {
@@ -316,8 +380,17 @@ export default function ViewportStage({
       const point = stageRef.current.getPointerPosition();
       if (!point) return;
       const world = worldFromScreen(point.x, point.y, camera.panX, camera.panY, camera.zoom);
-      createElementAt(toolMode as AnnotationElementType, world.x, world.y);
+      const placementPoint = placementFeedback?.point ?? world;
+      createElementAt(toolMode as AnnotationElementType, placementPoint.x, placementPoint.y);
     }
+  }
+
+  function onStageMouseMove() {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const point = stage.getPointerPosition();
+    if (!point) return;
+    setPointerWorld(worldFromScreen(point.x, point.y, camera.panX, camera.panY, camera.zoom));
   }
 
   function onWheel(e: any) {
@@ -381,6 +454,8 @@ export default function ViewportStage({
           scaleX={camera.zoom}
           scaleY={camera.zoom}
           onMouseDown={onStageMouseDown}
+          onMouseMove={onStageMouseMove}
+          onMouseLeave={() => setPointerWorld(null)}
           onWheel={onWheel}
           draggable={toolMode === 'select'}
           onDragEnd={(e) => setCamera({ panX: e.target.x(), panY: e.target.y() })}
@@ -395,8 +470,43 @@ export default function ViewportStage({
               onDragEnd={onDragEnd}
               onTransformEnd={onTransformEnd}
             />
-            <SnapGuideOverlay guides={[]} />
+            <SnapGuideOverlay guides={activeSnapGuides} />
           </Layer>
+          {previewHostWall ? (
+            <Layer listening={false}>
+              <Line
+                points={[
+                  previewHostWall.geometry.x1,
+                  previewHostWall.geometry.y1,
+                  previewHostWall.geometry.x2,
+                  previewHostWall.geometry.y2,
+                ]}
+                stroke="#fbbf24"
+                strokeWidth={Math.max(6, previewHostWall.geometry.thicknessPx + 4)}
+                opacity={0.38}
+              />
+              {placementFeedback ? (
+                <Circle
+                  x={placementFeedback.point.x}
+                  y={placementFeedback.point.y}
+                  radius={8}
+                  fill="#fbbf24"
+                  opacity={0.9}
+                />
+              ) : null}
+            </Layer>
+          ) : null}
+          {placementFeedback && (toolMode === 'door' || toolMode === 'window' || toolMode === 'room') ? (
+            <Layer listening={false}>
+              <Circle
+                x={placementFeedback.point.x}
+                y={placementFeedback.point.y}
+                radius={6}
+                fill={toolMode === 'door' ? '#fb7185' : toolMode === 'window' ? '#60a5fa' : '#22d3ee'}
+                opacity={0.9}
+              />
+            </Layer>
+          ) : null}
           {calibrationDraft?.start ? (
             <Layer listening={false}>
               <Circle
@@ -431,6 +541,7 @@ export default function ViewportStage({
               ) : null}
               <SnapGuideOverlay
                 guides={calibrationDraft.end ? [{
+                  id: 'calibration-segment',
                   points: [
                     calibrationDraft.start.x,
                     calibrationDraft.start.y,
@@ -481,16 +592,24 @@ export default function ViewportStage({
                 const wall = entities.byId[id];
                 if (!wall || wall.type !== 'wall' || wall.geometry.kind !== 'segment') return;
                 const next = safeClone(wall);
+                const anchor = endpoint === 'start'
+                  ? { x: wall.geometry.x2, y: wall.geometry.y2 }
+                  : { x: wall.geometry.x1, y: wall.geometry.y1 };
+                const snapped = snapWallEndpointAngle(anchor.x, anchor.y, x, y);
+                const nextX = snapped.x;
+                const nextY = snapped.y;
                 if (endpoint === 'start') {
-                  next.geometry.x1 = x;
-                  next.geometry.y1 = y;
+                  next.geometry.x1 = nextX;
+                  next.geometry.y1 = nextY;
                 } else {
-                  next.geometry.x2 = x;
-                  next.geometry.y2 = y;
+                  next.geometry.x2 = nextX;
+                  next.geometry.y2 = nextY;
                 }
                 next.attrs.status = 'edited';
+                setEndpointSnapGuide(snapped.guidePoints ? [{ id: 'wall-angle-snap', points: snapped.guidePoints }] : []);
                 updateElement(next);
               }}
+              onWallEndpointCommit={() => setEndpointSnapGuide([])}
             />
             <SelectionTransformer
               stageRef={stageRef}
