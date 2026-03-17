@@ -423,6 +423,16 @@ export default function AnnotationEditorShell({
     requestFocusOnElements([issue.elementId], element?.type === 'wall' ? 148 : 120);
   }, [entities.byId, requestFocusOnElements, setSelection, setViewPreset]);
 
+  const focusElementById = useCallback((elementId: string) => {
+    const element = entities.byId[elementId] || null;
+    if (!element) return;
+    if (element.type === 'wall') setViewPreset('walls_qa');
+    else if (element.type === 'door' || element.type === 'window') setViewPreset('openings_qa');
+    else setViewPreset('final');
+    setSelection([elementId]);
+    requestFocusOnElements([elementId], element.type === 'wall' ? 148 : 120);
+  }, [entities.byId, requestFocusOnElements, setSelection, setViewPreset]);
+
   const resetCalibration = useCallback(() => {
     setCalibrationDraft({
       start: null,
@@ -728,6 +738,7 @@ export default function AnnotationEditorShell({
             issues={selectedElement ? document.issues.filter((issue) => issue.elementId === selectedElement.id) : []}
             revision={document.meta.revision}
             onApply={updateElement}
+            onFocusElement={focusElementById}
           />
           <LayerVisibilityPanel document={document} onToggle={toggleLayer} />
         </div>

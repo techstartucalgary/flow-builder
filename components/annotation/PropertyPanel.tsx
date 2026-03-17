@@ -17,6 +17,7 @@ interface PropertyPanelProps {
   issues: AnnotationIssue[];
   revision: number;
   onApply: (element: AnnotationElement) => void;
+  onFocusElement?: (elementId: string) => void;
 }
 
 interface FormValues {
@@ -40,7 +41,7 @@ interface FormValues {
   excludeFromTakeoff: boolean;
 }
 
-export default function PropertyPanel({ element, issues, revision, onApply }: PropertyPanelProps) {
+export default function PropertyPanel({ element, issues, revision, onApply, onFocusElement }: PropertyPanelProps) {
   const { register, handleSubmit, reset } = useForm<FormValues>({
     defaultValues: {
       name: '',
@@ -110,6 +111,67 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
       ? (element.relations as WallRelations | undefined)
       : undefined;
   const verification = openingRelations?.verification;
+
+  function applyImmediate(mutator: (draft: AnnotationElement) => void) {
+    if (!element) return;
+    const updated = safeClone(element);
+    mutator(updated);
+    onApply(updated);
+  }
+
+  function setWallSurfaceClass(nextSurfaceClass: WallSurfaceClass) {
+    applyImmediate((updated) => {
+      if (updated.type !== 'wall') return;
+      const nextRelations = {
+        ...((updated.relations as WallRelations | undefined) ?? {}),
+        surfaceClass: nextSurfaceClass,
+        surfaceClassSource: 'manual' as const,
+        boardSides: (nextSurfaceClass === 'partition' ? 2 : 1) as 1 | 2,
+      };
+      updated.relations = nextRelations;
+      updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
+    });
+  }
+
+  function resetWallClassification() {
+    applyImmediate((updated) => {
+      if (updated.type !== 'wall') return;
+      const nextRelations = { ...((updated.relations as WallRelations | undefined) ?? {}) };
+      delete nextRelations.surfaceClass;
+      delete nextRelations.surfaceClassSource;
+      delete nextRelations.boardSides;
+      updated.relations = Object.keys(nextRelations).length ? nextRelations : undefined;
+      updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
+    });
+  }
+
+  function toggleExcludeFromTakeoff() {
+    applyImmediate((updated) => {
+      if (updated.type !== 'wall') return;
+      const nextRelations = { ...((updated.relations as WallRelations | undefined) ?? {}) };
+      nextRelations.excludeFromTakeoff = !(nextRelations.excludeFromTakeoff ?? false);
+      updated.relations = nextRelations;
+      updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
+    });
+  }
+
+  function toggleLock() {
+    applyImmediate((updated) => {
+      updated.attrs.locked = !updated.attrs.locked;
+    });
+  }
+
+  function toggleVisibility() {
+    applyImmediate((updated) => {
+      updated.attrs.visible = !updated.attrs.visible;
+    });
+  }
+
+  function markReviewed() {
+    applyImmediate((updated) => {
+      updated.attrs.status = 'edited';
+    });
+  }
 
   return (
     <form
@@ -281,70 +343,162 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
         )}
       </div>
 
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-400">Editable Fields</div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-gray-400">Name<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('name')} /></label>
-        <label className="text-gray-400">Confidence<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('confidence', { valueAsNumber: true })} /></label>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-gray-400">Visible<input className="ml-2" type="checkbox" {...register('visible')} /></label>
-        <label className="text-gray-400">Locked<input className="ml-2" type="checkbox" {...register('locked')} /></label>
-      </div>
-
-      {element.geometry.kind !== 'segment' && (
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-gray-400">X<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x', { valueAsNumber: true })} /></label>
-          <label className="text-gray-400">Y<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y', { valueAsNumber: true })} /></label>
-          <label className="text-gray-400">Width<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('width', { valueAsNumber: true })} /></label>
-          <label className="text-gray-400">Height<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('height', { valueAsNumber: true })} /></label>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Builder Actions</div>
+          {onFocusElement ? (
+            <button
+              type="button"
+              onClick={() => onFocusElement(element.id)}
+              className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-500/20"
+            >
+              Focus on Canvas
+            </button>
+          ) : null}
         </div>
-      )}
 
-      {element.geometry.kind === 'segment' && (
-        <>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={toggleLock}
+            className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-left text-white transition hover:bg-white/5"
+          >
+            {element.attrs.locked ? 'Unlock element' : 'Lock element'}
+          </button>
+          <button
+            type="button"
+            onClick={toggleVisibility}
+            className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-left text-white transition hover:bg-white/5"
+          >
+            {element.attrs.visible ? 'Hide from takeoff view' : 'Show in takeoff view'}
+          </button>
+        </div>
+
+        {element.type === 'wall' ? (
+          <>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setWallSurfaceClass('perimeter')}
+                className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100 transition hover:bg-cyan-500/20"
+              >
+                Mark perimeter
+              </button>
+              <button
+                type="button"
+                onClick={() => setWallSurfaceClass('partition')}
+                className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-left text-emerald-100 transition hover:bg-emerald-500/20"
+              >
+                Mark partition
+              </button>
+              <button
+                type="button"
+                onClick={resetWallClassification}
+                className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-left text-white transition hover:bg-white/5"
+              >
+                Reset to auto
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={toggleExcludeFromTakeoff}
+              className="w-full rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-left text-amber-100 transition hover:bg-amber-500/20"
+            >
+              {(wallRelations?.excludeFromTakeoff ?? false) ? 'Include in takeoff again' : 'Exclude from takeoff'}
+            </button>
+          </>
+        ) : null}
+
+        {(element.type === 'door' || element.type === 'window') ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={markReviewed}
+              className="rounded-lg border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-2 text-left text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+            >
+              Mark reviewed
+            </button>
+            {openingRelations?.hostWallId && onFocusElement ? (
+              <button
+                type="button"
+                onClick={() => onFocusElement(openingRelations.hostWallId!)}
+                className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-left text-white transition hover:bg-white/5"
+              >
+                Jump to host wall
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <details className="rounded-xl border border-white/10 bg-black/10 px-3 py-3 text-[11px] text-gray-300">
+        <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">
+          Advanced Fields
+        </summary>
+        <div className="mt-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-gray-400">X1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x1', { valueAsNumber: true })} /></label>
-            <label className="text-gray-400">Y1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y1', { valueAsNumber: true })} /></label>
-            <label className="text-gray-400">X2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x2', { valueAsNumber: true })} /></label>
-            <label className="text-gray-400">Y2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y2', { valueAsNumber: true })} /></label>
-            <label className="text-gray-400">Thickness<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('thicknessPx', { valueAsNumber: true })} /></label>
+            <label className="text-gray-400">Name<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('name')} /></label>
+            <label className="text-gray-400">Confidence<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('confidence', { valueAsNumber: true })} /></label>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-gray-400">Visible<input className="ml-2" type="checkbox" {...register('visible')} /></label>
+            <label className="text-gray-400">Locked<input className="ml-2" type="checkbox" {...register('locked')} /></label>
           </div>
 
-          {element.type === 'wall' ? (
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Drywall QA</div>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="text-gray-400">
-                  Surface Class
-                  <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('surfaceClass')}>
-                    <option value="perimeter">Perimeter</option>
-                    <option value="partition">Partition</option>
-                    <option value="unknown">Unknown</option>
-                  </select>
-                </label>
-                <label className="text-gray-400">
-                  Board Sides
-                  <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('boardSides', { valueAsNumber: true })}>
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                  </select>
-                </label>
-              </div>
-              <label className="flex items-center justify-between gap-2 text-gray-400">
-                <span>Exclude From Takeoff</span>
-                <input type="checkbox" {...register('excludeFromTakeoff')} />
-              </label>
+          {element.geometry.kind !== 'segment' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-gray-400">X<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x', { valueAsNumber: true })} /></label>
+              <label className="text-gray-400">Y<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y', { valueAsNumber: true })} /></label>
+              <label className="text-gray-400">Width<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('width', { valueAsNumber: true })} /></label>
+              <label className="text-gray-400">Height<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('height', { valueAsNumber: true })} /></label>
             </div>
-          ) : null}
-        </>
-      )}
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-gray-400">X1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x1', { valueAsNumber: true })} /></label>
+                <label className="text-gray-400">Y1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y1', { valueAsNumber: true })} /></label>
+                <label className="text-gray-400">X2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x2', { valueAsNumber: true })} /></label>
+                <label className="text-gray-400">Y2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y2', { valueAsNumber: true })} /></label>
+                <label className="text-gray-400">Thickness<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('thicknessPx', { valueAsNumber: true })} /></label>
+              </div>
 
-      <label className="text-gray-400">Rotation<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('rotationDeg', { valueAsNumber: true })} /></label>
-      <label className="text-gray-400">Notes<textarea className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" rows={3} {...register('notes')} /></label>
+              {element.type === 'wall' ? (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Manual Wall Overrides</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-gray-400">
+                      Surface Class
+                      <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('surfaceClass')}>
+                        <option value="perimeter">Perimeter</option>
+                        <option value="partition">Partition</option>
+                        <option value="unknown">Unknown</option>
+                      </select>
+                    </label>
+                    <label className="text-gray-400">
+                      Board Sides
+                      <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('boardSides', { valueAsNumber: true })}>
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label className="flex items-center justify-between gap-2 text-gray-400">
+                    <span>Exclude From Takeoff</span>
+                    <input type="checkbox" {...register('excludeFromTakeoff')} />
+                  </label>
+                </div>
+              ) : null}
+            </>
+          )}
 
-      <button type="submit" className="w-full rounded bg-indigo-500/20 border border-indigo-400/40 py-1.5 text-indigo-200 hover:bg-indigo-500/30">
-        Apply
-      </button>
+          <label className="text-gray-400">Rotation<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('rotationDeg', { valueAsNumber: true })} /></label>
+          <label className="text-gray-400">Notes<textarea className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" rows={3} {...register('notes')} /></label>
+
+          <button type="submit" className="w-full rounded bg-indigo-500/20 border border-indigo-400/40 py-1.5 text-indigo-200 hover:bg-indigo-500/30">
+            Apply Advanced Changes
+          </button>
+        </div>
+      </details>
     </form>
   );
 }
