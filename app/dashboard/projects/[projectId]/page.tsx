@@ -269,6 +269,7 @@ export default function ProjectViewerPage() {
   const setEditorSelection = useAnnotationEditorStore((s) => s.setSelection);
   const setEditorViewPreset = useAnnotationEditorStore((s) => s.setViewPreset);
   const requestFocusOnElements = useAnnotationEditorStore((s) => s.requestFocusOnElements);
+  const setEditorToolMode = useAnnotationEditorStore((s) => s.setToolMode);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -647,6 +648,11 @@ export default function ProjectViewerPage() {
     setEditorMode(true);
   }, [editorDocument, editorMode, requestFocusOnElements, setEditorSelection, setEditorViewPreset]);
 
+  const openScaleCalibration = useCallback(() => {
+    setEditorMode(true);
+    setEditorToolMode('calibrate');
+  }, [setEditorToolMode]);
+
   const readinessRows = useMemo(() => ([
     {
       label: 'Document',
@@ -964,9 +970,18 @@ export default function ProjectViewerPage() {
                   <div className="mt-3">
                     <div className="grid gap-3">
                       <div>
-                        <label htmlFor="scale-px-per-ft" className="mb-1.5 block text-xs text-[var(--ws-text-secondary)]">
-                          Scale (px/ft)
-                        </label>
+                        <div className="mb-1.5 flex items-center justify-between gap-3">
+                          <label htmlFor="scale-px-per-ft" className="block text-xs text-[var(--ws-text-secondary)]">
+                            Scale (px/ft)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={openScaleCalibration}
+                            className="text-[11px] font-medium text-cyan-200 transition hover:text-white"
+                          >
+                            Calibrate on plan
+                          </button>
+                        </div>
                         <div className="relative">
                           <Ruler size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ws-text-muted)]" />
                           <input
@@ -990,6 +1005,9 @@ export default function ProjectViewerPage() {
                             className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                           />
                         </div>
+                        <p className="mt-1.5 text-[11px] text-[var(--ws-text-muted)]">
+                          Manual edits sync with the editor. Use calibration to measure from plan geometry instead of guessing a scale.
+                        </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>

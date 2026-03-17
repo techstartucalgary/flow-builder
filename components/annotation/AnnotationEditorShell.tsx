@@ -154,6 +154,18 @@ interface AnnotationEditorShellProps {
   actorId?: string;
 }
 
+interface CalibrationPoint {
+  x: number;
+  y: number;
+}
+
+interface CalibrationDraft {
+  start: CalibrationPoint | null;
+  end: CalibrationPoint | null;
+  knownDistanceFt: string;
+  error: string | null;
+}
+
 export default function AnnotationEditorShell({
   projectId,
   fileUrl,
@@ -168,6 +180,12 @@ export default function AnnotationEditorShell({
   const [showBaseImage, setShowBaseImage] = useState(true);
   const [tagOverlay, setTagOverlay] = useState<EditorTagOverlayState>({ showTags: false, tags: [] });
   const [pendingRebuild, setPendingRebuild] = useState<CvDocumentSnapshot | null>(null);
+  const [calibrationDraft, setCalibrationDraft] = useState<CalibrationDraft>({
+    start: null,
+    end: null,
+    knownDistanceFt: '',
+    error: null,
+  });
   const scalePxPerFtRef = useRef(scalePxPerFt);
 
   const document = useAnnotationEditorStore((s) => s.document);
@@ -196,6 +214,7 @@ export default function AnnotationEditorShell({
   const restorePendingOps = useAnnotationEditorStore((s) => s.restorePendingOps);
   const setSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
   const requestFocusOnElements = useAnnotationEditorStore((s) => s.requestFocusOnElements);
+  const setBaseImageScale = useAnnotationEditorStore((s) => s.setBaseImageScale);
 
   useEffect(() => {
     scalePxPerFtRef.current = scalePxPerFt;
@@ -250,6 +269,14 @@ export default function AnnotationEditorShell({
     highlightIssues: viewPreset === 'tags_qa' || viewPreset === 'openings_qa',
     showVerificationAccent: viewPreset === 'openings_qa',
   }), [viewPreset]);
+
+  const calibrationDistancePx = useMemo(() => {
+    if (!calibrationDraft.start || !calibrationDraft.end) return 0;
+    return Math.hypot(
+      calibrationDraft.end.x - calibrationDraft.start.x,
+      calibrationDraft.end.y - calibrationDraft.start.y,
+    );
+  }, [calibrationDraft.end, calibrationDraft.start]);
 
   const refreshOpeningsFromCV = useCallback(async (baseDoc: AnnotationDocument, baseRevision: number) => {
     const cvSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFtRef.current);
@@ -396,9 +423,59 @@ export default function AnnotationEditorShell({
     requestFocusOnElements([issue.elementId], element?.type === 'wall' ? 148 : 120);
   }, [entities.byId, requestFocusOnElements, setSelection, setViewPreset]);
 
+  const resetCalibration = useCallback(() => {
+    setCalibrationDraft({
+      start: null,
+      end: null,
+      knownDistanceFt: '',
+      error: null,
+    });
+  }, []);
+
+  const registerCalibrationPoint = useCallback((point: CalibrationPoint) => {
+    setCalibrationDraft((current) => {
+      if (!current.start || (current.start && current.end)) {
+        return {
+          start: point,
+          end: null,
+          knownDistanceFt: current.knownDistanceFt,
+          error: null,
+        };
+      }
+
+      return {
+        ...current,
+        end: point,
+        error: null,
+      };
+    });
+  }, []);
+
+  const applyCalibration = useCallback(() => {
+    const knownDistanceFt = Number(calibrationDraft.knownDistanceFt);
+    if (!calibrationDraft.start || !calibrationDraft.end || calibrationDistancePx <= 0) {
+      setCalibrationDraft((current) => ({ ...current, error: 'Pick two reference points before applying scale.' }));
+      return;
+    }
+    if (!Number.isFinite(knownDistanceFt) || knownDistanceFt <= 0) {
+      setCalibrationDraft((current) => ({ ...current, error: 'Enter a known distance in feet greater than zero.' }));
+      return;
+    }
+
+    setBaseImageScale(calibrationDistancePx / knownDistanceFt, 'manual', true);
+    setToolMode('select');
+    resetCalibration();
+  }, [calibrationDistancePx, calibrationDraft.end, calibrationDraft.knownDistanceFt, calibrationDraft.start, resetCalibration, setBaseImageScale, setToolMode]);
+
   useEffect(() => {
     void loadDocument();
   }, [loadDocument]);
+
+  useEffect(() => {
+    if (toolMode === 'calibrate') return;
+    if (!calibrationDraft.start && !calibrationDraft.end && !calibrationDraft.knownDistanceFt && !calibrationDraft.error) return;
+    resetCalibration();
+  }, [calibrationDraft.end, calibrationDraft.error, calibrationDraft.knownDistanceFt, calibrationDraft.start, resetCalibration, toolMode]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -546,6 +623,84 @@ export default function AnnotationEditorShell({
         </div>
       )}
 
+      {toolMode === 'calibrate' && (
+        <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-3 text-xs text-cyan-50">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-white">Plan Scale Calibration</div>
+              <div className="mt-1 text-cyan-100/80">
+                {!calibrationDraft.start
+                  ? 'Click the first reference point on the plan.'
+                  : !calibrationDraft.end
+                    ? 'Click the second reference point to finish the measured segment.'
+                    : 'Enter the real-world distance between the selected points to persist scale.'}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={resetCalibration}
+                className="rounded border border-white/10 px-2 py-1 text-cyan-50 transition hover:bg-white/5"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setToolMode('select');
+                  resetCalibration();
+                }}
+                className="rounded border border-white/10 px-2 py-1 text-cyan-50 transition hover:bg-white/5"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
+            <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-cyan-50/90">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-100/70">Measured Segment</div>
+              <div className="mt-1 text-sm font-medium text-white">
+                {calibrationDistancePx > 0 ? `${calibrationDistancePx.toFixed(1)} px` : 'Waiting for two points'}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="calibration-known-distance-ft" className="block text-[11px] uppercase tracking-[0.16em] text-cyan-100/70">
+                Known Distance (ft)
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  id="calibration-known-distance-ft"
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={calibrationDraft.knownDistanceFt}
+                  onChange={(event) => setCalibrationDraft((current) => ({
+                    ...current,
+                    knownDistanceFt: event.target.value,
+                    error: null,
+                  }))}
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:border-cyan-400/60 focus:outline-none"
+                  placeholder="e.g. 10"
+                />
+                <button
+                  type="button"
+                  onClick={applyCalibration}
+                  disabled={!calibrationDraft.start || !calibrationDraft.end}
+                  className="rounded-lg border border-cyan-300/40 bg-cyan-400/10 px-3 py-2 text-sm font-medium text-cyan-50 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {calibrationDraft.error ? (
+            <div className="mt-2 text-[11px] text-amber-100">{calibrationDraft.error}</div>
+          ) : null}
+        </div>
+      )}
+
       <div className="flex-1 min-h-0 grid grid-cols-[1fr_320px] gap-2">
         <ViewportStage
           baseImageUrl={document.baseImage.sourceUrl}
@@ -561,6 +716,8 @@ export default function AnnotationEditorShell({
           issuesByElementId={issuesByElementId}
           issues={document.issues}
           onIssueSelect={focusIssue}
+          calibrationDraft={calibrationDraft}
+          onCalibrationPoint={registerCalibrationPoint}
         />
 
         <div className="min-h-0 overflow-y-auto space-y-2 pr-1">

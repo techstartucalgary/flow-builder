@@ -14,6 +14,7 @@ export type ToolMode =
   | 'door'
   | 'window'
   | 'room'
+  | 'calibrate'
   | 'delete';
 
 export type EditorViewPreset =

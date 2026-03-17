@@ -22,7 +22,12 @@ interface EditorToolbarProps {
   onToggleWallSnap: () => void;
 }
 
-const TOOLS: ToolMode[] = ['select', 'wall', 'door', 'window', 'room', 'delete'];
+const TOOLS: ToolMode[] = ['select', 'wall', 'door', 'window', 'room', 'calibrate', 'delete'];
+
+function toolLabel(tool: ToolMode): string {
+  if (tool === 'calibrate') return 'Scale';
+  return tool;
+}
 const PRESETS: Array<{ value: EditorViewPreset; label: string }> = [
   { value: 'final', label: 'Final' },
   { value: 'openings_qa', label: 'Openings QA' },
@@ -87,7 +92,7 @@ export default function EditorToolbar({
                   : 'border-transparent text-gray-300 hover:text-white'
               }`}
             >
-              {tool}
+              {toolLabel(tool)}
             </button>
           ))}
         </div>

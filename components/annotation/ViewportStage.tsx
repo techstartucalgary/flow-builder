@@ -35,6 +35,11 @@ interface ViewportStageProps {
   issuesByElementId: Set<string>;
   issues: AnnotationIssue[];
   onIssueSelect: (issue: AnnotationIssue) => void;
+  calibrationDraft?: {
+    start: { x: number; y: number } | null;
+    end: { x: number; y: number } | null;
+  };
+  onCalibrationPoint?: (point: { x: number; y: number }) => void;
 }
 
 export default function ViewportStage({
@@ -49,6 +54,8 @@ export default function ViewportStage({
   viewPreset,
   renderHints,
   issuesByElementId,
+  calibrationDraft,
+  onCalibrationPoint,
 }: ViewportStageProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -287,6 +294,14 @@ export default function ViewportStage({
   function onStageMouseDown(e: any) {
     if (!stageRef.current) return;
 
+    if (toolMode === 'calibrate') {
+      const point = stageRef.current.getPointerPosition();
+      if (!point || !onCalibrationPoint) return;
+      const world = worldFromScreen(point.x, point.y, camera.panX, camera.panY, camera.zoom);
+      onCalibrationPoint(world);
+      return;
+    }
+
     const clickedOnEmpty = e.target === stageRef.current;
     if (clickedOnEmpty && toolMode === 'select') {
       setSelection([]);
@@ -382,6 +397,50 @@ export default function ViewportStage({
             />
             <SnapGuideOverlay guides={[]} />
           </Layer>
+          {calibrationDraft?.start ? (
+            <Layer listening={false}>
+              <Circle
+                x={calibrationDraft.start.x}
+                y={calibrationDraft.start.y}
+                radius={7}
+                fill="#22d3ee"
+                stroke="#ffffff"
+                strokeWidth={1.5}
+              />
+              {calibrationDraft.end ? (
+                <>
+                  <Circle
+                    x={calibrationDraft.end.x}
+                    y={calibrationDraft.end.y}
+                    radius={7}
+                    fill="#22d3ee"
+                    stroke="#ffffff"
+                    strokeWidth={1.5}
+                  />
+                  <Text
+                    x={(calibrationDraft.start.x + calibrationDraft.end.x) / 2 + 10}
+                    y={(calibrationDraft.start.y + calibrationDraft.end.y) / 2 - 20}
+                    text={`${Math.hypot(
+                      calibrationDraft.end.x - calibrationDraft.start.x,
+                      calibrationDraft.end.y - calibrationDraft.start.y,
+                    ).toFixed(1)} px`}
+                    fontSize={14}
+                    fill="#dbeafe"
+                  />
+                </>
+              ) : null}
+              <SnapGuideOverlay
+                guides={calibrationDraft.end ? [{
+                  points: [
+                    calibrationDraft.start.x,
+                    calibrationDraft.start.y,
+                    calibrationDraft.end.x,
+                    calibrationDraft.end.y,
+                  ],
+                }] : []}
+              />
+            </Layer>
+          ) : null}
           {showTags && tags.length > 0 && (
             <Layer listening={false}>
               {tags.map((tag) => {
