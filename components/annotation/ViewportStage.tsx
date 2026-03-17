@@ -43,6 +43,25 @@ interface ViewportStageProps {
   onCalibrationPoint?: (point: { x: number; y: number }) => void;
 }
 
+function elementBounds(element: AnnotationElement) {
+  if (element.geometry.kind === 'segment') {
+    const halfThickness = Math.max(12, element.geometry.thicknessPx) / 2;
+    return {
+      minX: Math.min(element.geometry.x1, element.geometry.x2) - halfThickness,
+      minY: Math.min(element.geometry.y1, element.geometry.y2) - halfThickness,
+      maxX: Math.max(element.geometry.x1, element.geometry.x2) + halfThickness,
+      maxY: Math.max(element.geometry.y1, element.geometry.y2) + halfThickness,
+    };
+  }
+
+  return {
+    minX: element.geometry.x,
+    minY: element.geometry.y,
+    maxX: element.geometry.x + element.geometry.width,
+    maxY: element.geometry.y + element.geometry.height,
+  };
+}
+
 export default function ViewportStage({
   baseImageUrl,
   widthPx,
@@ -83,6 +102,10 @@ export default function ViewportStage({
   const updateElement = useAnnotationEditorStore((s) => s.updateElement);
   const [pointerWorld, setPointerWorld] = useState<{ x: number; y: number } | null>(null);
   const [endpointSnapGuide, setEndpointSnapGuide] = useState<Array<{ id: string; points: number[] }>>([]);
+  const [marqueeDraft, setMarqueeDraft] = useState<{
+    start: { x: number; y: number };
+    end: { x: number; y: number };
+  } | null>(null);
   const displayedElementIds = useMemo(() => new Set(displayElements.map((element) => element.id)), [displayElements]);
   const hasVisibleSelection = useMemo(
     () => selection.some((id) => displayedElementIds.has(id)),
@@ -276,6 +299,16 @@ export default function ViewportStage({
     return wall;
   }, [entities.byId, placementFeedback?.hostWallId]);
 
+  const marqueeBounds = useMemo(() => {
+    if (!marqueeDraft) return null;
+    return {
+      minX: Math.min(marqueeDraft.start.x, marqueeDraft.end.x),
+      minY: Math.min(marqueeDraft.start.y, marqueeDraft.end.y),
+      maxX: Math.max(marqueeDraft.start.x, marqueeDraft.end.x),
+      maxY: Math.max(marqueeDraft.start.y, marqueeDraft.end.y),
+    };
+  }, [marqueeDraft]);
+
   const isViewportReady = container.width > 0 && container.height > 0 && widthPx > 0 && heightPx > 0;
   const shouldMountStage = isViewportReady && (!showBaseImage || baseImageReady);
   const stageKey = useMemo(() => {
@@ -367,6 +400,14 @@ export default function ViewportStage({
     }
 
     const clickedOnEmpty = e.target === stageRef.current;
+    if (clickedOnEmpty && toolMode === 'select' && e.evt.shiftKey) {
+      const point = stageRef.current.getPointerPosition();
+      if (!point) return;
+      const world = worldFromScreen(point.x, point.y, camera.panX, camera.panY, camera.zoom);
+      setMarqueeDraft({ start: world, end: world });
+      return;
+    }
+
     if (clickedOnEmpty && toolMode === 'select') {
       setSelection([]);
       return;
@@ -390,7 +431,30 @@ export default function ViewportStage({
     if (!stage) return;
     const point = stage.getPointerPosition();
     if (!point) return;
-    setPointerWorld(worldFromScreen(point.x, point.y, camera.panX, camera.panY, camera.zoom));
+    const world = worldFromScreen(point.x, point.y, camera.panX, camera.panY, camera.zoom);
+    setPointerWorld(world);
+    if (marqueeDraft) {
+      setMarqueeDraft((current) => current ? { ...current, end: world } : current);
+    }
+  }
+
+  function onStageMouseUp() {
+    if (!marqueeBounds) return;
+
+    const intersectingIds = displayElements
+      .filter((element) => {
+        const bounds = elementBounds(element);
+        return !(
+          bounds.maxX < marqueeBounds.minX
+          || bounds.minX > marqueeBounds.maxX
+          || bounds.maxY < marqueeBounds.minY
+          || bounds.minY > marqueeBounds.maxY
+        );
+      })
+      .map((element) => element.id);
+
+    setSelection(Array.from(new Set([...selection, ...intersectingIds])));
+    setMarqueeDraft(null);
   }
 
   function onWheel(e: any) {
@@ -455,9 +519,10 @@ export default function ViewportStage({
           scaleY={camera.zoom}
           onMouseDown={onStageMouseDown}
           onMouseMove={onStageMouseMove}
+          onMouseUp={onStageMouseUp}
           onMouseLeave={() => setPointerWorld(null)}
           onWheel={onWheel}
-          draggable={toolMode === 'select'}
+          draggable={toolMode === 'select' && !marqueeDraft}
           onDragEnd={(e) => setCamera({ panX: e.target.x(), panY: e.target.y() })}
         >
           <Layer>
@@ -466,12 +531,45 @@ export default function ViewportStage({
               selectedIds={selection}
               preset={viewPreset}
               issuesByElementId={renderHints.highlightIssues ? issuesByElementId : undefined}
-              onSelect={(id) => setSelection([id])}
+              onSelect={(id, additive) => {
+                if (!additive) {
+                  setSelection([id]);
+                  return;
+                }
+                setSelection(
+                  selection.includes(id)
+                    ? selection.filter((selectedId) => selectedId !== id)
+                    : [...selection, id],
+                );
+              }}
               onDragEnd={onDragEnd}
               onTransformEnd={onTransformEnd}
             />
             <SnapGuideOverlay guides={activeSnapGuides} />
           </Layer>
+          {marqueeBounds ? (
+            <Layer listening={false}>
+              <Line
+                points={[
+                  marqueeBounds.minX,
+                  marqueeBounds.minY,
+                  marqueeBounds.maxX,
+                  marqueeBounds.minY,
+                  marqueeBounds.maxX,
+                  marqueeBounds.maxY,
+                  marqueeBounds.minX,
+                  marqueeBounds.maxY,
+                  marqueeBounds.minX,
+                  marqueeBounds.minY,
+                ]}
+                stroke="#22d3ee"
+                strokeWidth={2}
+                dash={[8, 4]}
+                fill="rgba(34, 211, 238, 0.12)"
+                closed
+              />
+            </Layer>
+          ) : null}
           {previewHostWall ? (
             <Layer listening={false}>
               <Line

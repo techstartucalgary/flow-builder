@@ -10,7 +10,7 @@ interface AnnotationRenderLayerProps {
   selectedIds: string[];
   preset: EditorViewPreset;
   issuesByElementId?: Set<string>;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, additive?: boolean) => void;
   onDragEnd: (id: string, event: any) => void;
   onTransformEnd: (id: string, event: any) => void;
 }
@@ -166,7 +166,7 @@ export default function AnnotationRenderLayer({
               shadowColor={shadowColor}
               shadowBlur={shadowBlur}
               draggable={!element.attrs.locked}
-              onClick={() => onSelect(element.id)}
+              onClick={(e) => onSelect(element.id, Boolean(e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey))}
               onTap={() => onSelect(element.id)}
               onDragEnd={(e) => onDragEnd(element.id, e)}
               onTransformEnd={(e) => onTransformEnd(element.id, e)}
@@ -194,7 +194,7 @@ export default function AnnotationRenderLayer({
               fill={selected ? 'rgba(56,189,248,0.15)' : fill}
               cornerRadius={element.type === 'door' || element.type === 'window' ? 4 : 2}
               draggable={!element.attrs.locked}
-              onClick={() => onSelect(element.id)}
+              onClick={(e) => onSelect(element.id, Boolean(e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey))}
               onTap={() => onSelect(element.id)}
               onDragEnd={(e) => onDragEnd(element.id, e)}
               onTransformEnd={(e) => onTransformEnd(element.id, e)}

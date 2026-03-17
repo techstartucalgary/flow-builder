@@ -11,6 +11,7 @@ import {
 } from '@/lib/annotationPersistence';
 import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import EditorToolbar from '@/components/annotation/EditorToolbar';
+import BulkWallActionsPanel from '@/components/annotation/BulkWallActionsPanel';
 import IssueHighlighter from '@/components/annotation/IssueHighlighter';
 import LayerVisibilityPanel from '@/components/annotation/LayerVisibilityPanel';
 import PropertyPanel from '@/components/annotation/PropertyPanel';
@@ -225,6 +226,16 @@ export default function AnnotationEditorShell({
     return entities.byId[selection[0]] || null;
   }, [entities.byId, selection]);
 
+  const selectedElements = useMemo(
+    () => selection.map((id) => entities.byId[id]).filter((element): element is AnnotationElement => Boolean(element)),
+    [entities.byId, selection],
+  );
+
+  const selectedWalls = useMemo(
+    () => selectedElements.filter((element): element is Extract<AnnotationElement, { type: 'wall' }> => element.type === 'wall'),
+    [selectedElements],
+  );
+
   const displayElements = useMemo(() => {
     if (!document) return [] as AnnotationElement[];
     const baseElements = document.elements.filter((element) => document.layers[element.type]);
@@ -432,6 +443,14 @@ export default function AnnotationEditorShell({
     setSelection([elementId]);
     requestFocusOnElements([elementId], element.type === 'wall' ? 148 : 120);
   }, [entities.byId, requestFocusOnElements, setSelection, setViewPreset]);
+
+  const applyManyElements = useCallback((elements: AnnotationElement[]) => {
+    for (const element of elements) {
+      updateElement(element);
+    }
+    setSelection(elements.map((element) => element.id));
+    requestFocusOnElements(elements.map((element) => element.id), 140);
+  }, [requestFocusOnElements, setSelection, updateElement]);
 
   const resetCalibration = useCallback(() => {
     setCalibrationDraft({
@@ -733,8 +752,13 @@ export default function AnnotationEditorShell({
         <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
           <RevisionStatusBar revision={document.meta.revision} status={saveStatus} />
           <IssueHighlighter issues={document.issues} onSelectIssue={focusIssue} />
+          <BulkWallActionsPanel
+            selectedCount={selectedElements.length}
+            walls={selectedWalls}
+            onApplyMany={applyManyElements}
+          />
           <PropertyPanel
-            element={selectedElement}
+            element={selection.length === 1 ? selectedElement : null}
             issues={selectedElement ? document.issues.filter((issue) => issue.elementId === selectedElement.id) : []}
             revision={document.meta.revision}
             onApply={updateElement}
