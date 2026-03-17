@@ -12,6 +12,7 @@ import type {
   AnnotationElement,
   AnnotationElementType,
   AnnotationOperation,
+  EditorFocusRequest,
   EditorViewPreset,
   EditorCameraState,
   EditorEntities,
@@ -81,6 +82,7 @@ interface AnnotationEditorState {
   wallSnapThreshold: number;
   history: HistoryState;
   saveStatus: 'saved' | 'unsaved' | 'syncing' | 'error';
+  focusRequest: EditorFocusRequest | null;
 
   initializeDocument: (doc: AnnotationDocument) => void;
   setToolMode: (mode: ToolMode) => void;
@@ -88,6 +90,8 @@ interface AnnotationEditorState {
   setSelection: (ids: string[]) => void;
   setCamera: (partial: Partial<EditorCameraState>) => void;
   setSaveStatus: (status: AnnotationEditorState['saveStatus']) => void;
+  requestFocusOnElements: (elementIds: string[], paddingPx?: number) => void;
+  clearFocusRequest: () => void;
   setBaseImageScale: (
     scalePxPerFt: number | undefined,
     scaleSource?: 'manual' | 'pdf_dimension_inference',
@@ -124,6 +128,7 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
   wallSnapThreshold: 12,
   history: { past: [], future: [], pendingOps: [] },
   saveStatus: 'saved',
+  focusRequest: null,
 
   initializeDocument: (doc) => {
     const sanitized = sanitizeAnnotationDocument(doc);
@@ -141,6 +146,14 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
   setSelection: (selection) => set({ selection }),
   setCamera: (partial) => set((state) => ({ camera: { ...state.camera, ...partial } })),
   setSaveStatus: (saveStatus) => set({ saveStatus }),
+  requestFocusOnElements: (elementIds, paddingPx) => set((state) => ({
+    focusRequest: {
+      id: (state.focusRequest?.id ?? 0) + 1,
+      elementIds,
+      paddingPx,
+    },
+  })),
+  clearFocusRequest: () => set({ focusRequest: null }),
   setBaseImageScale: (scalePxPerFt, scaleSource, scaleLocked) => {
     set(
       produce((state: AnnotationEditorState) => {

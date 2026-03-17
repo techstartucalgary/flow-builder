@@ -62,8 +62,10 @@ export default function ViewportStage({
   const selection = useAnnotationEditorStore((s) => s.selection);
   const toolMode = useAnnotationEditorStore((s) => s.toolMode);
   const camera = useAnnotationEditorStore((s) => s.camera);
+  const focusRequest = useAnnotationEditorStore((s) => s.focusRequest);
   const setCamera = useAnnotationEditorStore((s) => s.setCamera);
   const setSelection = useAnnotationEditorStore((s) => s.setSelection);
+  const clearFocusRequest = useAnnotationEditorStore((s) => s.clearFocusRequest);
   const createElementAt = useAnnotationEditorStore((s) => s.createElementAt);
   const moveElementBy = useAnnotationEditorStore((s) => s.moveElementBy);
   const updateElement = useAnnotationEditorStore((s) => s.updateElement);
@@ -133,6 +135,67 @@ export default function ViewportStage({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [container.width, container.height, widthPx, heightPx]);
+
+  useEffect(() => {
+    if (!focusRequest || !container.width || !container.height) return;
+
+    const targetElements = focusRequest.elementIds
+      .map((id) => entities.byId[id])
+      .filter((element): element is AnnotationElement => Boolean(element));
+
+    if (!targetElements.length) {
+      clearFocusRequest();
+      return;
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (const element of targetElements) {
+      if (element.geometry.kind === 'segment') {
+        const halfThickness = Math.max(12, element.geometry.thicknessPx) / 2;
+        minX = Math.min(minX, element.geometry.x1, element.geometry.x2) - halfThickness;
+        minY = Math.min(minY, element.geometry.y1, element.geometry.y2) - halfThickness;
+        maxX = Math.max(maxX, element.geometry.x1, element.geometry.x2) + halfThickness;
+        maxY = Math.max(maxY, element.geometry.y1, element.geometry.y2) + halfThickness;
+      } else {
+        minX = Math.min(minX, element.geometry.x);
+        minY = Math.min(minY, element.geometry.y);
+        maxX = Math.max(maxX, element.geometry.x + element.geometry.width);
+        maxY = Math.max(maxY, element.geometry.y + element.geometry.height);
+      }
+    }
+
+    const padding = focusRequest.paddingPx ?? 96;
+    const boundsWidth = Math.max(96, maxX - minX);
+    const boundsHeight = Math.max(96, maxY - minY);
+    const fitZoom = clamp(
+      Math.min(
+        (container.width - padding * 2) / boundsWidth,
+        (container.height - padding * 2) / boundsHeight,
+      ),
+      camera.minZoom,
+      camera.maxZoom,
+    );
+
+    setCamera({
+      zoom: fitZoom,
+      panX: container.width / 2 - ((minX + maxX) / 2) * fitZoom,
+      panY: container.height / 2 - ((minY + maxY) / 2) * fitZoom,
+    });
+    clearFocusRequest();
+  }, [
+    camera.maxZoom,
+    camera.minZoom,
+    clearFocusRequest,
+    container.height,
+    container.width,
+    entities.byId,
+    focusRequest,
+    setCamera,
+  ]);
 
   const selectedWall = useMemo(() => {
     if (!selection.length) return null;

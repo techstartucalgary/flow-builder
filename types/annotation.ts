@@ -169,6 +169,12 @@ export interface EditorCameraState {
   maxZoom: number;
 }
 
+export interface EditorFocusRequest {
+  id: number;
+  elementIds: string[];
+  paddingPx?: number;
+}
+
 export interface EditorViewState {
   preset: EditorViewPreset;
 }

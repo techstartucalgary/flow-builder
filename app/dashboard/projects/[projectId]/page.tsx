@@ -31,6 +31,7 @@ import PdfViewerClient from '@/components/pdf/PdfViewer';
 import AnnotationEditorShell from '@/components/annotation/AnnotationEditorShell';
 import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBoundary';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
+import type { EditorViewPreset, OpeningRelations, WallRelations } from '@/types/annotation';
 
 const BACKEND_URL = getBackendUrl();
 const DEFAULT_CEILING_HEIGHT_FT = '9';
@@ -148,6 +149,14 @@ type TakeoffDeltaSummary = {
   sheetsRequired: number;
 };
 
+type ReviewAction = {
+  key: string;
+  label: string;
+  description: string;
+  preset: EditorViewPreset;
+  elementIds: string[];
+};
+
 function compareTakeoffRuns(previous: TakeoffData | null, next: TakeoffData): {
   message: string;
   reason: string | null;
@@ -239,6 +248,7 @@ export default function ProjectViewerPage() {
   const [scalePxPerFt, setScalePxPerFt] = useState<string>('');
   const [ceilingHeightFt, setCeilingHeightFt] = useState<string>(DEFAULT_CEILING_HEIGHT_FT);
   const [referenceFloorAreaSqFt, setReferenceFloorAreaSqFt] = useState<string>('');
+  const [pendingReviewAction, setPendingReviewAction] = useState<ReviewAction | null>(null);
 
   // Overlay stepper
   const ANALYSIS_STEPS = [
@@ -256,6 +266,9 @@ export default function ProjectViewerPage() {
   const markEditorRevision = useAnnotationEditorStore((s) => s.markRevision);
   const setEditorSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
   const setEditorBaseImageScale = useAnnotationEditorStore((s) => s.setBaseImageScale);
+  const setEditorSelection = useAnnotationEditorStore((s) => s.setSelection);
+  const setEditorViewPreset = useAnnotationEditorStore((s) => s.setViewPreset);
+  const requestFocusOnElements = useAnnotationEditorStore((s) => s.requestFocusOnElements);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -283,6 +296,25 @@ export default function ProjectViewerPage() {
     setRunComparisonReason(null);
     setMetricDeltas(null);
   }, [pageNumber, projectId]);
+
+  useEffect(() => {
+    if (!editorMode || !editorDocument || !pendingReviewAction) return;
+
+    const availableIds = pendingReviewAction.elementIds.filter((id) => editorDocument.elements.some((element) => element.id === id));
+    setEditorViewPreset(pendingReviewAction.preset);
+    setEditorSelection(availableIds);
+    if (availableIds.length > 0) {
+      requestFocusOnElements(availableIds);
+    }
+    setPendingReviewAction(null);
+  }, [
+    editorDocument,
+    editorMode,
+    pendingReviewAction,
+    requestFocusOnElements,
+    setEditorSelection,
+    setEditorViewPreset,
+  ]);
 
   async function load() {
     try {
@@ -526,6 +558,94 @@ export default function ProjectViewerPage() {
     takeoff.sheetsRequired,
     takeoffError,
   ]);
+
+  const actionableReviewActions = useMemo<ReviewAction[]>(() => {
+    if (!generated || !editorDocument) return [];
+
+    const unknownWallIds = editorDocument.elements
+      .filter((element) => {
+        if (element.type !== 'wall') return false;
+        const relations = element.relations as WallRelations | undefined;
+        return (relations?.surfaceClass ?? 'unknown') === 'unknown';
+      })
+      .map((element) => element.id);
+
+    const unhostedOpeningIds = editorDocument.elements
+      .filter((element) => {
+        if (element.type !== 'door' && element.type !== 'window') return false;
+        const relations = element.relations as OpeningRelations | undefined;
+        return !relations?.hostWallId;
+      })
+      .map((element) => element.id);
+
+    const fallbackOpeningIds = editorDocument.elements
+      .filter((element) => {
+        if (element.type !== 'door' && element.type !== 'window') return false;
+        const relations = element.relations as OpeningRelations | undefined;
+        return relations?.source === 'tag_projected' || relations?.source === 'gap_verified_tag_classified';
+      })
+      .map((element) => element.id);
+
+    const boundaryReviewIds = editorDocument.elements
+      .filter((element) => element.type === 'wall' || element.type === 'room')
+      .map((element) => element.id);
+
+    const actions: ReviewAction[] = [];
+
+    if (takeoff.roomClosureStatus !== 'closed' && boundaryReviewIds.length > 0) {
+      actions.push({
+        key: 'closure',
+        label: 'Review boundary closure',
+        description: `Focus ${boundaryReviewIds.length} wall and room elements tied to floor-area closure.`,
+        preset: 'final',
+        elementIds: boundaryReviewIds,
+      });
+    }
+
+    if (takeoff.unknownWallCount > 0 && unknownWallIds.length > 0) {
+      actions.push({
+        key: 'walls',
+        label: 'Classify unknown walls',
+        description: `${unknownWallIds.length} wall${unknownWallIds.length === 1 ? '' : 's'} still need a perimeter or partition decision.`,
+        preset: 'walls_qa',
+        elementIds: unknownWallIds,
+      });
+    }
+
+    if (takeoff.unmatchedOpeningCount > 0 && unhostedOpeningIds.length > 0) {
+      actions.push({
+        key: 'unhosted-openings',
+        label: 'Host unmatched openings',
+        description: `${unhostedOpeningIds.length} opening${unhostedOpeningIds.length === 1 ? '' : 's'} are missing a wall host.`,
+        preset: 'openings_qa',
+        elementIds: unhostedOpeningIds,
+      });
+    }
+
+    if (takeoff.fallbackOpeningCount > 0 && fallbackOpeningIds.length > 0) {
+      actions.push({
+        key: 'fallback-openings',
+        label: 'Review fallback openings',
+        description: `${fallbackOpeningIds.length} opening${fallbackOpeningIds.length === 1 ? '' : 's'} came from fallback evidence and should be verified.`,
+        preset: 'openings_qa',
+        elementIds: fallbackOpeningIds,
+      });
+    }
+
+    return actions;
+  }, [editorDocument, generated, takeoff.fallbackOpeningCount, takeoff.roomClosureStatus, takeoff.unknownWallCount, takeoff.unmatchedOpeningCount]);
+
+  const handleReviewAction = useCallback((action: ReviewAction) => {
+    if (editorMode && editorDocument) {
+      setEditorViewPreset(action.preset);
+      setEditorSelection(action.elementIds);
+      requestFocusOnElements(action.elementIds);
+      return;
+    }
+
+    setPendingReviewAction(action);
+    setEditorMode(true);
+  }, [editorDocument, editorMode, requestFocusOnElements, setEditorSelection, setEditorViewPreset]);
 
   const readinessRows = useMemo(() => ([
     {
@@ -1042,6 +1162,35 @@ export default function ProjectViewerPage() {
                       </span>
                     </div>
                     <div className="mt-3 space-y-2">
+                      {actionableReviewActions.length ? (
+                        <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-medium text-white">Fix-now actions</div>
+                              <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                                Jump straight into the relevant QA view with the impacted geometry selected.
+                              </div>
+                            </div>
+                            <span className="ws-chip" data-tone="accent">{actionableReviewActions.length} queued</span>
+                          </div>
+                          <div className="mt-3 grid gap-2">
+                            {actionableReviewActions.map((action) => (
+                              <button
+                                key={action.key}
+                                type="button"
+                                onClick={() => handleReviewAction(action)}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-cyan-400/20 bg-black/10 px-3 py-2.5 text-left transition hover:border-cyan-300/40 hover:bg-cyan-500/[0.08]"
+                              >
+                                <div>
+                                  <div className="text-sm font-medium text-white">{action.label}</div>
+                                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">{action.description}</div>
+                                </div>
+                                <span className="ws-chip" data-tone="accent">{presetLabel(action.preset)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                       {takeoffError ? (
                         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm text-red-200">
                           <div className="flex items-start gap-2">
