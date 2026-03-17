@@ -4,6 +4,8 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, Form
 from typing import List, Literal, Optional
 from pydantic import BaseModel
 
+from src.estimators.drywall.board_estimator import estimate_board_requirements
+from src.estimators.drywall.surface_classification import ClassifiedWall
 from src.vision.cv import pipeline as cv_pipeline
 from src.vision.cv.models import Orientation
 
@@ -31,6 +33,8 @@ class PartitionExtractionResponse(BaseModel):
     horizontal_linear_ft: float
     total_linear_ft: float
     total_drywall_area_sqft: float
+    estimate_ready: bool = False
+    blocked_reasons: List[str] = []
     raw_analysis: str = ""
 
 
@@ -41,6 +45,34 @@ ALLOWED_MIME = frozenset({
     "image/jpg",
     "image/webp",
 })
+
+
+def _partition_estimate(cv_result, scale_px_per_ft: Optional[float], ceiling_height_ft: float):
+    walls = [
+        ClassifiedWall(
+            id=str(getattr(wall, "id", f"wall_{index + 1}")),
+            surface_class="partition",
+            surface_class_source="auto",
+            board_sides=2,
+            confidence="high",
+            exclude_from_takeoff=False,
+            length_px=float(getattr(wall, "length_px", 0.0) or 0.0),
+        )
+        for index, wall in enumerate(cv_result.walls)
+    ]
+    return estimate_board_requirements(
+        walls=walls,
+        openings=[],
+        scale_px_per_ft=scale_px_per_ft,
+        ceiling_height_ft=ceiling_height_ft,
+        include_ceiling=False,
+        room_closure_status="closed",
+        floor_area_sqft=0.0,
+        unmatched_opening_count=0,
+        waste_factor=0.0,
+        sheet_size_sqft=48.0,
+        classification_confidence="high",
+    )
 
 
 @router.post("/extract", response_model=PartitionExtractionResponse)
@@ -93,8 +125,9 @@ async def extract_interior_partitions(
                 horizontal_partitions.append(partition)
                 horizontal_linear_ft += length_ft
 
+        estimate = _partition_estimate(cv_result, scale_px_per_ft, ceiling_height_ft)
         total_linear_ft = vertical_linear_ft + horizontal_linear_ft
-        total_drywall_area_sqft = total_linear_ft * ceiling_height_ft * 2.0
+        total_drywall_area_sqft = estimate.partition_board_sqft + estimate.perimeter_board_sqft + estimate.unknown_board_sqft
 
         raw_analysis = (
             f"CV Pipeline: {len(cv_result.walls)} walls "
@@ -113,6 +146,8 @@ async def extract_interior_partitions(
             horizontal_linear_ft=round(horizontal_linear_ft, 2),
             total_linear_ft=round(total_linear_ft, 2),
             total_drywall_area_sqft=round(total_drywall_area_sqft, 2),
+            estimate_ready=estimate.estimate_ready,
+            blocked_reasons=estimate.blocked_reasons,
             raw_analysis=raw_analysis,
         )
     except Exception as e:
@@ -141,10 +176,9 @@ async def extract_partitions_simple(
         )
 
         total_length_px = sum(w.length_px for w in cv_result.walls)
-        total_linear_ft = (
-            total_length_px / scale_px_per_ft if scale_px_per_ft and scale_px_per_ft > 0 else 0.0
-        )
-        drywall_area = total_linear_ft * ceiling_height_ft * 2.0
+        total_linear_ft = total_length_px / scale_px_per_ft if scale_px_per_ft and scale_px_per_ft > 0 else 0.0
+        estimate = _partition_estimate(cv_result, scale_px_per_ft, ceiling_height_ft)
+        drywall_area = estimate.partition_board_sqft + estimate.perimeter_board_sqft + estimate.unknown_board_sqft
 
         v_count = sum(1 for w in cv_result.walls if w.orientation == Orientation.VERTICAL)
         h_count = sum(1 for w in cv_result.walls if w.orientation == Orientation.HORIZONTAL)
@@ -157,6 +191,8 @@ async def extract_partitions_simple(
             "status": "ok",
             "ceiling_height_ft": ceiling_height_ft,
             "total_drywall_area_sqft": round(drywall_area, 2),
+            "estimate_ready": estimate.estimate_ready,
+            "blocked_reasons": estimate.blocked_reasons,
             "analysis": raw,
         }
     except Exception as e:

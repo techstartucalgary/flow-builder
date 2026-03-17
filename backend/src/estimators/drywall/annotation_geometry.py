@@ -10,6 +10,10 @@ from math import atan2, degrees, hypot, isfinite
 from typing import Any, Literal, Optional
 
 
+WallSurfaceClass = Literal["perimeter", "partition", "unknown"]
+WallSurfaceClassSource = Literal["auto", "manual"]
+
+
 def _clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(maximum, value))
 
@@ -99,6 +103,10 @@ class RawWall:
     end: tuple[int, int]
     thickness: float
     visual_thickness: float
+    surface_class: WallSurfaceClass = "unknown"
+    surface_class_source: WallSurfaceClassSource = "auto"
+    board_sides: Optional[int] = None
+    exclude_from_takeoff: bool = False
 
 
 @dataclass
@@ -119,6 +127,10 @@ class NormalizedWall:
     length_px: float
     orientation: Literal["horizontal", "vertical", "angled"]
     source_ids: tuple[str, ...] = field(default_factory=tuple)
+    surface_class: WallSurfaceClass = "unknown"
+    surface_class_source: WallSurfaceClassSource = "auto"
+    board_sides: Optional[int] = None
+    exclude_from_takeoff: bool = False
 
 
 @dataclass
@@ -166,6 +178,10 @@ def _orthogonalize_wall(
             end=(x1, y),
             thickness=wall.thickness,
             visual_thickness=wall.visual_thickness,
+            surface_class=wall.surface_class,
+            surface_class_source=wall.surface_class_source,
+            board_sides=wall.board_sides,
+            exclude_from_takeoff=wall.exclude_from_takeoff,
         ), True
     if abs(angle - 90.0) <= max_angle_drift_deg:
         x = int(round((start[0] + end[0]) / 2))
@@ -176,6 +192,10 @@ def _orthogonalize_wall(
             end=(x, y1),
             thickness=wall.thickness,
             visual_thickness=wall.visual_thickness,
+            surface_class=wall.surface_class,
+            surface_class_source=wall.surface_class_source,
+            board_sides=wall.board_sides,
+            exclude_from_takeoff=wall.exclude_from_takeoff,
         ), True
     return wall, False
 
@@ -207,6 +227,14 @@ def _extract_raw_geometry(document: dict[str, Any]) -> tuple[list[RawWall], list
             if start == end:
                 continue
             thickness = _positive_float(geometry.get("thicknessPx")) or 14.0
+            surface_class = str(relations.get("surfaceClass") or "").lower()
+            if surface_class not in {"perimeter", "partition", "unknown"}:
+                surface_class = "unknown"
+            surface_class_source: WallSurfaceClassSource = (
+                "manual" if relations.get("surfaceClassSource") == "manual" else "auto"
+            )
+            board_sides_raw = relations.get("boardSides")
+            board_sides = int(board_sides_raw) if board_sides_raw in {1, 2, "1", "2"} else None
             walls.append(
                 RawWall(
                     id=element_id,
@@ -214,6 +242,10 @@ def _extract_raw_geometry(document: dict[str, Any]) -> tuple[list[RawWall], list
                     end=end,
                     thickness=thickness,
                     visual_thickness=thickness,
+                    surface_class=surface_class,
+                    surface_class_source=surface_class_source,
+                    board_sides=board_sides,
+                    exclude_from_takeoff=bool(relations.get("excludeFromTakeoff")),
                 )
             )
             continue
@@ -292,6 +324,10 @@ def _snap_wall_endpoints(walls: list[RawWall], tolerance_px: float) -> tuple[lis
                 end=end,
                 thickness=wall.thickness,
                 visual_thickness=wall.visual_thickness,
+                surface_class=wall.surface_class,
+                surface_class_source=wall.surface_class_source,
+                board_sides=wall.board_sides,
+                exclude_from_takeoff=wall.exclude_from_takeoff,
             )
         )
     return snapped, len(clusters)
@@ -370,6 +406,10 @@ def _split_walls_at_intersections(walls: list[RawWall], tolerance_px: float) -> 
                     end=end,
                     thickness=wall.thickness,
                     visual_thickness=wall.visual_thickness,
+                    surface_class=wall.surface_class,
+                    surface_class_source=wall.surface_class_source,
+                    board_sides=wall.board_sides,
+                    exclude_from_takeoff=wall.exclude_from_takeoff,
                 )
             )
 
@@ -384,6 +424,15 @@ def _opening_blocks_merge(opening: RawOpening, orientation: str, cross_axis: flo
     if orientation == "vertical":
         return abs(center[0] - cross_axis) <= tolerance_px and gap_start <= center[1] <= gap_end
     return False
+
+
+def _wall_semantics_match(left: RawWall, right: RawWall) -> bool:
+    return (
+        left.surface_class == right.surface_class
+        and left.surface_class_source == right.surface_class_source
+        and left.board_sides == right.board_sides
+        and left.exclude_from_takeoff == right.exclude_from_takeoff
+    )
 
 
 def _merge_collinear_walls(
@@ -419,7 +468,7 @@ def _merge_collinear_walls(
                     _opening_blocks_merge(opening, orientation, cross_axis, current_end, next_start, host_tolerance_px)
                     for opening in openings
                 )
-                if gap <= gap_tolerance_px and not blocked:
+                if gap <= gap_tolerance_px and not blocked and _wall_semantics_match(current, next_wall):
                     y = int(round(cross_axis))
                     current = RawWall(
                         id=current.id,
@@ -427,6 +476,10 @@ def _merge_collinear_walls(
                         end=(max(current_end, next_end), y),
                         thickness=max(current.thickness, next_wall.thickness),
                         visual_thickness=max(current.visual_thickness, next_wall.visual_thickness),
+                        surface_class=current.surface_class,
+                        surface_class_source=current.surface_class_source,
+                        board_sides=current.board_sides,
+                        exclude_from_takeoff=current.exclude_from_takeoff,
                     )
                     current_sources.append(next_wall.id)
                     merge_count += 1
@@ -442,7 +495,7 @@ def _merge_collinear_walls(
                     _opening_blocks_merge(opening, orientation, cross_axis, current_end, next_start, host_tolerance_px)
                     for opening in openings
                 )
-                if gap <= gap_tolerance_px and not blocked:
+                if gap <= gap_tolerance_px and not blocked and _wall_semantics_match(current, next_wall):
                     x = int(round(cross_axis))
                     current = RawWall(
                         id=current.id,
@@ -450,6 +503,10 @@ def _merge_collinear_walls(
                         end=(x, max(current_end, next_end)),
                         thickness=max(current.thickness, next_wall.thickness),
                         visual_thickness=max(current.visual_thickness, next_wall.visual_thickness),
+                        surface_class=current.surface_class,
+                        surface_class_source=current.surface_class_source,
+                        board_sides=current.board_sides,
+                        exclude_from_takeoff=current.exclude_from_takeoff,
                     )
                     current_sources.append(next_wall.id)
                     merge_count += 1
@@ -466,6 +523,10 @@ def _merge_collinear_walls(
                     length_px=_segment_length(start, end),
                     orientation=orientation,
                     source_ids=tuple(sorted(current_sources)),
+                    surface_class=current.surface_class,
+                    surface_class_source=current.surface_class_source,
+                    board_sides=current.board_sides,
+                    exclude_from_takeoff=current.exclude_from_takeoff,
                 )
             )
             current = next_wall
@@ -482,6 +543,10 @@ def _merge_collinear_walls(
                 length_px=_segment_length(start, end),
                 orientation=orientation,
                 source_ids=tuple(sorted(current_sources)),
+                surface_class=current.surface_class,
+                surface_class_source=current.surface_class_source,
+                board_sides=current.board_sides,
+                exclude_from_takeoff=current.exclude_from_takeoff,
             )
         )
 
@@ -520,6 +585,10 @@ def _merge_collinear_walls(
                 length_px=_segment_length(start, end),
                 orientation="angled",
                 source_ids=(wall.id,),
+                surface_class=wall.surface_class,
+                surface_class_source=wall.surface_class_source,
+                board_sides=wall.board_sides,
+                exclude_from_takeoff=wall.exclude_from_takeoff,
             )
         )
 
@@ -615,6 +684,10 @@ def _geometry_hash_payload(snapshot: TakeoffGeometrySnapshot) -> dict[str, Any]:
                 "end": [wall.end[0], wall.end[1]],
                 "thickness": round(float(wall.thickness), 3),
                 "visual_thickness": round(float(wall.visual_thickness), 3),
+                "surface_class": wall.surface_class,
+                "surface_class_source": wall.surface_class_source,
+                "board_sides": int(wall.board_sides) if wall.board_sides in {1, 2} else 0,
+                "exclude_from_takeoff": wall.exclude_from_takeoff,
             }
             for wall in sorted(
                 snapshot.walls,

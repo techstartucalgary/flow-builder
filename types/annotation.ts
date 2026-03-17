@@ -5,6 +5,8 @@ export type AnnotationElementType =
   | 'room';
 
 export type AnnotationStatus = 'auto' | 'edited' | 'new';
+export type WallSurfaceClass = 'perimeter' | 'partition' | 'unknown';
+export type WallSurfaceClassSource = 'auto' | 'manual';
 
 export type ToolMode =
   | 'select'
@@ -50,7 +52,7 @@ export interface RectGeometry {
 
 export type ElementGeometry = SegmentGeometry | RectGeometry;
 
-export type OpeningSource = 'gap_verified' | 'gap_verified_tag_classified' | 'opening_feature_verified';
+export type OpeningSource = 'gap_verified' | 'gap_verified_tag_classified' | 'opening_feature_verified' | 'tag_projected';
 
 export interface OpeningVerificationMeta {
   openingPixelsScore?: number;
@@ -71,27 +73,37 @@ export interface OpeningRelations {
   verification?: OpeningVerificationMeta;
 }
 
+export interface WallRelations {
+  surfaceClass?: WallSurfaceClass;
+  surfaceClassSource?: WallSurfaceClassSource;
+  boardSides?: 1 | 2;
+  excludeFromTakeoff?: boolean;
+}
+
 export interface BaseAnnotationElement {
   id: string;
   type: AnnotationElementType;
   geometry: ElementGeometry;
   attrs: BaseElementAttrs;
-  relations?: OpeningRelations | Record<string, unknown>;
+  relations?: OpeningRelations | WallRelations | Record<string, unknown>;
 }
 
 export interface WallElement extends BaseAnnotationElement {
   type: 'wall';
   geometry: SegmentGeometry;
+  relations?: WallRelations;
 }
 
 export interface DoorElement extends BaseAnnotationElement {
   type: 'door';
   geometry: RectGeometry;
+  relations?: OpeningRelations;
 }
 
 export interface WindowElement extends BaseAnnotationElement {
   type: 'window';
   geometry: RectGeometry;
+  relations?: OpeningRelations;
 }
 
 export interface RoomElement extends BaseAnnotationElement {

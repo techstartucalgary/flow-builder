@@ -484,14 +484,7 @@ def _segment_side_fill(
     thickness: int,
 ) -> float:
     sample_px = max(GAP_SIDE_SAMPLE_PX, thickness)
-    return _gap_band_fill(
-        mask,
-        orientation,
-        center_cross,
-        along_start,
-        min(along_end, along_start + sample_px),
-        0,
-    )
+    return 1.0 - _gap_band_fill(mask, orientation, center_cross, along_start, min(along_end, along_start + sample_px), 0)
 
 
 def _detect_cluster_gaps(

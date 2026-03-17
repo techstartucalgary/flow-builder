@@ -21,6 +21,10 @@ function runSerializedAnnotationWrite<T>(operation: () => Promise<T>): Promise<T
   return run;
 }
 
+export function waitForAnnotationWritesToDrain(): Promise<void> {
+  return annotationWriteQueue;
+}
+
 export async function fetchAnnotationStorePayload(
   projectId: string,
   pageNumber: number,

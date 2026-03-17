@@ -4,7 +4,13 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { safeClone } from '@/lib/clone';
-import type { AnnotationElement, AnnotationIssue, OpeningRelations } from '@/types/annotation';
+import type {
+  AnnotationElement,
+  AnnotationIssue,
+  OpeningRelations,
+  WallRelations,
+  WallSurfaceClass,
+} from '@/types/annotation';
 
 interface PropertyPanelProps {
   element: AnnotationElement | null;
@@ -29,6 +35,9 @@ interface FormValues {
   x2: number;
   y2: number;
   thicknessPx: number;
+  surfaceClass: WallSurfaceClass;
+  boardSides: 1 | 2;
+  excludeFromTakeoff: boolean;
 }
 
 export default function PropertyPanel({ element, issues, revision, onApply }: PropertyPanelProps) {
@@ -49,11 +58,18 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
       x2: 0,
       y2: 0,
       thicknessPx: 12,
+      surfaceClass: 'unknown',
+      boardSides: 1,
+      excludeFromTakeoff: false,
     },
   });
 
   useEffect(() => {
     if (!element) return;
+    const wallRelations =
+      element.type === 'wall'
+        ? (element.relations as WallRelations | undefined)
+        : undefined;
     const values: FormValues = {
       name: element.attrs.name || '',
       confidence: element.attrs.confidence ?? 1,
@@ -70,6 +86,9 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
       x2: element.geometry.kind === 'segment' ? element.geometry.x2 : 0,
       y2: element.geometry.kind === 'segment' ? element.geometry.y2 : 0,
       thicknessPx: element.geometry.kind === 'segment' ? element.geometry.thicknessPx : 0,
+      surfaceClass: wallRelations?.surfaceClass ?? 'unknown',
+      boardSides: wallRelations?.boardSides ?? ((wallRelations?.surfaceClass ?? 'unknown') === 'partition' ? 2 : 1),
+      excludeFromTakeoff: wallRelations?.excludeFromTakeoff ?? false,
     };
     reset(values);
   }, [element, reset]);
@@ -85,6 +104,10 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
   const openingRelations =
     element.type === 'door' || element.type === 'window'
       ? (element.relations as OpeningRelations | undefined)
+      : undefined;
+  const wallRelations =
+    element.type === 'wall'
+      ? (element.relations as WallRelations | undefined)
       : undefined;
   const verification = openingRelations?.verification;
 
@@ -106,6 +129,36 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
           updated.geometry.y2 = Number(values.y2);
           updated.geometry.thicknessPx = Number(values.thicknessPx);
           updated.geometry.rotationDeg = Number(values.rotationDeg);
+          if (updated.type === 'wall') {
+            const nextRelations = (
+              updated.relations && typeof updated.relations === 'object'
+                ? { ...(updated.relations as WallRelations) }
+                : {}
+            );
+            const nextSurfaceClass = values.surfaceClass;
+            const nextBoardSides = Number(values.boardSides) === 2 ? 2 : 1;
+            const nextExcludeFromTakeoff = values.excludeFromTakeoff;
+            const shouldPersistManualOverride = (
+              wallRelations?.surfaceClassSource === 'manual'
+              || nextSurfaceClass !== (wallRelations?.surfaceClass ?? 'unknown')
+              || nextBoardSides !== (wallRelations?.boardSides ?? ((wallRelations?.surfaceClass ?? 'unknown') === 'partition' ? 2 : 1))
+              || nextExcludeFromTakeoff !== (wallRelations?.excludeFromTakeoff ?? false)
+            );
+
+            if (shouldPersistManualOverride) {
+              nextRelations.surfaceClass = nextSurfaceClass;
+              nextRelations.surfaceClassSource = 'manual';
+              nextRelations.boardSides = nextBoardSides;
+              nextRelations.excludeFromTakeoff = nextExcludeFromTakeoff;
+              updated.relations = nextRelations;
+            } else {
+              delete nextRelations.surfaceClass;
+              delete nextRelations.surfaceClassSource;
+              delete nextRelations.boardSides;
+              delete nextRelations.excludeFromTakeoff;
+              updated.relations = Object.keys(nextRelations).length ? nextRelations : undefined;
+            }
+          }
         } else {
           updated.geometry.x = Number(values.x);
           updated.geometry.y = Number(values.y);
@@ -137,6 +190,15 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
           <span className="uppercase tracking-wide text-gray-500">Status</span>
           <span className="text-gray-200">{element.attrs.status}</span>
         </div>
+        {wallRelations?.surfaceClass && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="uppercase tracking-wide text-gray-500">Surface</span>
+            <span className="text-gray-200">
+              {wallRelations.surfaceClass}
+              {wallRelations.surfaceClassSource === 'manual' ? ' (manual)' : ' (auto)'}
+            </span>
+          </div>
+        )}
         {openingRelations?.source && (
           <div className="flex items-center justify-between gap-2">
             <span className="uppercase tracking-wide text-gray-500">Source</span>
@@ -239,13 +301,42 @@ export default function PropertyPanel({ element, issues, revision, onApply }: Pr
       )}
 
       {element.geometry.kind === 'segment' && (
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-gray-400">X1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x1', { valueAsNumber: true })} /></label>
-          <label className="text-gray-400">Y1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y1', { valueAsNumber: true })} /></label>
-          <label className="text-gray-400">X2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x2', { valueAsNumber: true })} /></label>
-          <label className="text-gray-400">Y2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y2', { valueAsNumber: true })} /></label>
-          <label className="text-gray-400">Thickness<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('thicknessPx', { valueAsNumber: true })} /></label>
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-gray-400">X1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x1', { valueAsNumber: true })} /></label>
+            <label className="text-gray-400">Y1<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y1', { valueAsNumber: true })} /></label>
+            <label className="text-gray-400">X2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x2', { valueAsNumber: true })} /></label>
+            <label className="text-gray-400">Y2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y2', { valueAsNumber: true })} /></label>
+            <label className="text-gray-400">Thickness<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('thicknessPx', { valueAsNumber: true })} /></label>
+          </div>
+
+          {element.type === 'wall' ? (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-2">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Drywall QA</div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-gray-400">
+                  Surface Class
+                  <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('surfaceClass')}>
+                    <option value="perimeter">Perimeter</option>
+                    <option value="partition">Partition</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </label>
+                <label className="text-gray-400">
+                  Board Sides
+                  <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('boardSides', { valueAsNumber: true })}>
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                  </select>
+                </label>
+              </div>
+              <label className="flex items-center justify-between gap-2 text-gray-400">
+                <span>Exclude From Takeoff</span>
+                <input type="checkbox" {...register('excludeFromTakeoff')} />
+              </label>
+            </div>
+          ) : null}
+        </>
       )}
 
       <label className="text-gray-400">Rotation<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('rotationDeg', { valueAsNumber: true })} /></label>

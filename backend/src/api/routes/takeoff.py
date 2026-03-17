@@ -27,7 +27,9 @@ from src.estimators.drywall.annotation_geometry import (
     TakeoffGeometrySnapshot,
     build_takeoff_geometry_snapshot,
 )
+from src.estimators.drywall.board_estimator import estimate_board_requirements
 from src.estimators.drywall.room_closure import compute_enclosed_regions
+from src.estimators.drywall.surface_classification import classify_wall_surfaces
 from src.vision.cv import pipeline as cv_pipeline
 from src.vision.cv.preprocessing import load_image, crop_drawing_area
 from src.vision.cv.scale_inference import (
@@ -136,11 +138,25 @@ class TakeoffResult(BaseModel):
     geometry_source: Literal["annotation_document", "cv_pipeline"] = "cv_pipeline"
     geometry_revision_used: int = 0
     geometry_hash: str = ""
+    estimate_ready: bool = False
+    blocked_reasons: list[str] = Field(default_factory=list)
     takeoff_confidence: Literal["high", "medium", "low"] = "low"
+    surface_classification_confidence: Literal["high", "medium", "low"] = "low"
     room_closure_status: Literal["closed", "open", "ambiguous"] = "open"
     unclosed_gap_count: int = 0
     largest_boundary_gap_ft: float = 0.0
     unmatched_opening_count: int = 0
+    matched_opening_count: int = 0
+    fallback_opening_count: int = 0
+    opening_deduction_mode: Literal["measured", "mixed", "fallback_constants"] = "measured"
+    sheet_count_method: Literal["area_based"] = "area_based"
+    perimeter_linear_ft: float = 0.0
+    partition_linear_ft: float = 0.0
+    unknown_linear_ft: float = 0.0
+    perimeter_board_sqft: float = 0.0
+    partition_board_sqft: float = 0.0
+    unknown_board_sqft: float = 0.0
+    unknown_wall_count: int = 0
     normalized_wall_count: int = 0
     normalized_opening_count: int = 0
     effective_scale_px_per_ft: float = 0.0
@@ -449,6 +465,56 @@ def _load_saved_annotation_geometry(req: TakeoffRequest) -> tuple[Optional[Geome
         raise HTTPException(status_code=422, detail="Saved annotation document has no wall geometry for takeoff")
 
     return geometry_result, payload.revision
+
+
+def _geometry_result_to_snapshot(
+    geometry_result,
+    revision: int,
+    effective_scale_px_per_ft: Optional[float],
+) -> TakeoffGeometrySnapshot:
+    document = {
+        "baseImage": {
+            "widthPx": int(getattr(geometry_result.metadata, "image_width", 0) or 0),
+            "heightPx": int(getattr(geometry_result.metadata, "image_height", 0) or 0),
+            "scalePxPerFt": effective_scale_px_per_ft or getattr(geometry_result.metadata, "scale_px_per_ft", None),
+        },
+        "elements": [],
+    }
+
+    for index, wall in enumerate(geometry_result.walls):
+        document["elements"].append({
+            "id": str(getattr(wall, "id", f"wall_{index + 1}")),
+            "type": "wall",
+            "geometry": {
+                "kind": "segment",
+                "x1": int(wall.start[0]),
+                "y1": int(wall.start[1]),
+                "x2": int(wall.end[0]),
+                "y2": int(wall.end[1]),
+                "thicknessPx": float(getattr(wall, "thickness", 14.0) or 14.0),
+            },
+        })
+
+    for index, opening in enumerate(geometry_result.openings):
+        relations: dict[str, Any] = {}
+        wall_id = getattr(opening, "wall_id", None)
+        if wall_id:
+            relations["hostWallId"] = str(wall_id)
+        document["elements"].append({
+            "id": str(getattr(opening, "id", f"opening_{index + 1}")),
+            "type": "door" if _is_door(opening) else "window",
+            "geometry": {
+                "kind": "rect",
+                "x": int(opening.bbox[0]),
+                "y": int(opening.bbox[1]),
+                "width": int(opening.bbox[2]),
+                "height": int(opening.bbox[3]),
+                "rotationDeg": 0,
+            },
+            "relations": relations,
+        })
+
+    return build_takeoff_geometry_snapshot(document, revision=revision, effective_scale_px_per_ft=effective_scale_px_per_ft)
 
 
 def _generate_annotated_image(
@@ -925,21 +991,19 @@ def _derive_takeoff_confidence(
     geometry_source: Literal["annotation_document", "cv_pipeline"],
     base_confidence: Literal["high", "medium", "low"],
     scale_source: Literal["request", "annotation_document", "pdf_dimension_inference", "missing"],
-    unmatched_opening_count: int,
+    estimate_ready: bool,
     room_closure_status: Literal["closed", "open", "ambiguous"],
+    surface_classification_confidence: Literal["high", "medium", "low"],
 ) -> Literal["high", "medium", "low"]:
-    if geometry_source == "annotation_document":
-        if room_closure_status != "closed":
-            return "low"
-        if unmatched_opening_count > 0 or scale_source == "pdf_dimension_inference":
-            return "medium"
-        return base_confidence
-
-    if scale_source == "missing":
+    if not estimate_ready or room_closure_status != "closed":
         return "low"
-    if base_confidence == "low":
+    if surface_classification_confidence == "low" or scale_source == "missing":
         return "low"
-    return "medium"
+    if geometry_source == "annotation_document" and base_confidence == "high" and surface_classification_confidence == "high":
+        return "high" if scale_source != "pdf_dimension_inference" else "medium"
+    if base_confidence == "high" and surface_classification_confidence != "low":
+        return "medium"
+    return "low"
 
 
 def _validate_crop_bounds(
@@ -997,11 +1061,25 @@ async def analyze_takeoff(req: TakeoffRequest):
     geometry_source: Literal["annotation_document", "cv_pipeline"] = "cv_pipeline"
     geometry_revision_used = 0
     geometry_hash = ""
+    estimate_ready = False
+    blocked_reasons: list[str] = []
     takeoff_confidence: Literal["high", "medium", "low"] = "low"
+    surface_classification_confidence: Literal["high", "medium", "low"] = "low"
     room_closure_status: Literal["closed", "open", "ambiguous"] = "open"
     unclosed_gap_count = 0
     largest_boundary_gap_ft = 0.0
     unmatched_opening_count = 0
+    matched_opening_count = 0
+    fallback_opening_count = 0
+    opening_deduction_mode: Literal["measured", "mixed", "fallback_constants"] = "measured"
+    sheet_count_method: Literal["area_based"] = "area_based"
+    perimeter_linear_ft = 0.0
+    partition_linear_ft = 0.0
+    unknown_linear_ft = 0.0
+    perimeter_board_sqft = 0.0
+    partition_board_sqft = 0.0
+    unknown_board_sqft = 0.0
+    unknown_wall_count = 0
     normalized_wall_count = 0
     normalized_opening_count = 0
     effective_scale_px_per_ft: Optional[float] = None
@@ -1060,63 +1138,92 @@ async def analyze_takeoff(req: TakeoffRequest):
             )
             if not geometry_snapshot.walls:
                 raise HTTPException(status_code=422, detail="Saved annotation document has no usable wall geometry for takeoff")
-
-            cv_doors, cv_windows = _count_geometry_openings(geometry_snapshot)
-            cv_walls = len(geometry_snapshot.walls)
-            normalized_wall_count = geometry_snapshot.wall_count
-            normalized_opening_count = geometry_snapshot.opening_count
-            unmatched_opening_count = geometry_snapshot.unmatched_opening_count
-            geometry_hash = geometry_snapshot.geometry_hash
-
-            total_linear_ft = _compute_total_linear_ft(geometry_snapshot, effective_scale_px_per_ft)
-            opening_deduction_sqft = _compute_opening_deduction_sqft(geometry_snapshot, effective_scale_px_per_ft)
-            gross_wall_board_sqft, net_wall_board_sqft = _compute_wall_board_sqft(
-                total_linear_ft,
-                req.ceiling_height_ft,
-                opening_deduction_sqft,
-            )
-            (
-                floor_area_sqft,
-                floor_area_method,
-                area_debug,
-                room_closure_status,
-                takeoff_confidence,
-                unclosed_gap_count,
-                largest_boundary_gap_ft,
-            ) = _compute_annotation_floor_area_sqft(geometry_snapshot)
-            area_debug.update({
-                "geometry_hash": geometry_hash,
-                "room_closure_status": room_closure_status,
-                "unmatched_opening_count": unmatched_opening_count,
-                "normalized_wall_count": normalized_wall_count,
-                "normalized_opening_count": normalized_opening_count,
-            })
-            area_debug.update(geometry_snapshot.diagnostics)
         else:
-            cv_doors, cv_windows = _count_geometry_openings(geometry_result)
-            cv_walls = len(geometry_result.walls)
-            normalized_wall_count = cv_walls
-            normalized_opening_count = len(geometry_result.openings)
-            geometry_hash = _generic_geometry_hash(geometry_result, effective_scale_px_per_ft)
+            geometry_snapshot = _geometry_result_to_snapshot(geometry_result, revision=0, effective_scale_px_per_ft=effective_scale_px_per_ft)
 
-            total_linear_ft = _compute_total_linear_ft(geometry_result, effective_scale_px_per_ft)
-            opening_deduction_sqft = _compute_opening_deduction_sqft(geometry_result, effective_scale_px_per_ft)
-            gross_wall_board_sqft, net_wall_board_sqft = _compute_wall_board_sqft(
-                total_linear_ft,
-                req.ceiling_height_ft,
-                opening_deduction_sqft,
-            )
-            floor_area_sqft, floor_area_method, area_debug = _compute_floor_area_sqft(geometry_result, effective_scale_px_per_ft)
-            floor_area_guardrail_applied = bool(area_debug.get("floor_area_guardrail_applied", 0))
-            if floor_area_method == "enclosed_regions":
-                room_closure_status = "closed"
-                takeoff_confidence = "medium"
-            elif floor_area_method == "legacy_convex_hull_fallback":
-                room_closure_status = "ambiguous"
-                takeoff_confidence = "low"
-            else:
-                room_closure_status = "open"
-                takeoff_confidence = "low"
+        cv_doors, cv_windows = _count_geometry_openings(geometry_snapshot)
+        cv_walls = len(geometry_snapshot.walls)
+        normalized_wall_count = geometry_snapshot.wall_count
+        normalized_opening_count = geometry_snapshot.opening_count
+        unmatched_opening_count = geometry_snapshot.unmatched_opening_count
+        geometry_hash = geometry_snapshot.geometry_hash
+
+        (
+            floor_area_sqft,
+            floor_area_method,
+            area_debug,
+            room_closure_status,
+            base_confidence,
+            unclosed_gap_count,
+            largest_boundary_gap_ft,
+        ) = _compute_annotation_floor_area_sqft(geometry_snapshot)
+        surface_result = classify_wall_surfaces(geometry_snapshot)
+        surface_classification_confidence = surface_result.confidence
+        unknown_wall_count = surface_result.unknown_wall_count
+        estimate = estimate_board_requirements(
+            walls=surface_result.walls,
+            openings=geometry_snapshot.openings,
+            scale_px_per_ft=effective_scale_px_per_ft,
+            ceiling_height_ft=req.ceiling_height_ft,
+            include_ceiling=req.include_ceiling,
+            room_closure_status=room_closure_status,
+            floor_area_sqft=floor_area_sqft,
+            unmatched_opening_count=unmatched_opening_count,
+            waste_factor=req.waste_factor,
+            sheet_size_sqft=sheet_size_sqft,
+            classification_confidence=surface_classification_confidence,
+        )
+
+        estimate_ready = estimate.estimate_ready
+        blocked_reasons = estimate.blocked_reasons
+        perimeter_linear_ft = estimate.perimeter_linear_ft
+        partition_linear_ft = estimate.partition_linear_ft
+        unknown_linear_ft = estimate.unknown_linear_ft
+        perimeter_board_sqft = estimate.perimeter_board_sqft
+        partition_board_sqft = estimate.partition_board_sqft
+        unknown_board_sqft = estimate.unknown_board_sqft
+        total_linear_ft = perimeter_linear_ft + partition_linear_ft + unknown_linear_ft
+        gross_wall_board_sqft = estimate.gross_wall_board_sqft
+        opening_deduction_sqft = estimate.opening_deduction_sqft
+        net_wall_board_sqft = estimate.net_wall_board_sqft
+        ceiling_board_sqft = estimate.ceiling_board_sqft
+        net_board_area_sqft = estimate.net_board_area_sqft
+        waste_sqft = estimate.waste_sqft
+        area_with_waste_sqft = estimate.area_with_waste_sqft
+        sheets_required = estimate.sheets_required
+        matched_opening_count = estimate.matched_opening_count
+        fallback_opening_count = estimate.fallback_opening_count
+        opening_deduction_mode = estimate.opening_deduction_mode
+        sheet_count_method = estimate.sheet_count_method
+
+        takeoff_confidence = _derive_takeoff_confidence(
+            geometry_source,
+            base_confidence,
+            scale_source,
+            estimate_ready,
+            room_closure_status,
+            surface_classification_confidence,
+        )
+
+        area_debug.update({
+            "geometry_hash": geometry_hash,
+            "room_closure_status": room_closure_status,
+            "estimate_ready": int(estimate_ready),
+            "surface_classification_confidence": surface_classification_confidence,
+            "blocked_reason_count": len(blocked_reasons),
+            "unmatched_opening_count": unmatched_opening_count,
+            "matched_opening_count": matched_opening_count,
+            "fallback_opening_count": fallback_opening_count,
+            "unknown_wall_count": unknown_wall_count,
+            "normalized_wall_count": normalized_wall_count,
+            "normalized_opening_count": normalized_opening_count,
+            "perimeter_linear_ft": round(float(perimeter_linear_ft), 4),
+            "partition_linear_ft": round(float(partition_linear_ft), 4),
+            "unknown_linear_ft": round(float(unknown_linear_ft), 4),
+        })
+        area_debug.update(geometry_snapshot.diagnostics)
+        area_debug.update(surface_result.diagnostics)
+        area_debug.update(estimate.diagnostics)
 
         area_debug["effective_scale_px_per_ft"] = round(float(effective_scale_px_per_ft), 4) if effective_scale_px_per_ft else 0.0
         area_debug["scale_source"] = scale_source
@@ -1131,20 +1238,6 @@ async def analyze_takeoff(req: TakeoffRequest):
         reference_area_delta_sqft, reference_area_delta_pct = _compute_reference_area_delta(
             floor_area_sqft,
             req.reference_floor_area_sqft,
-        )
-        ceiling_board_sqft = _compute_ceiling_board_sqft(floor_area_sqft, req.include_ceiling)
-        net_board_area_sqft, waste_sqft, area_with_waste_sqft, sheets_required = _compute_materials(
-            net_wall_board_sqft,
-            ceiling_board_sqft,
-            req.waste_factor,
-            sheet_size_sqft,
-        )
-        takeoff_confidence = _derive_takeoff_confidence(
-            geometry_source,
-            takeoff_confidence,
-            scale_source,
-            unmatched_opening_count,
-            room_closure_status,
         )
         area_debug["takeoff_confidence"] = takeoff_confidence
 
@@ -1164,7 +1257,7 @@ async def analyze_takeoff(req: TakeoffRequest):
             f"total_linear_ft={total_linear_ft:.1f} gross_wall_board={gross_wall_board_sqft:.1f} "
             f"opening_deduction={opening_deduction_sqft:.1f} net_wall_board={net_wall_board_sqft:.1f} "
             f"ceiling_board={ceiling_board_sqft:.1f} area_with_waste={area_with_waste_sqft:.1f} "
-            f"sheets_required={sheets_required} closure={room_closure_status} confidence={takeoff_confidence}"
+            f"sheets_required={sheets_required} ready={estimate_ready} closure={room_closure_status} confidence={takeoff_confidence}"
         )
     except HTTPException:
         raise
@@ -1182,13 +1275,21 @@ async def analyze_takeoff(req: TakeoffRequest):
         f"Geometry source: {source_label}",
         f"Geometry revision used: {geometry_revision_used}",
         f"Geometry hash: {geometry_hash}",
+        f"Estimate ready: {estimate_ready}",
+        f"Blocked reasons: {'; '.join(blocked_reasons) if blocked_reasons else 'None'}",
         f"Takeoff confidence: {takeoff_confidence}",
+        f"Surface classification confidence: {surface_classification_confidence}",
         f"Effective scale (px/ft): {effective_scale_text}",
         f"Scale source: {scale_source}",
         f"Scale confidence: {scale_confidence:.2f}",
         f"Geometry walls / doors / windows: {cv_walls} / {cv_doors} / {cv_windows}",
         f"Normalized walls / openings: {normalized_wall_count} / {normalized_opening_count}",
+        f"Perimeter / partition / unknown linear ft: {perimeter_linear_ft:.2f} / {partition_linear_ft:.2f} / {unknown_linear_ft:.2f}",
+        f"Perimeter / partition / unknown board sqft: {perimeter_board_sqft:.2f} / {partition_board_sqft:.2f} / {unknown_board_sqft:.2f}",
         f"Unmatched openings: {unmatched_opening_count}",
+        f"Matched openings: {matched_opening_count}",
+        f"Fallback opening deductions: {fallback_opening_count}",
+        f"Opening deduction mode: {opening_deduction_mode}",
         f"Room closure status: {room_closure_status}",
         f"Unclosed boundary gaps: {unclosed_gap_count}",
         f"Largest boundary gap: {largest_boundary_gap_ft:.2f} ft",
@@ -1208,6 +1309,12 @@ async def analyze_takeoff(req: TakeoffRequest):
     ]
     if scale_warning:
         analysis_lines.append(scale_warning)
+    if unknown_wall_count > 0:
+        analysis_lines.append(
+            "Wall board is provisional because some walls are still unclassified. "
+            "Unknown walls are currently counted as one-sided draft surfaces."
+        )
+        analysis_lines.append("Unknown wall treatment: provisional_1_side_draft")
 
     return TakeoffResult(
         status="ok",
@@ -1240,11 +1347,25 @@ async def analyze_takeoff(req: TakeoffRequest):
         geometry_source=geometry_source,
         geometry_revision_used=geometry_revision_used,
         geometry_hash=geometry_hash,
+        estimate_ready=estimate_ready,
+        blocked_reasons=blocked_reasons,
         takeoff_confidence=takeoff_confidence,
+        surface_classification_confidence=surface_classification_confidence,
         room_closure_status=room_closure_status,
         unclosed_gap_count=unclosed_gap_count,
         largest_boundary_gap_ft=round(largest_boundary_gap_ft, 2),
         unmatched_opening_count=unmatched_opening_count,
+        matched_opening_count=matched_opening_count,
+        fallback_opening_count=fallback_opening_count,
+        opening_deduction_mode=opening_deduction_mode,
+        sheet_count_method=sheet_count_method,
+        perimeter_linear_ft=round(perimeter_linear_ft, 2),
+        partition_linear_ft=round(partition_linear_ft, 2),
+        unknown_linear_ft=round(unknown_linear_ft, 2),
+        perimeter_board_sqft=round(perimeter_board_sqft, 2),
+        partition_board_sqft=round(partition_board_sqft, 2),
+        unknown_board_sqft=round(unknown_board_sqft, 2),
+        unknown_wall_count=unknown_wall_count,
         normalized_wall_count=normalized_wall_count,
         normalized_opening_count=normalized_opening_count,
         effective_scale_px_per_ft=round(float(effective_scale_px_per_ft), 3) if effective_scale_px_per_ft else 0.0,

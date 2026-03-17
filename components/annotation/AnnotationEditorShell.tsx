@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fromCVTakeoffResult } from '@/lib/annotationAdapters';
 import { getBackendUrl } from '@/lib/backendUrl';
@@ -159,6 +159,7 @@ export default function AnnotationEditorShell({
   const [showBaseImage, setShowBaseImage] = useState(true);
   const [tagOverlay, setTagOverlay] = useState<EditorTagOverlayState>({ showTags: false, tags: [] });
   const [pendingRebuild, setPendingRebuild] = useState<CvDocumentSnapshot | null>(null);
+  const scalePxPerFtRef = useRef(scalePxPerFt);
 
   const document = useAnnotationEditorStore((s) => s.document);
   const entities = useAnnotationEditorStore((s) => s.entities);
@@ -185,6 +186,10 @@ export default function AnnotationEditorShell({
   const flushPendingOps = useAnnotationEditorStore((s) => s.flushPendingOps);
   const restorePendingOps = useAnnotationEditorStore((s) => s.restorePendingOps);
   const setSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
+
+  useEffect(() => {
+    scalePxPerFtRef.current = scalePxPerFt;
+  }, [scalePxPerFt]);
 
   const selectedElement = useMemo(() => {
     if (!selection.length) return null;
@@ -237,7 +242,7 @@ export default function AnnotationEditorShell({
   }), [viewPreset]);
 
   const refreshOpeningsFromCV = useCallback(async (baseDoc: AnnotationDocument, baseRevision: number) => {
-    const cvSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFt);
+    const cvSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFtRef.current);
     const cvDoc = sanitizeAnnotationDocument(cvSnapshot.document);
     setTagOverlay((current) => ({
       ...current,
@@ -282,7 +287,7 @@ export default function AnnotationEditorShell({
     });
     markRevision(saved.latest_revision);
     return { blocked: false as const };
-  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, scalePxPerFt]);
+  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId]);
 
   const rebuildGeometryFromCV = useCallback(async () => {
     if (!pendingRebuild || !document) return;
@@ -332,7 +337,7 @@ export default function AnnotationEditorShell({
         return;
       }
 
-      const initialSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFt);
+      const initialSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFtRef.current);
       const sanitizedDoc = sanitizeAnnotationDocument(initialSnapshot.document);
       setTagOverlay((current) => ({
         ...current,
@@ -353,7 +358,7 @@ export default function AnnotationEditorShell({
     } finally {
       setLoading(false);
     }
-  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, refreshOpeningsFromCV, scalePxPerFt]);
+  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, refreshOpeningsFromCV]);
 
   const saveSnapshot = useCallback(async () => {
     if (!document) return;

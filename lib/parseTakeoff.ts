@@ -23,6 +23,11 @@ export type RoomClosureStatus =
   | 'open'
   | 'ambiguous';
 
+export type OpeningDeductionMode =
+  | 'measured'
+  | 'mixed'
+  | 'fallback_constants';
+
 const CEILING_HEIGHT_FT = 9;
 const WASTE_FACTOR = 0.15;
 const SHEET_SIZE_SQFT = 48;
@@ -49,11 +54,25 @@ export interface TakeoffData {
   geometrySource: GeometrySource;
   geometryRevisionUsed: number;
   geometryHash: string;
+  estimateReady: boolean;
+  blockedReasons: string[];
   takeoffConfidence: TakeoffConfidence;
+  surfaceClassificationConfidence: TakeoffConfidence;
   roomClosureStatus: RoomClosureStatus;
   unclosedGapCount: number;
   largestBoundaryGapFt: number;
   unmatchedOpeningCount: number;
+  matchedOpeningCount: number;
+  fallbackOpeningCount: number;
+  openingDeductionMode: OpeningDeductionMode;
+  sheetCountMethod: 'area_based';
+  perimeterLinearFt: number;
+  partitionLinearFt: number;
+  unknownLinearFt: number;
+  perimeterBoardSqFt: number;
+  partitionBoardSqFt: number;
+  unknownBoardSqFt: number;
+  unknownWallCount: number;
   normalizedWallCount: number;
   normalizedOpeningCount: number;
   waste: number;
@@ -82,11 +101,25 @@ export const EMPTY_TAKEOFF: TakeoffData = {
   geometrySource: 'cv_pipeline',
   geometryRevisionUsed: 0,
   geometryHash: '',
+  estimateReady: false,
+  blockedReasons: [],
   takeoffConfidence: 'low',
+  surfaceClassificationConfidence: 'low',
   roomClosureStatus: 'open',
   unclosedGapCount: 0,
   largestBoundaryGapFt: 0,
   unmatchedOpeningCount: 0,
+  matchedOpeningCount: 0,
+  fallbackOpeningCount: 0,
+  openingDeductionMode: 'measured',
+  sheetCountMethod: 'area_based',
+  perimeterLinearFt: 0,
+  partitionLinearFt: 0,
+  unknownLinearFt: 0,
+  perimeterBoardSqFt: 0,
+  partitionBoardSqFt: 0,
+  unknownBoardSqFt: 0,
+  unknownWallCount: 0,
   normalizedWallCount: 0,
   normalizedOpeningCount: 0,
   waste: Math.round(WASTE_FACTOR * 100),
@@ -125,6 +158,12 @@ function isRoomClosureStatus(value: unknown): value is RoomClosureStatus {
   return value === 'closed'
     || value === 'open'
     || value === 'ambiguous';
+}
+
+function isOpeningDeductionMode(value: unknown): value is OpeningDeductionMode {
+  return value === 'measured'
+    || value === 'mixed'
+    || value === 'fallback_constants';
 }
 
 export function mapStructuredTakeoff(data: TakeoffResponse): TakeoffData | null {
@@ -181,11 +220,29 @@ export function mapStructuredTakeoff(data: TakeoffResponse): TakeoffData | null 
     geometrySource: isGeometrySource(data.geometry_source) ? data.geometry_source : 'cv_pipeline',
     geometryRevisionUsed: asNumber(data.geometry_revision_used) ?? 0,
     geometryHash: asString(data.geometry_hash) ?? '',
+    estimateReady: data.estimate_ready === true,
+    blockedReasons: Array.isArray(data.blocked_reasons)
+      ? data.blocked_reasons.filter((value): value is string => typeof value === 'string')
+      : [],
     takeoffConfidence: isTakeoffConfidence(data.takeoff_confidence) ? data.takeoff_confidence : 'low',
+    surfaceClassificationConfidence: isTakeoffConfidence(data.surface_classification_confidence)
+      ? data.surface_classification_confidence
+      : 'low',
     roomClosureStatus: isRoomClosureStatus(data.room_closure_status) ? data.room_closure_status : 'open',
     unclosedGapCount: asNumber(data.unclosed_gap_count) ?? 0,
     largestBoundaryGapFt: asNumber(data.largest_boundary_gap_ft) ?? 0,
     unmatchedOpeningCount: asNumber(data.unmatched_opening_count) ?? 0,
+    matchedOpeningCount: asNumber(data.matched_opening_count) ?? 0,
+    fallbackOpeningCount: asNumber(data.fallback_opening_count) ?? 0,
+    openingDeductionMode: isOpeningDeductionMode(data.opening_deduction_mode) ? data.opening_deduction_mode : 'measured',
+    sheetCountMethod: data.sheet_count_method === 'area_based' ? 'area_based' : 'area_based',
+    perimeterLinearFt: asNumber(data.perimeter_linear_ft) ?? 0,
+    partitionLinearFt: asNumber(data.partition_linear_ft) ?? 0,
+    unknownLinearFt: asNumber(data.unknown_linear_ft) ?? 0,
+    perimeterBoardSqFt: asNumber(data.perimeter_board_sqft) ?? 0,
+    partitionBoardSqFt: asNumber(data.partition_board_sqft) ?? 0,
+    unknownBoardSqFt: asNumber(data.unknown_board_sqft) ?? 0,
+    unknownWallCount: asNumber(data.unknown_wall_count) ?? 0,
     normalizedWallCount: asNumber(data.normalized_wall_count) ?? 0,
     normalizedOpeningCount: asNumber(data.normalized_opening_count) ?? 0,
     waste: Math.round(wasteFactor * 100),
@@ -330,11 +387,25 @@ export function parseTakeoff(raw: string): TakeoffData {
     geometrySource: 'cv_pipeline',
     geometryRevisionUsed: 0,
     geometryHash: '',
+    estimateReady: false,
+    blockedReasons: [],
     takeoffConfidence: 'low',
+    surfaceClassificationConfidence: 'low',
     roomClosureStatus: 'open',
     unclosedGapCount: 0,
     largestBoundaryGapFt: 0,
     unmatchedOpeningCount: 0,
+    matchedOpeningCount: 0,
+    fallbackOpeningCount: 0,
+    openingDeductionMode: 'fallback_constants',
+    sheetCountMethod: 'area_based',
+    perimeterLinearFt: 0,
+    partitionLinearFt: 0,
+    unknownLinearFt: totalLinearFt,
+    perimeterBoardSqFt: 0,
+    partitionBoardSqFt: 0,
+    unknownBoardSqFt: grossWallBoard,
+    unknownWallCount: 0,
     normalizedWallCount: 0,
     normalizedOpeningCount: 0,
     waste: Math.round(WASTE_FACTOR * 100),

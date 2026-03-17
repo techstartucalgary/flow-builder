@@ -458,9 +458,12 @@ class TakeoffRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.geometry_source, "annotation_document")
         self.assertEqual(result.geometry_revision_used, 4)
         self.assertTrue(result.geometry_hash)
+        self.assertTrue(result.estimate_ready)
         self.assertEqual(result.room_closure_status, "closed")
         self.assertGreater(result.total_linear_ft, 0.0)
         self.assertGreater(result.opening_deduction_sqft, 0.0)
+        self.assertGreater(result.perimeter_linear_ft, 0.0)
+        self.assertEqual(result.sheet_count_method, "area_based")
 
     async def test_analyze_takeoff_falls_back_to_cv_when_saved_document_missing(self):
         cv_result = _cv_result(
@@ -519,6 +522,57 @@ class TakeoffRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(result.effective_scale_px_per_ft, 52.0, places=2)
         self.assertEqual(result.scale_source, "pdf_dimension_inference")
         self.assertGreater(result.scale_confidence, 0.6)
+
+    async def test_analyze_takeoff_keeps_unknown_wall_board_non_zero_in_draft_mode(self):
+        annotation_document = {
+            "baseImage": {
+                "widthPx": 220,
+                "heightPx": 220,
+                "scalePxPerFt": 50,
+                "scaleLocked": True,
+            },
+            "meta": {
+                "revision": 549,
+                "updatedAt": "2026-03-07T00:00:00Z",
+            },
+            "elements": [
+                {"id": "w1", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 20, "x2": 180, "y2": 20, "thicknessPx": 6}},
+            ],
+            "issues": [],
+            "layers": {
+                "wall": True,
+                "door": True,
+                "window": True,
+                "room": True,
+            },
+        }
+
+        req = TakeoffRequest(
+            file_url="https://example.com/plan.pdf",
+            project_id="test-project",
+            use_saved_annotations=True,
+            annotation_revision=549,
+            page_number=1,
+            ceiling_height_ft=9.0,
+        )
+
+        with patch("src.api.routes.takeoff.httpx.AsyncClient", return_value=_FakeAsyncClient()), \
+             patch(
+                 "src.api.routes.takeoff._load_saved_annotation_document",
+                 return_value=SavedAnnotationPayload(document=annotation_document, revision=549),
+             ), \
+             patch("src.api.routes.takeoff._generate_annotated_image", return_value="annotated"):
+            result = await analyze_takeoff(req)
+
+        self.assertEqual(result.geometry_source, "annotation_document")
+        self.assertAlmostEqual(result.effective_scale_px_per_ft, 50.0, places=2)
+        self.assertNotEqual(result.scale_source, "missing")
+        self.assertGreater(result.unknown_board_sqft, 0.0)
+        self.assertGreater(result.net_wall_board_sqft, 0.0)
+        self.assertFalse(result.estimate_ready)
+        self.assertEqual(result.ceiling_board_sqft, 0.0)
+        self.assertEqual(result.sheets_required, 0)
+        self.assertIn("one-sided draft surfaces", result.analysis)
 
     async def test_analyze_takeoff_surfaces_revision_mismatch(self):
         req = TakeoffRequest(

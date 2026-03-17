@@ -20,7 +20,10 @@ import {
   Ruler,
 } from 'lucide-react';
 import { getBackendUrl } from '@/lib/backendUrl';
-import { saveAnnotationDocumentWithConflictRetry } from '@/lib/annotationPersistence';
+import {
+  saveAnnotationDocumentWithConflictRetry,
+  waitForAnnotationWritesToDrain,
+} from '@/lib/annotationPersistence';
 import { parseTakeoff, mapStructuredTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
 import type { TakeoffData } from '@/lib/parseTakeoff';
 import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
@@ -367,16 +370,23 @@ export default function ProjectViewerPage() {
         body.reference_floor_area_sqft = referenceFloorArea;
       }
 
-      if (editorDocument) {
-        geometryRevision = editorDocument.meta.revision;
+      await waitForAnnotationWritesToDrain();
 
-        if (editorSaveStatus !== 'saved' || editorPendingOpsCount > 0) {
+      const currentEditorState = useAnnotationEditorStore.getState();
+      const currentEditorDocument = currentEditorState.document;
+      const currentPendingOpsCount = currentEditorState.history.pendingOps.length;
+      const currentEditorSaveStatus = currentEditorState.saveStatus;
+
+      if (currentEditorDocument) {
+        geometryRevision = currentEditorDocument.meta.revision;
+
+        if (currentEditorSaveStatus !== 'saved' || currentPendingOpsCount > 0) {
           setEditorSaveStatus('syncing');
           try {
             const saved = await saveAnnotationDocumentWithConflictRetry({
               projectId: project.id,
               pageNumber,
-              document: editorDocument,
+              document: currentEditorDocument,
               onConflictRevision: markEditorRevision,
             });
             geometryRevision = saved.latest_revision;
@@ -387,6 +397,8 @@ export default function ProjectViewerPage() {
             throw new Error("Couldn't save editor changes before generate. Resolve the editor save issue and try again.");
           }
         }
+
+        await waitForAnnotationWritesToDrain();
 
         body.project_id = project.id;
         body.use_saved_annotations = true;
@@ -465,11 +477,20 @@ export default function ProjectViewerPage() {
     if (generated && takeoff.takeoffConfidence === 'low') {
       warnings.push('Takeoff confidence is low. Review closure status, unmatched openings, and scale before trusting totals.');
     }
+    if (generated && !takeoff.estimateReady) {
+      warnings.push('This estimate is still in draft mode. Final sheet count is blocked until the remaining QA issues are resolved.');
+    }
+    if (generated && takeoff.unknownWallCount > 0) {
+      warnings.push('Wall board is provisional because some walls are still unclassified. Unknown walls are currently counted as one-sided draft surfaces.');
+    }
     if (generated && takeoff.roomClosureStatus !== 'closed') {
       warnings.push(`Room boundary is ${roomClosureLabel(takeoff.roomClosureStatus).toLowerCase()}. Floor area and ceiling board remain provisional until closure is stable.`);
     }
     if (generated && takeoff.unmatchedOpeningCount > 0) {
       warnings.push(`${takeoff.unmatchedOpeningCount} opening${takeoff.unmatchedOpeningCount === 1 ? '' : 's'} could not be hosted to a wall and were excluded from deductions.`);
+    }
+    if (generated) {
+      takeoff.blockedReasons.forEach((reason) => warnings.push(reason));
     }
     if (editorDocument && editorSaveStatus !== 'saved') {
       warnings.push('Generate will save the current editor geometry before recalculating takeoff.');
@@ -477,7 +498,7 @@ export default function ProjectViewerPage() {
     if (takeoffError) {
       warnings.push(takeoffError);
     }
-    if (generated && takeoff.sheetsRequired === 0 && takeoff.netWallBoard > 0) {
+    if (generated && takeoff.estimateReady && takeoff.sheetsRequired === 0 && takeoff.netWallBoard > 0) {
       warnings.push('Material totals are inconsistent. Review scale, ceiling height, and detected openings.');
     }
     if (generated && editorDocument && takeoff.geometrySource === 'cv_pipeline') {
@@ -494,8 +515,12 @@ export default function ProjectViewerPage() {
     takeoff.geometrySource,
     takeoff.roomClosureStatus,
     takeoff.takeoffConfidence,
+    takeoff.estimateReady,
+    takeoff.blockedReasons,
     takeoff.floorAreaMethod,
+    takeoff.estimateReady,
     takeoff.netWallBoard,
+    takeoff.unknownWallCount,
     takeoff.unmatchedOpeningCount,
     takeoff.referenceAreaDeltaPct,
     takeoff.sheetsRequired,
@@ -540,6 +565,11 @@ export default function ProjectViewerPage() {
       value: generated ? takeoff.takeoffConfidence : 'Pending',
       tone: generated ? confidenceTone(takeoff.takeoffConfidence) : ('accent' as const),
     },
+    {
+      label: 'Estimate',
+      value: generated ? (takeoff.estimateReady ? 'Ready' : 'Draft') : 'Pending',
+      tone: generated ? (takeoff.estimateReady ? ('good' as const) : ('warn' as const)) : ('accent' as const),
+    },
   ]), [
     ceilingHeightValue,
     editorDocument,
@@ -552,6 +582,7 @@ export default function ProjectViewerPage() {
     scaleValue,
     takeoff.takeoffConfidence,
     takeoff.geometrySource,
+    takeoff.estimateReady,
     takeoffSourceDisplay,
   ]);
   const compactReadinessRows = useMemo(() => ([
@@ -573,9 +604,9 @@ export default function ProjectViewerPage() {
     },
     {
       label: 'Status',
-      value: generating ? 'Analyzing' : generated ? 'Takeoff Ready' : 'Awaiting Run',
+      value: generating ? 'Analyzing' : generated ? (takeoff.estimateReady ? 'Ready' : 'Draft') : 'Awaiting Run',
     },
-  ]), [ceilingHeightValue, generated, generating, hasCeilingHeight, hasScale, isPdf, numPages, pageNumber, scaleValue, takeoffSourceDisplay]);
+  ]), [ceilingHeightValue, generated, generating, hasCeilingHeight, hasScale, isPdf, numPages, pageNumber, scaleValue, takeoff.estimateReady, takeoffSourceDisplay]);
 
   if (loading) {
     return (
@@ -902,6 +933,11 @@ export default function ProjectViewerPage() {
                     {takeoffSourceDisplay}
                   </span>
                   {generated ? (
+                    <span className="ws-chip" data-tone={takeoff.estimateReady ? 'good' : 'warn'}>
+                      {takeoff.estimateReady ? 'Ready' : 'Draft'}
+                    </span>
+                  ) : null}
+                  {generated ? (
                     <span className="ws-chip" data-tone={confidenceTone(takeoff.takeoffConfidence)}>
                       {takeoff.takeoffConfidence}
                     </span>
@@ -950,7 +986,9 @@ export default function ProjectViewerPage() {
                         <div className="mt-2 flex items-end gap-3">
                           <div>
                             <div className="text-xl font-semibold text-white">{takeoff.sheetsRequired}</div>
-                            <div className="text-[11px] text-[var(--ws-text-muted)]">{takeoff.sheetSizeSqFt.toLocaleString()} sq ft sheets</div>
+                            <div className="text-[11px] text-[var(--ws-text-muted)]">
+                              {takeoff.estimateReady ? `${takeoff.sheetSizeSqFt.toLocaleString()} sq ft sheets` : 'blocked until ready'}
+                            </div>
                           </div>
                           <div>
                             <div className="text-xl font-semibold text-white">{takeoff.waste || 0}%</div>
@@ -969,12 +1007,12 @@ export default function ProjectViewerPage() {
                           </div>
                         </div>
                         <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
-                          <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Normalization</div>
+                          <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">QA Status</div>
                           <div className="mt-2 text-xl font-semibold text-white">
-                            {takeoff.normalizedWallCount} / {takeoff.normalizedOpeningCount}
+                            {takeoff.unknownWallCount} / {takeoff.fallbackOpeningCount}
                           </div>
                           <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
-                            walls / openings · {takeoff.unmatchedOpeningCount} unmatched
+                            unknown walls / fallback openings · {takeoff.unmatchedOpeningCount} unmatched
                           </div>
                         </div>
                       </div>
@@ -1042,10 +1080,20 @@ export default function ProjectViewerPage() {
                         ['Geometry source', takeoffSourceDisplay],
                         ['Geometry revision', generated && takeoff.geometryRevisionUsed > 0 ? `${takeoff.geometryRevisionUsed}` : 'Not pinned'],
                         ['Geometry change', runComparisonMessage || 'Awaiting comparison'],
+                        ['Estimate readiness', generated ? (takeoff.estimateReady ? 'Ready' : 'Draft') : 'Pending'],
+                        ['Blocked reasons', takeoff.blockedReasons.length ? takeoff.blockedReasons.join(' · ') : 'None'],
                         ['Takeoff confidence', generated ? takeoff.takeoffConfidence : 'Pending'],
+                        ['Surface classification', generated ? takeoff.surfaceClassificationConfidence : 'Pending'],
                         ['Room closure', roomClosureLabel(takeoff.roomClosureStatus)],
                         ['Boundary gaps', `${takeoff.unclosedGapCount} (${takeoff.largestBoundaryGapFt.toFixed(2)} ft max)`],
+                        ['Perimeter / partition / unknown walls', `${formatSqFt(takeoff.perimeterLinearFt)} / ${formatSqFt(takeoff.partitionLinearFt)} / ${formatSqFt(takeoff.unknownLinearFt)} ft`],
+                        ['Perimeter / partition / unknown board', `${formatSqFt(takeoff.perimeterBoardSqFt)} / ${formatSqFt(takeoff.partitionBoardSqFt)} / ${formatSqFt(takeoff.unknownBoardSqFt)} sq ft`],
+                        ['Unknown walls', `${takeoff.unknownWallCount}`],
+                        ['Unknown wall treatment', takeoff.unknownWallCount > 0 ? 'Provisional 1-side draft' : 'Not used'],
                         ['Unmatched openings', `${takeoff.unmatchedOpeningCount}`],
+                        ['Matched openings', `${takeoff.matchedOpeningCount}`],
+                        ['Fallback openings', `${takeoff.fallbackOpeningCount}`],
+                        ['Opening deduction mode', takeoff.openingDeductionMode],
                         ['Floor area', `${formatSqFt(takeoff.floorArea)} sq ft`],
                         ['Floor area method', floorAreaMethodLabel(takeoff.floorAreaMethod)],
                         ['Reference area', hasReferenceFloorArea ? `${formatSqFt(takeoff.referenceFloorArea)} sq ft` : 'Not provided'],
@@ -1103,8 +1151,11 @@ export default function ProjectViewerPage() {
                           <div className="text-sm font-medium text-white">How this was calculated</div>
                           <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
                             {takeoff.geometrySource === 'annotation_document'
-                              ? 'The current estimate uses the normalized saved annotation document as the geometry source, derives wall board from normalized wall lengths and hosted openings, and only includes floor area when room closure is stable.'
-                              : 'The current estimate computes floor area from the deterministic CV pipeline, derives wall board from measured wall lengths and opening areas, adds ceiling board, applies waste, and converts the result into sheet counts on the backend.'}
+                              ? 'The current estimate uses the normalized saved annotation document, auto-classifies walls as perimeter or partition unless you override them, deducts only hosted openings, and only releases sheet count when closure, scale, and wall semantics are trustworthy.'
+                              : 'The current estimate is running from CV seed geometry, then classifies wall surfaces, measures hosted openings, and keeps the result in draft mode until scale, closure, and wall semantics are stable enough for a final board count.'}
+                            {!takeoff.estimateReady && takeoff.unknownWallCount > 0
+                              ? ' Unknown walls are still included as provisional one-sided wall board in draft mode so the wall total stays usable while final totals remain blocked.'
+                              : ''}
                           </p>
                         </div>
                         <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
@@ -1118,7 +1169,9 @@ export default function ProjectViewerPage() {
                         <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-3 py-3">
                           <div className="text-sm font-medium text-white">What needs review</div>
                           <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
-                            {takeoff.summary || 'Use the editor QA presets to inspect walls, openings, and unmatched tags before treating the estimate as final.'}
+                            {takeoff.blockedReasons.length
+                              ? `${takeoff.unknownWallCount > 0 ? 'Wall board is being shown as a provisional one-sided draft total for unknown walls. ' : ''}${takeoff.blockedReasons.join(' ')}`
+                              : takeoff.summary || 'Use the walls QA preset to confirm perimeter vs partition assumptions before treating the estimate as final.'}
                           </p>
                         </div>
                       </div>
