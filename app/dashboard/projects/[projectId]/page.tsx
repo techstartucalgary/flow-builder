@@ -32,6 +32,12 @@ import AnnotationEditorShell from '@/components/annotation/AnnotationEditorShell
 import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBoundary';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import type { EditorViewPreset, OpeningRelations, WallRelations } from '@/types/annotation';
+import { Document, pdfjs } from 'react-pdf';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
 
 const BACKEND_URL = getBackendUrl();
 const DEFAULT_CEILING_HEIGHT_FT = '9';
@@ -141,6 +147,23 @@ function confidenceTone(confidence: TakeoffData['takeoffConfidence']): 'good' | 
   }
 }
 
+function sheetStatusLabel(status: PageWorkflowStatus | undefined): string {
+  if (!status?.visited) return 'Unopened';
+  if (status.generated && status.estimateReady) return 'Ready';
+  if (status.generated) return 'Draft';
+  if (!status.hasScale) return 'Needs scale';
+  if (status.hasAnnotationDoc) return 'Editing';
+  return 'Started';
+}
+
+function sheetStatusTone(status: PageWorkflowStatus | undefined): 'good' | 'warn' | 'accent' | 'danger' {
+  if (!status?.visited) return 'accent';
+  if (status.saveStatus === 'error') return 'danger';
+  if (status.generated && status.estimateReady) return 'good';
+  if (status.generated || !status.hasScale || status.saveStatus !== 'saved') return 'warn';
+  return 'accent';
+}
+
 type TakeoffDeltaSummary = {
   floorArea: number;
   totalLinearFt: number;
@@ -155,6 +178,15 @@ type ReviewAction = {
   description: string;
   preset: EditorViewPreset;
   elementIds: string[];
+};
+
+type PageWorkflowStatus = {
+  visited: boolean;
+  hasScale: boolean;
+  hasAnnotationDoc: boolean;
+  generated: boolean;
+  estimateReady: boolean;
+  saveStatus: 'saved' | 'unsaved' | 'syncing' | 'error';
 };
 
 function compareTakeoffRuns(previous: TakeoffData | null, next: TakeoffData): {
@@ -249,6 +281,7 @@ export default function ProjectViewerPage() {
   const [ceilingHeightFt, setCeilingHeightFt] = useState<string>(DEFAULT_CEILING_HEIGHT_FT);
   const [referenceFloorAreaSqFt, setReferenceFloorAreaSqFt] = useState<string>('');
   const [pendingReviewAction, setPendingReviewAction] = useState<ReviewAction | null>(null);
+  const [pageStatuses, setPageStatuses] = useState<Record<number, PageWorkflowStatus>>({});
 
   // Overlay stepper
   const ANALYSIS_STEPS = [
@@ -297,6 +330,23 @@ export default function ProjectViewerPage() {
     setRunComparisonReason(null);
     setMetricDeltas(null);
   }, [pageNumber, projectId]);
+
+  useEffect(() => {
+    if (project?.file_mime !== 'application/pdf' || !fileUrl) return;
+    if (!numPages || pageStatuses[pageNumber]?.visited) return;
+
+    setPageStatuses((current) => ({
+      ...current,
+      [pageNumber]: {
+        visited: true,
+        hasScale: false,
+        hasAnnotationDoc: false,
+        generated: false,
+        estimateReady: false,
+        saveStatus: 'saved',
+      },
+    }));
+  }, [fileUrl, numPages, pageNumber, pageStatuses, project?.file_mime]);
 
   useEffect(() => {
     if (!editorMode || !editorDocument || !pendingReviewAction) return;
@@ -493,6 +543,22 @@ export default function ProjectViewerPage() {
     : editorDocument
       ? 'Saved Geometry'
       : 'CV Geometry';
+
+  useEffect(() => {
+    if (project?.file_mime !== 'application/pdf' || !numPages) return;
+
+    setPageStatuses((current) => ({
+      ...current,
+      [pageNumber]: {
+        visited: true,
+        hasScale,
+        hasAnnotationDoc: Boolean(editorDocument),
+        generated,
+        estimateReady: takeoff.estimateReady,
+        saveStatus: editorSaveStatus,
+      },
+    }));
+  }, [editorDocument, editorSaveStatus, generated, hasScale, numPages, pageNumber, project?.file_mime, takeoff.estimateReady]);
   const reviewWarnings = useMemo(() => {
     const warnings: string[] = [];
     if (!hasScale) {
@@ -748,6 +814,18 @@ export default function ProjectViewerPage() {
   return (
     <div className="absolute inset-0 overflow-hidden bg-[var(--ws-bg)] text-[var(--ws-text)]">
       <div className="flex h-full flex-col gap-3 px-3 py-3">
+        {isPdf ? (
+          <div className="hidden">
+            <Document
+              file={fileUrl}
+              onLoadSuccess={(info) => {
+                setNumPages(info.numPages);
+                setPageNumber((current) => Math.min(current, info.numPages));
+              }}
+              loading={null}
+            />
+          </div>
+        ) : null}
         <header className="ws-panel-elevated flex shrink-0 items-center justify-between gap-4 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -821,6 +899,59 @@ export default function ProjectViewerPage() {
         </header>
 
         <div className="flex min-h-0 flex-1 gap-3">
+          {isPdf && numPages > 1 ? (
+            <aside className="ws-panel flex w-56 shrink-0 flex-col overflow-hidden">
+              <div className="border-b border-[var(--ws-border)] px-3 py-3">
+                <div className="ws-section-header">Sheet Rail</div>
+                <div className="mt-1 text-xs text-[var(--ws-text-muted)]">
+                  Track page readiness as you move through the drawing set.
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+                <div className="space-y-2">
+                  {Array.from({ length: numPages }, (_, index) => {
+                    const page = index + 1;
+                    const status = pageStatuses[page];
+                    const isCurrentPage = page === pageNumber;
+
+                    return (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setPageNumber(page)}
+                        className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+                          isCurrentPage
+                            ? 'border-cyan-400/50 bg-cyan-500/[0.12]'
+                            : 'border-[var(--ws-border)] bg-white/[0.03] hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-medium text-white">Sheet {page}</div>
+                            <div className="mt-1 text-[11px] text-[var(--ws-text-muted)]">
+                              {status?.hasScale ? 'Scale captured' : 'Scale pending'}
+                            </div>
+                          </div>
+                          <span className="ws-chip" data-tone={sheetStatusTone(status)}>
+                            {sheetStatusLabel(status)}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[var(--ws-text-secondary)]">
+                          <span className="ws-chip">{status?.hasAnnotationDoc ? 'Geometry' : 'No doc'}</span>
+                          <span className="ws-chip">{status?.generated ? 'Takeoff run' : 'Not run'}</span>
+                          {status?.saveStatus && status.saveStatus !== 'saved' ? (
+                            <span className="ws-chip" data-tone={saveTone(status.saveStatus)}>
+                              {saveLabel(status.saveStatus)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </aside>
+          ) : null}
           <section className="flex min-w-0 flex-1 flex-col">
             <div className="ws-panel-elevated flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--ws-border)] px-4 py-3">
@@ -1125,7 +1256,7 @@ export default function ProjectViewerPage() {
                           <div>
                             <div className="text-xl font-semibold text-white">{takeoff.sheetsRequired}</div>
                             <div className="text-[11px] text-[var(--ws-text-muted)]">
-                              {takeoff.estimateReady ? `${takeoff.sheetSizeSqFt.toLocaleString()} sq ft sheets` : 'blocked until ready'}
+                              {takeoff.estimateReady ? `${takeoff.sheetSizeSqFt.toLocaleString()} sq ft sheets` : 'draft estimate'}
                             </div>
                           </div>
                           <div>

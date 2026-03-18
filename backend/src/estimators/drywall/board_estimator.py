@@ -177,11 +177,11 @@ def estimate_board_requirements(
         blocked_reasons.append("Wall surface classification confidence is low.")
 
     estimate_ready = not blocked_reasons
-    ceiling_board_sqft = floor_area_sqft if estimate_ready and include_ceiling and floor_area_sqft > 0 else 0.0
+    ceiling_board_sqft = floor_area_sqft if include_ceiling and floor_area_sqft > 0 else 0.0
     net_board_area_sqft = net_wall_board_sqft + ceiling_board_sqft
     waste_sqft = net_board_area_sqft * waste_factor
     area_with_waste_sqft = net_board_area_sqft + waste_sqft
-    sheets_required = int(ceil(area_with_waste_sqft / sheet_size_sqft)) if estimate_ready and sheet_size_sqft > 0 and area_with_waste_sqft > 0 else 0
+    sheets_required = int(ceil(area_with_waste_sqft / sheet_size_sqft)) if sheet_size_sqft > 0 and area_with_waste_sqft > 0 else 0
 
     return BoardEstimateResult(
         estimate_ready=estimate_ready,

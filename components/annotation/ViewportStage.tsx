@@ -483,6 +483,13 @@ export default function ViewportStage({
     setCamera({ zoom: newScale, ...newPan });
   }
 
+  function syncCameraToStage(node: Konva.Stage) {
+    const nextPanX = node.x();
+    const nextPanY = node.y();
+    if (camera.panX === nextPanX && camera.panY === nextPanY) return;
+    setCamera({ panX: nextPanX, panY: nextPanY });
+  }
+
   return (
     <div ref={wrapRef} className="relative w-full h-full rounded-lg border border-white/10 bg-[#0a0f1a] overflow-hidden">
       {showBaseImage && normalizedBaseImageUrl && (
@@ -523,7 +530,14 @@ export default function ViewportStage({
           onMouseLeave={() => setPointerWorld(null)}
           onWheel={onWheel}
           draggable={toolMode === 'select' && !marqueeDraft}
-          onDragEnd={(e) => setCamera({ panX: e.target.x(), panY: e.target.y() })}
+          onDragMove={(e) => {
+            const stage = e.target.getStage();
+            if (stage) syncCameraToStage(stage);
+          }}
+          onDragEnd={(e) => {
+            const stage = e.target.getStage();
+            if (stage) syncCameraToStage(stage);
+          }}
         >
           <Layer>
             <AnnotationRenderLayer

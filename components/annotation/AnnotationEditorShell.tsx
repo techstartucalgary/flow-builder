@@ -10,6 +10,7 @@ import {
   saveAnnotationDocumentWithConflictRetry,
 } from '@/lib/annotationPersistence';
 import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
+import { openingFitsHostWall } from '@/lib/openingValidation';
 import EditorToolbar from '@/components/annotation/EditorToolbar';
 import BulkWallActionsPanel from '@/components/annotation/BulkWallActionsPanel';
 import IssueHighlighter from '@/components/annotation/IssueHighlighter';
@@ -68,21 +69,59 @@ function shouldRefreshOpeningsFromCV(doc: AnnotationDocument): boolean {
 function mergeOpeningsFromCV(
   existingDoc: AnnotationDocument,
   cvDoc: AnnotationDocument,
-): AnnotationDocument {
-  const cvOpenings = cvDoc.elements.filter((e) => e.type === 'door' || e.type === 'window');
+): {
+  document: AnnotationDocument;
+  droppedMissingHostCount: number;
+  droppedHostFitCount: number;
+} {
+  const wallsById = new Map(
+    existingDoc.elements
+      .filter((element): element is Extract<AnnotationElement, { type: 'wall' }> => element.type === 'wall' && element.geometry.kind === 'segment')
+      .map((element) => [element.id, element]),
+  );
+  const incomingIssues = cvDoc.issues;
+  let droppedMissingHostCount = 0;
+  let droppedHostFitCount = 0;
+  const cvOpenings = cvDoc.elements.filter((e) => {
+    if (e.type !== 'door' && e.type !== 'window') return false;
+    const hostWallId = e.relations && typeof e.relations === 'object' && 'hostWallId' in e.relations
+      ? String(e.relations.hostWallId || '')
+      : '';
+    if (!hostWallId) {
+      droppedMissingHostCount += 1;
+      return false;
+    }
+    if (!openingFitsHostWall(e, wallsById.get(hostWallId))) {
+      droppedHostFitCount += 1;
+      return false;
+    }
+    return true;
+  });
   const nonOpenings = existingDoc.elements.filter((e) => e.type !== 'door' && e.type !== 'window');
   const mergedElements: AnnotationElement[] = [...nonOpenings, ...cvOpenings];
   const validIds = new Set(mergedElements.map((e) => e.id));
-  const mergedIssues = existingDoc.issues.filter((issue) => validIds.has(issue.elementId));
+  const replacedOpeningIds = new Set(
+    existingDoc.elements
+      .filter((element) => element.type === 'door' || element.type === 'window')
+      .map((element) => element.id),
+  );
+  const mergedIssues = [
+    ...existingDoc.issues.filter((issue) => validIds.has(issue.elementId) && !replacedOpeningIds.has(issue.elementId)),
+    ...incomingIssues.filter((issue) => validIds.has(issue.elementId)),
+  ];
 
   return {
-    ...existingDoc,
-    elements: mergedElements,
-    issues: mergedIssues,
-    meta: {
-      ...existingDoc.meta,
-      updatedAt: new Date().toISOString(),
+    document: {
+      ...existingDoc,
+      elements: mergedElements,
+      issues: mergedIssues,
+      meta: {
+        ...existingDoc.meta,
+        updatedAt: new Date().toISOString(),
+      },
     },
+    droppedMissingHostCount,
+    droppedHostFitCount,
   };
 }
 
@@ -317,8 +356,24 @@ export default function AnnotationEditorShell({
     }
 
     setPendingRebuild(null);
-    setWarning(null);
-    const upgradedDoc = sanitizeAnnotationDocument(mergeOpeningsFromCV(baseDoc, cvDoc));
+    const mergeResult = mergeOpeningsFromCV(baseDoc, cvDoc);
+    const upgradedDoc = sanitizeAnnotationDocument(mergeResult.document);
+    if (mergeResult.droppedMissingHostCount || mergeResult.droppedHostFitCount) {
+      const droppedParts: string[] = [];
+      if (mergeResult.droppedHostFitCount) {
+        droppedParts.push(`${mergeResult.droppedHostFitCount} opening${mergeResult.droppedHostFitCount === 1 ? '' : 's'} did not fit the current host wall geometry`);
+      }
+      if (mergeResult.droppedMissingHostCount) {
+        droppedParts.push(
+          mergeResult.droppedMissingHostCount === 1
+            ? '1 opening was missing a host wall'
+            : `${mergeResult.droppedMissingHostCount} openings were missing a host wall`,
+        );
+      }
+      setWarning(`Refresh skipped invalid CV openings: ${droppedParts.join('; ')}.`);
+    } else {
+      setWarning(null);
+    }
     initializeDocument(upgradedDoc);
 
     const saved = await saveAnnotationDocumentWithConflictRetry({

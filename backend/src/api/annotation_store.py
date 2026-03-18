@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+from src.vision.cv.models import Orientation
+from src.vision.cv.opening_validation import opening_fits_host_wall
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "annotations"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,6 +56,51 @@ def _save_state(project_id: str, page: int, state: StoreState) -> None:
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _orientation_for_segment(geometry: dict[str, Any]) -> Orientation:
+    x1 = float(geometry.get("x1", 0))
+    y1 = float(geometry.get("y1", 0))
+    x2 = float(geometry.get("x2", 0))
+    y2 = float(geometry.get("y2", 0))
+    return Orientation.HORIZONTAL if abs(x2 - x1) >= abs(y2 - y1) else Orientation.VERTICAL
+
+
+def _opening_has_valid_host_fit(
+    opening: dict[str, Any],
+    walls_by_id: dict[str, dict[str, Any]],
+) -> bool:
+    relations = opening.get("relations")
+    if not isinstance(relations, dict):
+        return False
+
+    host_wall_id = relations.get("hostWallId")
+    if not host_wall_id:
+        return False
+
+    host_wall = walls_by_id.get(str(host_wall_id))
+    if not host_wall:
+        return False
+
+    wall_geometry = host_wall.get("geometry")
+    opening_geometry = opening.get("geometry")
+    if not isinstance(wall_geometry, dict) or wall_geometry.get("kind") != "segment":
+        return False
+    if not isinstance(opening_geometry, dict) or opening_geometry.get("kind") != "rect":
+        return False
+
+    orientation = _orientation_for_segment(wall_geometry)
+    return opening_fits_host_wall(
+        orientation,
+        (int(round(float(wall_geometry.get("x1", 0)))), int(round(float(wall_geometry.get("y1", 0))))),
+        (int(round(float(wall_geometry.get("x2", 0)))), int(round(float(wall_geometry.get("y2", 0))))),
+        (
+            int(round(float(opening_geometry.get("x", 0)))),
+            int(round(float(opening_geometry.get("y", 0)))),
+            int(round(float(opening_geometry.get("width", 0)))),
+            int(round(float(opening_geometry.get("height", 0)))),
+        ),
+    )
 
 
 def _sanitize_document(document: Optional[dict[str, Any]]) -> tuple[Optional[dict[str, Any]], bool]:
@@ -109,11 +156,34 @@ def _sanitize_document(document: Optional[dict[str, Any]]) -> tuple[Optional[dic
             changed = True
             continue
         filtered_elements.append(element)
-    if len(filtered_elements) != len(raw_elements):
-        changed = True
-    sanitized["elements"] = filtered_elements
 
-    valid_ids = {element.get("id") for element in filtered_elements}
+    walls_by_id = {
+        str(element.get("id") or ""): element
+        for element in filtered_elements
+        if element.get("type") == "wall"
+        and isinstance(element.get("geometry"), dict)
+        and element["geometry"].get("kind") == "segment"
+    }
+
+    validated_elements: list[dict[str, Any]] = []
+    for element in filtered_elements:
+        element_type = element.get("type")
+        if element_type not in {"door", "window"}:
+            validated_elements.append(element)
+            continue
+        attrs = element.get("attrs")
+        if not (isinstance(attrs, dict) and attrs.get("status") == "auto"):
+            validated_elements.append(element)
+            continue
+        if not _opening_has_valid_host_fit(element, walls_by_id):
+            changed = True
+            continue
+        validated_elements.append(element)
+    if len(validated_elements) != len(raw_elements):
+        changed = True
+    sanitized["elements"] = validated_elements
+
+    valid_ids = {element.get("id") for element in validated_elements}
     raw_issues = document.get("issues")
     filtered_issues: list[dict[str, Any]] = []
     if isinstance(raw_issues, list):

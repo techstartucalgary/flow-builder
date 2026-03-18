@@ -4,6 +4,7 @@ import type {
   AnnotationElementType,
   AnnotationLayers,
 } from '@/types/annotation';
+import { openingFitsHostWall } from '@/lib/openingValidation';
 
 const SUPPORTED_TYPES: ReadonlySet<AnnotationElementType> = new Set(['wall', 'door', 'window', 'room']);
 
@@ -50,13 +51,31 @@ function sanitizeElements(elements: unknown): AnnotationElement[] {
     }
     sanitized.push({ ...element } as AnnotationElement);
   }
-  return sanitized;
+
+  const wallsById = new Map(
+    sanitized
+      .filter((element): element is Extract<AnnotationElement, { type: 'wall' }> => element.type === 'wall' && element.geometry.kind === 'segment')
+      .map((element) => [element.id, element]),
+  );
+
+  return sanitized.filter((element) => {
+    if (element.type !== 'door' && element.type !== 'window') return true;
+    if (element.attrs.status !== 'auto') return true;
+    const hostWallId = element.relations && typeof element.relations === 'object' && 'hostWallId' in element.relations
+      ? String(element.relations.hostWallId || '')
+      : '';
+    if (!hostWallId) return false;
+    return openingFitsHostWall(element, wallsById.get(hostWallId));
+  });
 }
 
 export function sanitizeAnnotationDocument(doc: AnnotationDocument): AnnotationDocument {
+  const elements = sanitizeElements(doc.elements);
+  const validIds = new Set(elements.map((element) => element.id));
   return {
     ...doc,
     layers: sanitizeLayers(doc.layers),
-    elements: sanitizeElements(doc.elements),
+    elements,
+    issues: Array.isArray(doc.issues) ? doc.issues.filter((issue) => validIds.has(issue.elementId)) : [],
   };
 }

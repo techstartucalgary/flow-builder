@@ -13,6 +13,10 @@ import math
 import numpy as np
 
 from src.vision.cv.models import Orientation, TagAnchor, TagClass, WallSegment
+from src.vision.cv.opening_validation import (
+    opening_fits_host_wall,
+    opening_has_endpoint_clearance,
+)
 
 
 DOOR_RECOVERY_MIN_FEATURE_SCORE = 0.58
@@ -236,6 +240,8 @@ def recover_candidates_from_tags(
     door_rejected = 0
     window_rejected = 0
     solid_wall_rejections = 0
+    host_fit_rejections = 0
+    endpoint_projection_rejections = 0
 
     for tag in tags:
         if tag.id in matched_tag_ids:
@@ -263,6 +269,20 @@ def recover_candidates_from_tags(
         width_px = _estimate_opening_width(tag, best_wall)
         alignment_score = _tag_alignment_score(tag, best_wall, best_projection, width_px)
         bbox = _bbox_on_wall(best_wall, best_projection, width_px)
+        if not opening_fits_host_wall(best_wall.orientation, best_wall.start, best_wall.end, bbox):
+            host_fit_rejections += 1
+            if tag.tag_class == TagClass.DOOR:
+                door_rejected += 1
+            else:
+                window_rejected += 1
+            continue
+        if not opening_has_endpoint_clearance(best_wall.orientation, best_wall.start, best_wall.end, bbox):
+            endpoint_projection_rejections += 1
+            if tag.tag_class == TagClass.DOOR:
+                door_rejected += 1
+            else:
+                window_rejected += 1
+            continue
         center_fill = _center_strip_fill(wall_mask, bbox, best_wall.orientation)
         interior_fill = _fill_ratio(_roi(wall_mask, bbox))
         support = _side_support(wall_mask, bbox, best_wall.orientation)
@@ -376,4 +396,6 @@ def recover_candidates_from_tags(
         "door_candidates_rejected_after_symbol_check": door_rejected,
         "window_candidates_rejected_after_frame_check": window_rejected,
         "solid_wall_projection_rejections": solid_wall_rejections,
+        "openings_rejected_host_fit": host_fit_rejections,
+        "openings_rejected_endpoint_projection": endpoint_projection_rejections,
     }

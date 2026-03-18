@@ -179,6 +179,8 @@ class DebugInfo(BaseModel):
     window_candidates_rejected_after_frame_check: int = 0
     tags_unmatched_to_verified_openings: int = 0
     solid_wall_projection_rejections: int = 0
+    openings_rejected_host_fit: int = 0
+    openings_rejected_endpoint_projection: int = 0
 
 
 # ── top-level response ─────────────────────────────────────────────────

@@ -196,7 +196,7 @@ def compute_enclosed_regions(snapshot: TakeoffGeometrySnapshot) -> RoomClosureRe
         else:
             status = "open"
         confidence = "low"
-        floor_area_sqft = 0.0
+        floor_area_sqft = max(base_area_sqft, alternate_area_sqft)
 
     debug: dict[str, float | int | str] = {
         **base_debug,

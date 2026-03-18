@@ -19,6 +19,7 @@ import numpy as np
 
 from src.vision.cv.opening_classification import classify_verified_opening
 from src.vision.cv.opening_detection import recover_candidates_from_tags
+from src.vision.cv.opening_validation import opening_fits_host_wall
 from src.vision.cv.models import (
     CVTakeoffResult,
     CropMetadata,
@@ -450,6 +451,8 @@ def _correlate_verified_openings(
     door_candidates_rejected_after_symbol_check = 0
     window_candidates_rejected_after_frame_check = 0
     solid_wall_projection_rejections = 0
+    openings_rejected_host_fit = 0
+    openings_rejected_endpoint_projection = 0
 
     next_opening_index = 1
 
@@ -476,6 +479,10 @@ def _correlate_verified_openings(
             or tag_class_value is None
         ):
             candidate_rejected += 1
+            continue
+        if not opening_fits_host_wall(host_wall.orientation, host_wall.start, host_wall.end, gap.bbox):
+            candidate_rejected += 1
+            openings_rejected_host_fit += 1
             continue
 
         tag_class = TagClass(tag_class_value)
@@ -541,6 +548,8 @@ def _correlate_verified_openings(
     solid_wall_projection_rejections += recovery_debug["solid_wall_projection_rejections"]
     door_candidates_rejected_after_symbol_check += recovery_debug["door_candidates_rejected_after_symbol_check"]
     window_candidates_rejected_after_frame_check += recovery_debug["window_candidates_rejected_after_frame_check"]
+    openings_rejected_host_fit += recovery_debug["openings_rejected_host_fit"]
+    openings_rejected_endpoint_projection += recovery_debug["openings_rejected_endpoint_projection"]
 
     for candidate in recovered_candidates:
         if not candidate.verified or candidate.tag_class is None:
@@ -616,6 +625,8 @@ def _correlate_verified_openings(
         "window_candidates_rejected_after_frame_check": window_candidates_rejected_after_frame_check,
         "tags_unmatched_to_verified_openings": len(unmatched_tags),
         "solid_wall_projection_rejections": solid_wall_projection_rejections,
+        "openings_rejected_host_fit": openings_rejected_host_fit,
+        "openings_rejected_endpoint_projection": openings_rejected_endpoint_projection,
     }
 
 
@@ -803,6 +814,8 @@ def run(
         window_candidates_rejected_after_frame_check=opening_debug["window_candidates_rejected_after_frame_check"],
         tags_unmatched_to_verified_openings=opening_debug["tags_unmatched_to_verified_openings"],
         solid_wall_projection_rejections=opening_debug["solid_wall_projection_rejections"],
+        openings_rejected_host_fit=opening_debug["openings_rejected_host_fit"],
+        openings_rejected_endpoint_projection=opening_debug["openings_rejected_endpoint_projection"],
     )
 
     return CVTakeoffResult(

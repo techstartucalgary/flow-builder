@@ -648,6 +648,25 @@ def _compute_reference_area_delta(
     return delta_sqft, delta_pct
 
 
+def _snapshot_convex_hull_floor_area_sqft(snapshot: TakeoffGeometrySnapshot) -> float:
+    if not snapshot.scale_px_per_ft or snapshot.scale_px_per_ft <= 0 or not snapshot.walls:
+        return 0.0
+    points = []
+    for wall in snapshot.walls:
+        points.append(wall.start)
+        points.append(wall.end)
+    if len(points) < 3:
+        return 0.0
+    points_np = np.array(points, dtype=np.int32)
+    hull = cv2.convexHull(points_np)
+    area_px2 = float(cv2.contourArea(hull))
+    if area_px2 <= 0:
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        area_px2 = float(max(0, max(xs) - min(xs)) * max(0, max(ys) - min(ys)))
+    return area_px2 / (snapshot.scale_px_per_ft ** 2)
+
+
 def _compute_legacy_convex_hull_floor_area_sqft(cv_result, scale_px_per_ft: Optional[float]) -> float:
     if scale_px_per_ft is None or scale_px_per_ft <= 0 or not cv_result.walls:
         return 0.0
@@ -969,17 +988,29 @@ def _compute_annotation_floor_area_sqft(
 ) -> tuple[float, str, dict[str, float | int | str], Literal["closed", "open", "ambiguous"], Literal["high", "medium", "low"], int, float]:
     closure = compute_enclosed_regions(snapshot)
     floor_area_method: Literal["enclosed_regions", "legacy_convex_hull_fallback", "missing_scale", "failed"]
+    floor_area = closure.floor_area_sqft
+    area_debug = dict(closure.debug)
+
     if not snapshot.scale_px_per_ft or snapshot.scale_px_per_ft <= 0:
         floor_area_method = "missing_scale"
-    elif closure.status == "closed" and closure.floor_area_sqft > 0:
+    elif closure.status == "closed" and floor_area > 0:
         floor_area_method = "enclosed_regions"
     else:
-        floor_area_method = "failed"
+        if floor_area <= 0:
+            hull_area = _snapshot_convex_hull_floor_area_sqft(snapshot)
+            if hull_area > 0:
+                floor_area = hull_area
+                floor_area_method = "legacy_convex_hull_fallback"
+                area_debug["convex_hull_floor_area_sqft"] = round(hull_area, 4)
+            else:
+                floor_area_method = "failed"
+        else:
+            floor_area_method = "enclosed_regions"
 
     return (
-        closure.floor_area_sqft,
+        floor_area,
         floor_area_method,
-        dict(closure.debug),
+        area_debug,
         closure.status,
         closure.confidence,
         closure.unclosed_gap_count,
