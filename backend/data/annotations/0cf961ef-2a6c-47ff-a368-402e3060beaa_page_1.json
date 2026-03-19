@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 709,
+  "latest_revision": 805,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -17,8 +17,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-03-19T07:35:50.244Z",
-      "revision": 709
+      "updatedAt": "2026-03-19T08:35:03.585Z",
+      "revision": 805
     },
     "layers": {
       "wall": true,
@@ -31,7 +31,7 @@
         "id": "wall_H-02",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -44,14 +44,13 @@
           "y2": 1422,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-04",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -64,14 +63,13 @@
           "y2": 1612,
           "thicknessPx": 6,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-05",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -84,8 +82,7 @@
           "y2": 1612,
           "thicknessPx": 22,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-06",
@@ -104,14 +101,13 @@
           "y2": 1829.5313066837762,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-07",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -124,14 +120,13 @@
           "y2": 1831,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-09",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -144,14 +139,13 @@
           "y2": 2000,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-10",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -164,14 +158,13 @@
           "y2": 2000,
           "thicknessPx": 5,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-11",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -184,14 +177,13 @@
           "y2": 2008,
           "thicknessPx": 5,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-12",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -204,14 +196,13 @@
           "y2": 2090,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-13",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -224,8 +215,7 @@
           "y2": 2257,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-14",
@@ -244,14 +234,13 @@
           "y2": 2457.5264140047593,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-15",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -264,14 +253,13 @@
           "y2": 2635,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-16",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -284,14 +272,13 @@
           "y2": 2646,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-17",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -304,14 +291,13 @@
           "y2": 3450,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_H-18",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -324,8 +310,7 @@
           "y2": 3450,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-01",
@@ -355,7 +340,7 @@
         "id": "wall_V-02",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -368,8 +353,7 @@
           "y2": 3454,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-03",
@@ -388,14 +372,13 @@
           "y2": 405.6566380837405,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-04",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -408,14 +391,13 @@
           "y2": 1670,
           "thicknessPx": 5,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-05",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -428,8 +410,7 @@
           "y2": 2087,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-06",
@@ -448,14 +429,13 @@
           "y2": 2651,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-07",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -468,14 +448,13 @@
           "y2": 1996,
           "thicknessPx": 22,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-08",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -488,14 +467,13 @@
           "y2": 1996,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-09",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -508,14 +486,13 @@
           "y2": 1624,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-10",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -528,8 +505,7 @@
           "y2": 2087,
           "thicknessPx": 21,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_V-11",
@@ -557,7 +533,7 @@
         "id": "wall_V-12",
         "type": "wall",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.9
@@ -570,8 +546,7 @@
           "y2": 2274,
           "thicknessPx": 20,
           "rotationDeg": 0
-        },
-        "relations": {}
+        }
       },
       {
         "id": "wall_z48cplp",
@@ -581,7 +556,6 @@
           "visible": true,
           "confidence": 1
         },
-        "relations": {},
         "type": "wall",
         "geometry": {
           "kind": "segment",
@@ -594,283 +568,22 @@
         }
       },
       {
-        "id": "room_auto_1",
-        "type": "room",
-        "geometry": {
-          "kind": "polygon",
-          "points": [
-            [
-              2202,
-              1432
-            ],
-            [
-              2202,
-              2246
-            ],
-            [
-              2795,
-              2246
-            ],
-            [
-              2795,
-              1796
-            ],
-            [
-              3014,
-              1796
-            ],
-            [
-              3014,
-              2005
-            ],
-            [
-              3235,
-              1810
-            ],
-            [
-              3235,
-              1994
-            ],
-            [
-              3508,
-              1994
-            ],
-            [
-              3508,
-              1836
-            ],
-            [
-              3380,
-              1826
-            ],
-            [
-              3508,
-              1826
-            ],
-            [
-              3508,
-              1628
-            ],
-            [
-              3230,
-              1628
-            ],
-            [
-              3230,
-              1432
-            ]
-          ]
-        },
+        "id": "wall_bq74mzx",
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
-          "confidence": 0.4333
+          "confidence": 1
         },
-        "relations": {
-          "areaSqFt": 325.6021,
-          "quantityRequired": 325.6021,
-          "quantityUnit": "sqft",
-          "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.4333,
-          "touchesBorder": false,
-          "bbox": {
-            "minX": 2202,
-            "minY": 1432,
-            "maxX": 3508,
-            "maxY": 2246
-          },
-          "centroid": [
-            2737.785,
-            1789.561
-          ],
-          "diagnostics": {
-            "component_label": 2,
-            "component_area_px": 3069134,
-            "boundary_support_ratio": 0.8333,
-            "sealed_gap_pairs": 25,
-            "closure_status": "open"
-          }
-        }
-      },
-      {
-        "id": "room_auto_2",
-        "type": "room",
+        "type": "wall",
         "geometry": {
-          "kind": "polygon",
-          "points": [
-            [
-              3250,
-              1432
-            ],
-            [
-              3250,
-              1604
-            ],
-            [
-              3508,
-              1604
-            ],
-            [
-              3508,
-              1432
-            ]
-          ]
-        },
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.5333
-        },
-        "relations": {
-          "areaSqFt": 18.8677,
-          "quantityRequired": 18.8677,
-          "quantityUnit": "sqft",
-          "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.5333,
-          "touchesBorder": false,
-          "bbox": {
-            "minX": 3250,
-            "minY": 1432,
-            "maxX": 3508,
-            "maxY": 1604
-          },
-          "centroid": [
-            3379,
-            1518
-          ],
-          "diagnostics": {
-            "component_label": 3,
-            "component_area_px": 177584,
-            "boundary_support_ratio": 0.9333,
-            "sealed_gap_pairs": 25,
-            "closure_status": "open"
-          }
-        }
-      },
-      {
-        "id": "room_auto_3",
-        "type": "room",
-        "geometry": {
-          "kind": "polygon",
-          "points": [
-            [
-              4179,
-              1432
-            ],
-            [
-              3526,
-              1432
-            ],
-            [
-              3526,
-              2053
-            ],
-            [
-              3194,
-              2053
-            ],
-            [
-              3194,
-              1851
-            ],
-            [
-              2980,
-              2018
-            ],
-            [
-              2980,
-              1840
-            ],
-            [
-              2812,
-              1840
-            ],
-            [
-              2812,
-              2266
-            ],
-            [
-              2202,
-              2266
-            ],
-            [
-              2202,
-              2636
-            ],
-            [
-              2725,
-              2636
-            ],
-            [
-              2568,
-              2443
-            ],
-            [
-              2936,
-              2443
-            ],
-            [
-              2936,
-              2629
-            ],
-            [
-              3534,
-              2206
-            ],
-            [
-              3534,
-              2624
-            ],
-            [
-              4152,
-              2624
-            ],
-            [
-              3720,
-              2282
-            ],
-            [
-              3720,
-              2085
-            ],
-            [
-              4179,
-              2085
-            ]
-          ]
-        },
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.3093
-        },
-        "relations": {
-          "areaSqFt": 476.8422,
-          "quantityRequired": 476.8422,
-          "quantityUnit": "sqft",
-          "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.3093,
-          "touchesBorder": false,
-          "bbox": {
-            "minX": 2202,
-            "minY": 1432,
-            "maxX": 4179,
-            "maxY": 2636
-          },
-          "centroid": [
-            3373.857,
-            2107.598
-          ],
-          "diagnostics": {
-            "component_label": 4,
-            "component_area_px": 4510884,
-            "boundary_support_ratio": 0.7093,
-            "sealed_gap_pairs": 25,
-            "closure_status": "open"
-          }
+          "kind": "segment",
+          "x1": 4192,
+          "y1": 1504,
+          "x2": 4192,
+          "y2": 1622.456743159687,
+          "thicknessPx": 14,
+          "rotationDeg": 0
         }
       }
     ],
@@ -28775,6 +28488,4542 @@
                 "sealed_gap_pairs": 25,
                 "closure_status": "open"
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909204622_uqn70",
+      "revisionId": 715,
+      "parentRevisionId": 714,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:24.622Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_z48cplp",
+          "before": {
+            "id": "wall_z48cplp",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1406.8346551288587,
+              "x2": 4192,
+              "y2": 1943.8892831106632,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_z48cplp",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 937.4897980406722,
+              "y1": 320.5979513041823,
+              "x2": 937.4897980406722,
+              "y2": 857.6525792859868,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909207957_7iz3m",
+      "revisionId": 716,
+      "parentRevisionId": 715,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:27.957Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_z48cplp",
+          "before": {
+            "id": "wall_z48cplp",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 937.4897980406722,
+              "y1": 320.5979513041823,
+              "x2": 937.4897980406722,
+              "y2": 857.6525792859868,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_z48cplp",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1406.8346551288587,
+              "x2": 4192,
+              "y2": 1943.8892831106632,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909212004_o0usf",
+      "revisionId": 717,
+      "parentRevisionId": 716,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:32.004Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_bq74mzx",
+          "element": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "new",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4312,
+              "y2": 1504,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213351_zwssi",
+      "revisionId": 718,
+      "parentRevisionId": 717,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.351Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "new",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4312,
+              "y2": 1504,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4296,
+              "y2": 1520,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213364_gaxjy",
+      "revisionId": 719,
+      "parentRevisionId": 718,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.364Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4296,
+              "y2": 1520,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4288,
+              "y2": 1528,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213378_n76ik",
+      "revisionId": 720,
+      "parentRevisionId": 719,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.378Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4288,
+              "y2": 1528,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4250.034472514188,
+              "y2": 1562.0344725141877,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213389_6l7jx",
+      "revisionId": 721,
+      "parentRevisionId": 720,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.389Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4250.034472514188,
+              "y2": 1562.0344725141877,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4250.034472514188,
+              "y2": 1562.0344725141877,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213397_2bfvc",
+      "revisionId": 722,
+      "parentRevisionId": 721,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.397Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4250.034472514188,
+              "y2": 1562.0344725141877,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4240,
+              "y2": 1572,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213407_q7mvr",
+      "revisionId": 723,
+      "parentRevisionId": 722,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.407Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4240,
+              "y2": 1572,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4228,
+              "y2": 1580,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213414_q1k4w",
+      "revisionId": 724,
+      "parentRevisionId": 723,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.414Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4228,
+              "y2": 1580,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4224,
+              "y2": 1584,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213422_xb4xz",
+      "revisionId": 725,
+      "parentRevisionId": 724,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.422Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4224,
+              "y2": 1584,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4220,
+              "y2": 1588,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213431_3k6fb",
+      "revisionId": 726,
+      "parentRevisionId": 725,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.431Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4220,
+              "y2": 1588,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4216,
+              "y2": 1592,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213438_11656",
+      "revisionId": 727,
+      "parentRevisionId": 726,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.438Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4216,
+              "y2": 1592,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4212,
+              "y2": 1596,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213447_0f396",
+      "revisionId": 728,
+      "parentRevisionId": 727,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.447Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4212,
+              "y2": 1596,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4212,
+              "y2": 1596,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213455_qs3ub",
+      "revisionId": 729,
+      "parentRevisionId": 728,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.455Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4212,
+              "y2": 1596,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4208,
+              "y2": 1596,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213463_ksd28",
+      "revisionId": 730,
+      "parentRevisionId": 729,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.463Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4208,
+              "y2": 1596,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4208,
+              "y2": 1600,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213472_kytqg",
+      "revisionId": 731,
+      "parentRevisionId": 730,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.472Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4208,
+              "y2": 1600,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4208,
+              "y2": 1600,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213480_8hly9",
+      "revisionId": 732,
+      "parentRevisionId": 731,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.480Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4208,
+              "y2": 1600,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1600.7470929795827,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213488_kmi15",
+      "revisionId": 733,
+      "parentRevisionId": 732,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.488Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1600.7470929795827,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1600.7470929795827,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213503_bfybu",
+      "revisionId": 734,
+      "parentRevisionId": 733,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.503Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1600.7470929795827,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1604.7174264961134,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213519_rzpqw",
+      "revisionId": 735,
+      "parentRevisionId": 734,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.519Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1604.7174264961134,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1605.4297786648476,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213536_kvzfn",
+      "revisionId": 736,
+      "parentRevisionId": 735,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.536Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1605.4297786648476,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1606.1371626784296,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213543_4wb97",
+      "revisionId": 737,
+      "parentRevisionId": 736,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.543Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1606.1371626784296,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1604.3194896318755,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213552_1oeta",
+      "revisionId": 738,
+      "parentRevisionId": 737,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.552Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1604.3194896318755,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1604.637965003273,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213561_jn68a",
+      "revisionId": 739,
+      "parentRevisionId": 738,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.561Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1604.637965003273,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.3072384832424,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213569_lzn51",
+      "revisionId": 740,
+      "parentRevisionId": 739,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.569Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.3072384832424,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.613574644976,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213576_94538",
+      "revisionId": 741,
+      "parentRevisionId": 740,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.576Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.613574644976,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.919016388832,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213584_supsq",
+      "revisionId": 742,
+      "parentRevisionId": 741,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.584Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.919016388832,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.0768946500616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213593_7jon2",
+      "revisionId": 743,
+      "parentRevisionId": 742,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.593Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1608.0768946500616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1612.0740486888503,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213602_ef444",
+      "revisionId": 744,
+      "parentRevisionId": 743,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.602Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1612.0740486888503,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1612.1480466767662,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213609_g42hr",
+      "revisionId": 745,
+      "parentRevisionId": 744,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.609Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1612.1480466767662,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1612.2219940677494,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213614_eqwh0",
+      "revisionId": 746,
+      "parentRevisionId": 745,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.614Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1612.2219940677494,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213621_qn0c1",
+      "revisionId": 747,
+      "parentRevisionId": 746,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.621Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213630_eqc3c",
+      "revisionId": 748,
+      "parentRevisionId": 747,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.630Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213638_oqtxh",
+      "revisionId": 749,
+      "parentRevisionId": 748,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.638Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616.0714058089752,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213647_75k1e",
+      "revisionId": 750,
+      "parentRevisionId": 749,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.647Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1616.0714058089752,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.0689450283753,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213655_ehbs8",
+      "revisionId": 751,
+      "parentRevisionId": 750,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.655Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.0689450283753,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.137849127664,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213747_sxiws",
+      "revisionId": 752,
+      "parentRevisionId": 751,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.747Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.137849127664,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2067123706718,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213764_k28o9",
+      "revisionId": 753,
+      "parentRevisionId": 752,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.764Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2067123706718,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2755348299893,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213772_1e1qu",
+      "revisionId": 754,
+      "parentRevisionId": 753,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.772Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2755348299893,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.3443165779922,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213781_vz9zj",
+      "revisionId": 755,
+      "parentRevisionId": 754,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.781Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.3443165779922,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213793_pm4xy",
+      "revisionId": 756,
+      "parentRevisionId": 755,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.793Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213798_0u8ya",
+      "revisionId": 757,
+      "parentRevisionId": 756,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.798Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213805_616lq",
+      "revisionId": 758,
+      "parentRevisionId": 757,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.805Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.0689450283753,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213814_h3vwr",
+      "revisionId": 759,
+      "parentRevisionId": 758,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.814Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.0689450283753,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.137849127664,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213822_5ylwm",
+      "revisionId": 760,
+      "parentRevisionId": 759,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.822Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.137849127664,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2067123706718,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213830_5pr98",
+      "revisionId": 761,
+      "parentRevisionId": 760,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.830Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2067123706718,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2755348299893,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213842_m28f4",
+      "revisionId": 762,
+      "parentRevisionId": 761,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.842Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.2755348299893,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.275534829989,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213852_23hvm",
+      "revisionId": 763,
+      "parentRevisionId": 762,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.852Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.275534829989,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.5504182746677,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213859_lbgrn",
+      "revisionId": 764,
+      "parentRevisionId": 763,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.859Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.5504182746677,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.8246549320818,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213876_4qoz3",
+      "revisionId": 765,
+      "parentRevisionId": 764,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.876Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.8246549320818,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1621.0982493464355,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213886_8h6b9",
+      "revisionId": 766,
+      "parentRevisionId": 765,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.886Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1621.0982493464355,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.619037896906,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213903_2tngp",
+      "revisionId": 767,
+      "parentRevisionId": 766,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.903Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1620.619037896906,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1621.234807118023,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213947_pz43x",
+      "revisionId": 768,
+      "parentRevisionId": 767,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.947Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1621.234807118023,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1621.8473589012501,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909213964_2vdwl",
+      "revisionId": 769,
+      "parentRevisionId": 768,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:33.964Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1621.8473589012501,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1622.456743159687,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909214707_nh2x4",
+      "revisionId": 770,
+      "parentRevisionId": 769,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:34.707Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_3jc7mjg",
+          "element": {
+            "id": "wall_3jc7mjg",
+            "attrs": {
+              "status": "new",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4184,
+              "y1": 1496,
+              "x2": 4304,
+              "y2": 1496,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909215751_b0p44",
+      "revisionId": 771,
+      "parentRevisionId": 770,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:33:35.751Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_3jc7mjg",
+          "element": {
+            "id": "wall_3jc7mjg",
+            "attrs": {
+              "status": "new",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4184,
+              "y1": 1496,
+              "x2": 4304,
+              "y2": 1496,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909259068_p88n6",
+      "revisionId": 776,
+      "parentRevisionId": 775,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:34:19.068Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-11",
+          "before": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3529,
+              "y1": 2216,
+              "x2": 3529,
+              "y2": 2830,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "excludeFromTakeoff": false
+            }
+          },
+          "after": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3585,
+              "y1": 1276.0000000000002,
+              "x2": 3585,
+              "y2": 1890.0000000000002,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "excludeFromTakeoff": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909260124_ioxw9",
+      "revisionId": 777,
+      "parentRevisionId": 776,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:34:20.124Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-11",
+          "before": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3585,
+              "y1": 1276.0000000000002,
+              "x2": 3585,
+              "y2": 1890.0000000000002,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "excludeFromTakeoff": false
+            }
+          },
+          "after": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3529,
+              "y1": 2216,
+              "x2": 3529,
+              "y2": 2830,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "excludeFromTakeoff": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303492_nhnot",
+      "revisionId": 778,
+      "parentRevisionId": 777,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.492Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-02",
+          "before": {
+            "id": "wall_H-02",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 1422,
+              "x2": 4184,
+              "y2": 1422,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-02",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 1422,
+              "x2": 4184,
+              "y2": 1422,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303498_9wb5a",
+      "revisionId": 779,
+      "parentRevisionId": 778,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.498Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-04",
+          "before": {
+            "id": "wall_H-04",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3229,
+              "y1": 1612,
+              "x2": 3306,
+              "y2": 1612,
+              "thicknessPx": 6,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-04",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3229,
+              "y1": 1612,
+              "x2": 3306,
+              "y2": 1612,
+              "thicknessPx": 6,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303505_3iua4",
+      "revisionId": 780,
+      "parentRevisionId": 779,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.505Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-05",
+          "before": {
+            "id": "wall_H-05",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3396,
+              "y1": 1612,
+              "x2": 3521,
+              "y2": 1612,
+              "thicknessPx": 22,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-05",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3396,
+              "y1": 1612,
+              "x2": 3521,
+              "y2": 1612,
+              "thicknessPx": 22,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303510_kseml",
+      "revisionId": 781,
+      "parentRevisionId": 780,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.510Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-06",
+          "before": {
+            "id": "wall_H-06",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2794.201658167819,
+              "y1": 1829.5313066837762,
+              "x2": 3009.201658167819,
+              "y2": 1829.5313066837762,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-06",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2794.201658167819,
+              "y1": 1829.5313066837762,
+              "x2": 3009.201658167819,
+              "y2": 1829.5313066837762,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303514_3k2x4",
+      "revisionId": 782,
+      "parentRevisionId": 781,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.514Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-07",
+          "before": {
+            "id": "wall_H-07",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3390,
+              "y1": 1831,
+              "x2": 3521,
+              "y2": 1831,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-07",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3390,
+              "y1": 1831,
+              "x2": 3521,
+              "y2": 1831,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303519_bkqaf",
+      "revisionId": 783,
+      "parentRevisionId": 782,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.519Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-09",
+          "before": {
+            "id": "wall_H-09",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3174,
+              "y1": 2000,
+              "x2": 3394,
+              "y2": 2000,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-09",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3174,
+              "y1": 2000,
+              "x2": 3394,
+              "y2": 2000,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303523_zudmv",
+      "revisionId": 784,
+      "parentRevisionId": 783,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.523Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-10",
+          "before": {
+            "id": "wall_H-10",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3484,
+              "y1": 2000,
+              "x2": 3521,
+              "y2": 2000,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-10",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3484,
+              "y1": 2000,
+              "x2": 3521,
+              "y2": 2000,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303526_bhlec",
+      "revisionId": 785,
+      "parentRevisionId": 784,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.526Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-11",
+          "before": {
+            "id": "wall_H-11",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2967,
+              "y1": 2008,
+              "x2": 3066,
+              "y2": 2008,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2967,
+              "y1": 2008,
+              "x2": 3066,
+              "y2": 2008,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303530_u3j8w",
+      "revisionId": 786,
+      "parentRevisionId": 785,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.530Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-12",
+          "before": {
+            "id": "wall_H-12",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3722,
+              "y1": 2090,
+              "x2": 4184,
+              "y2": 2090,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-12",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3722,
+              "y1": 2090,
+              "x2": 4184,
+              "y2": 2090,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303533_gi1yx",
+      "revisionId": 787,
+      "parentRevisionId": 786,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.533Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-13",
+          "before": {
+            "id": "wall_H-13",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 2257,
+              "x2": 2807,
+              "y2": 2257,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-13",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 2257,
+              "x2": 2807,
+              "y2": 2257,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303536_7vxdb",
+      "revisionId": 788,
+      "parentRevisionId": 787,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.536Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-14",
+          "before": {
+            "id": "wall_H-14",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2573.7894343980956,
+              "y1": 2457.5264140047593,
+              "x2": 2937.7894343980956,
+              "y2": 2457.5264140047593,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-14",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2573.7894343980956,
+              "y1": 2457.5264140047593,
+              "x2": 2937.7894343980956,
+              "y2": 2457.5264140047593,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303540_op68t",
+      "revisionId": 789,
+      "parentRevisionId": 788,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.540Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-15",
+          "before": {
+            "id": "wall_H-15",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3515,
+              "y1": 2635,
+              "x2": 4184,
+              "y2": 2635,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-15",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3515,
+              "y1": 2635,
+              "x2": 4184,
+              "y2": 2635,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303542_wdqel",
+      "revisionId": 790,
+      "parentRevisionId": 789,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.542Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-16",
+          "before": {
+            "id": "wall_H-16",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 2646,
+              "x2": 2751,
+              "y2": 2646,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-16",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 2646,
+              "x2": 2751,
+              "y2": 2646,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303546_v7upw",
+      "revisionId": 791,
+      "parentRevisionId": 790,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.546Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-17",
+          "before": {
+            "id": "wall_H-17",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 3450,
+              "x2": 2439,
+              "y2": 3450,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-17",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2191,
+              "y1": 3450,
+              "x2": 2439,
+              "y2": 3450,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303549_ve3ou",
+      "revisionId": 792,
+      "parentRevisionId": 791,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.549Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_H-18",
+          "before": {
+            "id": "wall_H-18",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3207,
+              "y1": 3450,
+              "x2": 4184,
+              "y2": 3450,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_H-18",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3207,
+              "y1": 3450,
+              "x2": 4184,
+              "y2": 3450,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303551_jx1iu",
+      "revisionId": 793,
+      "parentRevisionId": 792,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.551Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-02",
+          "before": {
+            "id": "wall_V-02",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2192,
+              "y1": 2240,
+              "x2": 2192,
+              "y2": 3454,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-02",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2192,
+              "y1": 2240,
+              "x2": 2192,
+              "y2": 3454,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303554_y7ppb",
+      "revisionId": 794,
+      "parentRevisionId": 793,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.554Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-03",
+          "before": {
+            "id": "wall_V-03",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2789.216833432937,
+              "y1": 286.6566380837405,
+              "x2": 2789.216833432937,
+              "y2": 405.6566380837405,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-03",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2789.216833432937,
+              "y1": 286.6566380837405,
+              "x2": 2789.216833432937,
+              "y2": 405.6566380837405,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303557_klae8",
+      "revisionId": 795,
+      "parentRevisionId": 794,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.557Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-04",
+          "before": {
+            "id": "wall_V-04",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2785,
+              "y1": 1630,
+              "x2": 2785,
+              "y2": 1670,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-04",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2785,
+              "y1": 1630,
+              "x2": 2785,
+              "y2": 1670,
+              "thicknessPx": 5,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303559_3kek3",
+      "revisionId": 796,
+      "parentRevisionId": 795,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.559Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-05",
+          "before": {
+            "id": "wall_V-05",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2797,
+              "y1": 1793,
+              "x2": 2797,
+              "y2": 2087,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-05",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2797,
+              "y1": 1793,
+              "x2": 2797,
+              "y2": 2087,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303563_p99oh",
+      "revisionId": 797,
+      "parentRevisionId": 796,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.563Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-06",
+          "before": {
+            "id": "wall_V-06",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2928.57886879619,
+              "y1": 2446,
+              "x2": 2928.57886879619,
+              "y2": 2651,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-06",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 2928.57886879619,
+              "y1": 2446,
+              "x2": 2928.57886879619,
+              "y2": 2651,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303567_isnsj",
+      "revisionId": 798,
+      "parentRevisionId": 797,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.567Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-07",
+          "before": {
+            "id": "wall_V-07",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3005,
+              "y1": 1818,
+              "x2": 3005,
+              "y2": 1996,
+              "thicknessPx": 22,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-07",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3005,
+              "y1": 1818,
+              "x2": 3005,
+              "y2": 1996,
+              "thicknessPx": 22,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303570_rgtkv",
+      "revisionId": 799,
+      "parentRevisionId": 798,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.570Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-08",
+          "before": {
+            "id": "wall_V-08",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3230,
+              "y1": 1821,
+              "x2": 3230,
+              "y2": 1996,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-08",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3230,
+              "y1": 1821,
+              "x2": 3230,
+              "y2": 1996,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303572_gfk53",
+      "revisionId": 800,
+      "parentRevisionId": 799,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.572Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-09",
+          "before": {
+            "id": "wall_V-09",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3239,
+              "y1": 1421,
+              "x2": 3239,
+              "y2": 1624,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-09",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3239,
+              "y1": 1421,
+              "x2": 3239,
+              "y2": 1624,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303575_7rz9f",
+      "revisionId": 801,
+      "parentRevisionId": 800,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.575Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-10",
+          "before": {
+            "id": "wall_V-10",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3519,
+              "y1": 1421,
+              "x2": 3519,
+              "y2": 2087,
+              "thicknessPx": 21,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-10",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3519,
+              "y1": 1421,
+              "x2": 3519,
+              "y2": 2087,
+              "thicknessPx": 21,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303577_thkgy",
+      "revisionId": 802,
+      "parentRevisionId": 801,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.577Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-11",
+          "before": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3529,
+              "y1": 2216,
+              "x2": 3529,
+              "y2": 2830,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "excludeFromTakeoff": false
+            }
+          },
+          "after": {
+            "id": "wall_V-11",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3529,
+              "y1": 2216,
+              "x2": 3529,
+              "y2": 2830,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "excludeFromTakeoff": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303580_jf6an",
+      "revisionId": 803,
+      "parentRevisionId": 802,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.580Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_V-12",
+          "before": {
+            "id": "wall_V-12",
+            "type": "wall",
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3736,
+              "y1": 2076,
+              "x2": 3736,
+              "y2": 2274,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            },
+            "relations": {}
+          },
+          "after": {
+            "id": "wall_V-12",
+            "type": "wall",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.9
+            },
+            "geometry": {
+              "kind": "segment",
+              "x1": 3736,
+              "y1": 2076,
+              "x2": 3736,
+              "y2": 2274,
+              "thicknessPx": 20,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303582_g3g6j",
+      "revisionId": 804,
+      "parentRevisionId": 803,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.582Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_z48cplp",
+          "before": {
+            "id": "wall_z48cplp",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1406.8346551288587,
+              "x2": 4192,
+              "y2": 1943.8892831106632,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_z48cplp",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1406.8346551288587,
+              "x2": 4192,
+              "y2": 1943.8892831106632,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773909303585_l9ec6",
+      "revisionId": 805,
+      "parentRevisionId": 804,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T08:35:03.585Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "wall_bq74mzx",
+          "before": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1622.456743159687,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "wall_bq74mzx",
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4192,
+              "y1": 1504,
+              "x2": 4192,
+              "y2": 1622.456743159687,
+              "thicknessPx": 14,
+              "rotationDeg": 0
             }
           }
         }

@@ -124,6 +124,9 @@ class RoomClosureTests(unittest.TestCase):
         self.assertAlmostEqual(result.total_area_sqft, sum(room.area_sqft for room in result.rooms), places=3)
         self.assertTrue(any(room.material == "hardwood" for room in result.rooms))
         self.assertTrue(all(room.quantity_required > 0 for room in result.rooms))
+        self.assertGreaterEqual(int(result.debug.get("door_inferred_closure_count", 0)), 1)
+        self.assertGreaterEqual(int(result.debug.get("split_wall_regions", 0)), 1)
+        self.assertEqual(int(result.debug.get("split_watershed_regions", 0)), 0)
 
 
 if __name__ == "__main__":

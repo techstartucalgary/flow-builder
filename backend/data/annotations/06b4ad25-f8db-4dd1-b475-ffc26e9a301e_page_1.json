@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 4,
+  "latest_revision": 8,
   "document": {
     "documentId": "06b4ad25-f8db-4dd1-b475-ffc26e9a301e_page_1",
     "projectId": "06b4ad25-f8db-4dd1-b475-ffc26e9a301e",
@@ -17,8 +17,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:16:14.211Z",
-      "updatedAt": "2026-03-18T06:26:06.603Z",
-      "revision": 4
+      "updatedAt": "2026-03-19T08:32:17.441Z",
+      "revision": 8
     },
     "layers": {
       "wall": true,
@@ -1286,6 +1286,65 @@
           "rotationDeg": 0
         },
         "relations": {}
+      },
+      {
+        "id": "room_auto_1",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              120,
+              3316
+            ],
+            [
+              120,
+              4217
+            ],
+            [
+              835,
+              4217
+            ],
+            [
+              835,
+              3316
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": true,
+          "confidence": 1
+        },
+        "relations": {
+          "areaSqFt": 257.686,
+          "quantityRequired": 257.686,
+          "quantityUnit": "sqft",
+          "extractionStatus": "auto",
+          "extractionConfidence": 1,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 120,
+            "minY": 3316,
+            "maxX": 835,
+            "maxY": 4217
+          },
+          "centroid": [
+            477.5,
+            3766.5
+          ],
+          "diagnostics": {
+            "component_label": 7,
+            "component_area_px": 2540010,
+            "candidate_component_area_px": 2540010,
+            "boundary_support_ratio": 1,
+            "orthogonality_ratio": 1,
+            "closure_status": "ambiguous",
+            "touches_border": false,
+            "internal_barrier_count": 0
+          }
+        }
       }
     ],
     "issues": []
