@@ -6,6 +6,7 @@ import { produce } from 'immer';
 import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import { safeClone } from '@/lib/clone';
 import { applyOperation, invertOperation } from '@/lib/history';
+import { createHostedOpeningGeometry } from '@/lib/openingGeometry';
 import { snapPointToWalls, snapToGrid } from '@/lib/snapping';
 import type {
   AnnotationDocument,
@@ -63,6 +64,53 @@ function baseCamera(): EditorCameraState {
   };
 }
 
+function isGeometryTrackedType(type: AnnotationElementType): boolean {
+  return type === 'wall' || type === 'door' || type === 'window';
+}
+
+function hostWallIdOf(element: AnnotationElement): string {
+  if (element.type !== 'door' && element.type !== 'window') return '';
+  return element.relations && typeof element.relations === 'object' && 'hostWallId' in element.relations
+    ? String(element.relations.hostWallId || '')
+    : '';
+}
+
+function geometryChanged(before: AnnotationElement, after: AnnotationElement): boolean {
+  if (before.type !== after.type || before.geometry.kind !== after.geometry.kind) return true;
+  if (before.geometry.kind === 'segment' && after.geometry.kind === 'segment') {
+    return (
+      before.geometry.x1 !== after.geometry.x1
+      || before.geometry.y1 !== after.geometry.y1
+      || before.geometry.x2 !== after.geometry.x2
+      || before.geometry.y2 !== after.geometry.y2
+      || before.geometry.thicknessPx !== after.geometry.thicknessPx
+    );
+  }
+  if (before.geometry.kind === 'rect' && after.geometry.kind === 'rect') {
+    return (
+      before.geometry.x !== after.geometry.x
+      || before.geometry.y !== after.geometry.y
+      || before.geometry.width !== after.geometry.width
+      || before.geometry.height !== after.geometry.height
+      || hostWallIdOf(before) !== hostWallIdOf(after)
+    );
+  }
+  if (before.geometry.kind === 'polygon' && after.geometry.kind === 'polygon') {
+    return JSON.stringify(before.geometry.points) !== JSON.stringify(after.geometry.points);
+  }
+  return true;
+}
+
+function operationTouchesGeometry(op: AnnotationOperation): boolean {
+  if (op.kind === 'create' && op.element) return isGeometryTrackedType(op.element.type);
+  if (op.kind === 'delete' && op.element) return isGeometryTrackedType(op.element.type);
+  if (op.kind === 'update' && op.before && op.after) {
+    if (!isGeometryTrackedType(op.after.type)) return false;
+    return geometryChanged(op.before, op.after);
+  }
+  return false;
+}
+
 interface HistoryState {
   past: AnnotationOperation[];
   future: AnnotationOperation[];
@@ -104,7 +152,7 @@ interface AnnotationEditorState {
   applyOperation: (op: AnnotationOperation, record?: boolean) => void;
   moveElementBy: (id: string, dx: number, dy: number) => void;
   updateElement: (element: AnnotationElement) => void;
-  createElementAt: (type: AnnotationElementType, x: number, y: number) => void;
+  createElementAt: (type: AnnotationElementType, x: number, y: number, options?: { hostWallId?: string }) => void;
   deleteSelected: () => void;
   nudgeSelected: (dx: number, dy: number) => void;
 
@@ -133,8 +181,20 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
   initializeDocument: (doc) => {
     const sanitized = sanitizeAnnotationDocument(doc);
     set({
-      document: sanitized,
-      entities: indexElements(sanitized),
+      document: {
+        ...sanitized,
+        meta: {
+          ...sanitized.meta,
+          hasManualGeometryEdits: Boolean(sanitized.meta.hasManualGeometryEdits),
+        },
+      },
+      entities: indexElements({
+        ...sanitized,
+        meta: {
+          ...sanitized.meta,
+          hasManualGeometryEdits: Boolean(sanitized.meta.hasManualGeometryEdits),
+        },
+      }),
       selection: [],
       history: { past: [], future: [], pendingOps: [] },
       saveStatus: 'saved',
@@ -186,6 +246,9 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
 
         state.document = applyOperation(state.document, op);
         state.document.meta.updatedAt = new Date().toISOString();
+        if (operationTouchesGeometry(op)) {
+          state.document.meta.hasManualGeometryEdits = true;
+        }
         state.entities = indexElements(state.document);
         state.saveStatus = 'unsaved';
 
@@ -225,6 +288,7 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
       next.geometry.y += dy;
     }
     next.attrs.status = 'edited';
+    next.attrs.geometryEdited = isGeometryTrackedType(next.type) ? true : next.attrs.geometryEdited;
 
     const op: AnnotationOperation = {
       kind: 'update',
@@ -240,6 +304,9 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
     if (!current) return;
     const next = safeClone(element);
     next.attrs.status = next.attrs.status === 'auto' ? 'edited' : next.attrs.status;
+    if (isGeometryTrackedType(next.type) && geometryChanged(current, next)) {
+      next.attrs.geometryEdited = true;
+    }
 
     const op: AnnotationOperation = {
       kind: 'update',
@@ -250,13 +317,14 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
     get().applyOperation(op, true);
   },
 
-  createElementAt: (type, x, y) => {
+  createElementAt: (type, x, y, options) => {
     const state = get();
     const doc = state.document;
     if (!doc) return;
 
     let px = x;
     let py = y;
+    let hostWallId = options?.hostWallId;
     if (state.gridEnabled) {
       const snapped = snapToGrid(px, py, state.gridSize);
       px = snapped.x;
@@ -269,6 +337,7 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
       const snapped = snapPointToWalls(px, py, walls, state.wallSnapThreshold);
       px = snapped.x;
       py = snapped.y;
+      if (!hostWallId && snapped.wallId) hostWallId = snapped.wallId;
     }
 
     const id = randomId(type);
@@ -276,6 +345,7 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
       id,
       attrs: {
         status: 'new' as const,
+        geometryEdited: isGeometryTrackedType(type),
         locked: false,
         visible: true,
         confidence: 1,
@@ -309,10 +379,17 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
         },
       };
     } else {
+      const hostWall = hostWallId ? state.entities.byId[hostWallId] : null;
       element = {
         ...common,
         type,
-        geometry: { kind: 'rect', x: px, y: py, width: 72, height: 24, rotationDeg: 0 },
+        geometry: createHostedOpeningGeometry(
+          type,
+          px,
+          py,
+          hostWall && hostWall.type === 'wall' && hostWall.geometry.kind === 'segment' ? hostWall : null,
+        ),
+        relations: hostWallId ? { hostWallId } : {},
       };
     }
 
@@ -362,6 +439,9 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
         draft.history.future.push(last);
         draft.document = applyOperation(draft.document, inverse);
         draft.document.meta.updatedAt = new Date().toISOString();
+        if (operationTouchesGeometry(inverse)) {
+          draft.document.meta.hasManualGeometryEdits = true;
+        }
         draft.entities = indexElements(draft.document);
         draft.history.pendingOps.push({
           id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -386,6 +466,9 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
         draft.history.past.push(nextOp);
         draft.document = applyOperation(draft.document, nextOp);
         draft.document.meta.updatedAt = new Date().toISOString();
+        if (operationTouchesGeometry(nextOp)) {
+          draft.document.meta.hasManualGeometryEdits = true;
+        }
         draft.entities = indexElements(draft.document);
         draft.history.pendingOps.push({
           id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,

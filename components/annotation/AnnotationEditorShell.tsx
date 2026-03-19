@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fromCVTakeoffResult } from '@/lib/annotationAdapters';
 import { getBackendUrl } from '@/lib/backendUrl';
+import { hasManualGeometryEdits, replaceGeometryFromCV } from '@/lib/annotationGeometryRefresh';
 import {
   extractRoomsFromDocument,
   fetchAnnotationStorePayload,
@@ -32,6 +33,7 @@ const ROOM_EXTRACTION_VERSION = '2026-03-room-refresh-v1';
 const ROOM_REFRESH_WARNING_PREFIX = 'Room refresh preserved existing rooms';
 const completedStartupRoomRefreshes = new Set<string>();
 const completedStartupOpeningRefreshes = new Set<string>();
+const completedStartupGeometryRefreshes = new Set<string>();
 
 function isLegacyTagMarkerOpenings(doc: AnnotationDocument): boolean {
   const openingElements = doc.elements.filter((e) => e.type === 'door' || e.type === 'window');
@@ -509,7 +511,7 @@ export default function AnnotationEditorShell({
     };
   }, [initializeDocument, markRevision, pageNumber, projectId, setSelection]);
 
-  const refreshOpeningsFromCV = useCallback(async (
+  const refreshGeometryFromCV = useCallback(async (
     baseDoc: AnnotationDocument,
     baseRevision: number,
     options?: { persistRooms?: boolean },
@@ -541,6 +543,14 @@ export default function AnnotationEditorShell({
     }
 
     setPendingRebuild(null);
+    const geometryManuallyEdited = hasManualGeometryEdits(baseDoc, cvDoc);
+    if (!geometryManuallyEdited) {
+      const nextDoc = sanitizeAnnotationDocument(replaceGeometryFromCV(baseDoc, cvDoc));
+      setWarning(null);
+      await refreshRoomsFromDocument(nextDoc, baseRevision, { persist: options?.persistRooms !== false });
+      return { blocked: false as const, refreshedGeometry: true as const };
+    }
+
     const mergeResult = mergeOpeningsFromCV(baseDoc, cvDoc);
     const upgradedDoc = sanitizeAnnotationDocument(mergeResult.document);
     if (mergeResult.droppedMissingHostCount || mergeResult.droppedHostFitCount) {
@@ -560,12 +570,12 @@ export default function AnnotationEditorShell({
       setWarning(null);
     }
     await refreshRoomsFromDocument(upgradedDoc, baseRevision, { persist: options?.persistRooms !== false });
-    return { blocked: false as const };
+    return { blocked: false as const, refreshedGeometry: false as const };
   }, [fileMime, fileUrl, markRevision, refreshRoomsFromDocument]);
 
   const rebuildGeometryFromCV = useCallback(async () => {
     if (!pendingRebuild || !document) return;
-    const nextDoc = sanitizeAnnotationDocument(pendingRebuild.document);
+    const nextDoc = sanitizeAnnotationDocument(replaceGeometryFromCV(document, pendingRebuild.document));
     await refreshRoomsFromDocument(nextDoc, document.meta.revision);
     setWarning(null);
     setPendingRebuild(null);
@@ -583,12 +593,33 @@ export default function AnnotationEditorShell({
       const currentStoreDocument = useAnnotationEditorStore.getState().document;
       if (currentStoreDocument?.projectId === projectId && currentStoreDocument.page === pageNumber) {
         setLoading(false);
-        if (shouldRefreshOpeningsFromCV(currentStoreDocument)) {
+        if (!hasManualGeometryEdits(currentStoreDocument)) {
+          const geometryRefreshKey = `${projectId}:${pageNumber}:${currentStoreDocument.documentId}:${currentStoreDocument.meta.revision}:geometry`;
+          if (!completedStartupGeometryRefreshes.has(geometryRefreshKey)) {
+            completedStartupGeometryRefreshes.add(geometryRefreshKey);
+            setStatusMessage('Refreshing geometry from CV...');
+            void refreshGeometryFromCV(currentStoreDocument, currentStoreDocument.meta.revision, { persistRooms: false })
+              .then((refreshResult) => {
+                if (refreshResult.blocked) {
+                  setStatusMessage('Refresh paused for coordinate review.');
+                  return;
+                }
+                setStatusMessage(null);
+              })
+              .catch((err: any) => {
+                completedStartupGeometryRefreshes.delete(geometryRefreshKey);
+                setError(err?.message || 'Failed to refresh geometry from CV');
+                setStatusMessage('Geometry refresh failed.');
+              });
+          } else {
+            setStatusMessage(null);
+          }
+        } else if (shouldRefreshOpeningsFromCV(currentStoreDocument)) {
           const openingRefreshKey = `${projectId}:${pageNumber}:${currentStoreDocument.documentId}:${currentStoreDocument.meta.revision}:openings`;
           if (!completedStartupOpeningRefreshes.has(openingRefreshKey)) {
             completedStartupOpeningRefreshes.add(openingRefreshKey);
             setStatusMessage('Refreshing openings from CV...');
-            void refreshOpeningsFromCV(currentStoreDocument, currentStoreDocument.meta.revision, { persistRooms: false })
+            void refreshGeometryFromCV(currentStoreDocument, currentStoreDocument.meta.revision, { persistRooms: false })
               .then((refreshResult) => {
                 if (refreshResult.blocked) {
                   setStatusMessage('Refresh paused for coordinate review.');
@@ -634,12 +665,33 @@ export default function AnnotationEditorShell({
         initializeDocument(existingDoc);
         setLoading(false);
 
-        if (shouldRefreshOpeningsFromCV(existingDoc)) {
+        if (!hasManualGeometryEdits(existingDoc)) {
+          const geometryRefreshKey = `${projectId}:${pageNumber}:${existingDoc.documentId}:${existing.latest_revision}:geometry`;
+          if (!completedStartupGeometryRefreshes.has(geometryRefreshKey)) {
+            completedStartupGeometryRefreshes.add(geometryRefreshKey);
+            setStatusMessage('Refreshing geometry from CV...');
+            void refreshGeometryFromCV(existingDoc, existing.latest_revision, { persistRooms: false })
+              .then((refreshResult) => {
+                if (refreshResult.blocked) {
+                  setStatusMessage('Refresh paused for coordinate review.');
+                  return;
+                }
+                setStatusMessage(null);
+              })
+              .catch((err: any) => {
+                completedStartupGeometryRefreshes.delete(geometryRefreshKey);
+                setError(err?.message || 'Failed to refresh geometry from CV');
+                setStatusMessage('Geometry refresh failed.');
+              });
+          } else {
+            setStatusMessage(null);
+          }
+        } else if (shouldRefreshOpeningsFromCV(existingDoc)) {
           const openingRefreshKey = `${projectId}:${pageNumber}:${existingDoc.documentId}:${existing.latest_revision}:openings`;
           if (!completedStartupOpeningRefreshes.has(openingRefreshKey)) {
             completedStartupOpeningRefreshes.add(openingRefreshKey);
             setStatusMessage('Refreshing openings from CV...');
-            void refreshOpeningsFromCV(existingDoc, existing.latest_revision, { persistRooms: false })
+            void refreshGeometryFromCV(existingDoc, existing.latest_revision, { persistRooms: false })
               .then((refreshResult) => {
                 if (refreshResult.blocked) {
                   setStatusMessage('Refresh paused for coordinate review.');
@@ -708,7 +760,7 @@ export default function AnnotationEditorShell({
     } finally {
       setLoading(false);
     }
-  }, [fileMime, fileUrl, initializeDocument, refreshOpeningsFromCV, refreshRoomsFromDocument]);
+  }, [fileMime, fileUrl, initializeDocument, refreshGeometryFromCV, refreshRoomsFromDocument]);
 
   const saveSnapshot = useCallback(async () => {
     if (!document) return;
@@ -941,16 +993,17 @@ export default function AnnotationEditorShell({
         onRefreshOpenings={() => {
           if (!document) return;
           setSaveStatus('syncing');
-          setStatusMessage('Refreshing openings from CV...');
-          void refreshOpeningsFromCV(document, document.meta.revision)
+          const refreshLabel = hasManualGeometryEdits(document) ? 'Refreshing openings from CV...' : 'Refreshing geometry from CV...';
+          setStatusMessage(refreshLabel);
+          void refreshGeometryFromCV(document, document.meta.revision)
             .then((result) => {
               setSaveStatus(result.blocked ? 'unsaved' : 'saved');
               setStatusMessage(result.blocked ? 'Refresh paused for coordinate review.' : null);
             })
             .catch((err: any) => {
               setSaveStatus('error');
-              setError(err?.message || 'Failed to refresh openings');
-              setStatusMessage('Opening refresh failed.');
+              setError(err?.message || 'Failed to refresh geometry');
+              setStatusMessage('Geometry refresh failed.');
             });
         }}
         onRefreshRooms={() => {

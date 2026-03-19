@@ -16,6 +16,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { getBackendUrl } from '@/lib/backendUrl';
+import { hasManualGeometryEdits } from '@/lib/annotationGeometryRefresh';
 import {
   saveAnnotationDocumentWithConflictRetry,
   waitForAnnotationWritesToDrain,
@@ -444,6 +445,7 @@ export default function ProjectViewerPage() {
 
       if (currentEditorDocument) {
         geometryRevision = currentEditorDocument.meta.revision;
+        const useSavedGeometry = hasManualGeometryEdits(currentEditorDocument);
 
         if (currentEditorSaveStatus !== 'saved' || currentPendingOpsCount > 0) {
           setEditorSaveStatus('syncing');
@@ -465,9 +467,11 @@ export default function ProjectViewerPage() {
 
         await waitForAnnotationWritesToDrain();
 
-        body.project_id = project.id;
-        body.use_saved_annotations = true;
-        body.annotation_revision = geometryRevision;
+        if (useSavedGeometry) {
+          body.project_id = project.id;
+          body.use_saved_annotations = true;
+          body.annotation_revision = geometryRevision;
+        }
       }
 
       console.log('[takeoff] request:', { ...body, file_url: '(hidden)' });

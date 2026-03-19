@@ -29,6 +29,8 @@ SOLID_WALL_CENTER_FILL_REJECT = 0.88
 SOLID_WALL_INNER_FILL_REJECT = 0.78
 DOOR_OPENING_PIXELS_MIN = 0.40
 WINDOW_OPENING_PIXELS_MIN = 0.32
+JUNCTION_SUPPORT_DIST_PX = 18
+SHORT_WALL_PREFERENCE_PX = 140
 
 
 @dataclass
@@ -51,6 +53,9 @@ class OpeningCandidate:
     tag_ids: list[str] = field(default_factory=list)
     verification_mode: str = "gap_only"
     host_gap_id: str | None = None
+    host_score: float = 0.0
+    symbol_source: str = "generic"
+    legend_symbol_id: str | None = None
 
 
 def _clamp01(value: float) -> float:
@@ -79,6 +84,83 @@ def _project_point_to_segment(px: int, py: int, wall: WallSegment) -> tuple[floa
 def _point_to_segment_dist(px: int, py: int, wall: WallSegment) -> float:
     qx, qy, _ = _project_point_to_segment(px, py, wall)
     return math.hypot(px - qx, py - qy)
+
+
+def _distance_to_wall_endpoints(point: tuple[int, int], wall: WallSegment) -> float:
+    return min(
+        math.hypot(point[0] - wall.start[0], point[1] - wall.start[1]),
+        math.hypot(point[0] - wall.end[0], point[1] - wall.end[1]),
+    )
+
+
+def _junction_support(
+    wall: WallSegment,
+    walls: list[WallSegment],
+    projected_center: tuple[int, int],
+) -> float:
+    support = 0.0
+    endpoint_dist = _distance_to_wall_endpoints(projected_center, wall)
+    for other in walls:
+        if other.id == wall.id or other.orientation == wall.orientation:
+            continue
+        center_dist = _point_to_segment_dist(projected_center[0], projected_center[1], other)
+        if center_dist <= JUNCTION_SUPPORT_DIST_PX:
+            support = max(support, 1.0)
+            continue
+        if endpoint_dist <= JUNCTION_SUPPORT_DIST_PX:
+            endpoint_connected = min(
+                _point_to_segment_dist(wall.start[0], wall.start[1], other),
+                _point_to_segment_dist(wall.end[0], wall.end[1], other),
+            )
+            if endpoint_connected <= JUNCTION_SUPPORT_DIST_PX:
+                support = max(support, 0.8)
+    return support
+
+
+def _has_relaxed_endpoint_clearance(
+    wall: WallSegment,
+    bbox: tuple[int, int, int, int],
+    junction_support: float,
+) -> bool:
+    if junction_support < 0.55:
+        return False
+    if wall.orientation == Orientation.HORIZONTAL:
+        opening_start = float(bbox[0])
+        opening_end = float(bbox[0] + bbox[2])
+        wall_min, wall_max = sorted((float(wall.start[0]), float(wall.end[0])))
+    else:
+        opening_start = float(bbox[1])
+        opening_end = float(bbox[1] + bbox[3])
+        wall_min, wall_max = sorted((float(wall.start[1]), float(wall.end[1])))
+
+    opening_length = max(0.0, opening_end - opening_start)
+    opening_center = opening_start + (opening_length / 2.0)
+    required_clearance = max(6.0, opening_length * 0.12)
+    return (
+        (opening_center - wall_min) >= required_clearance
+        and (wall_max - opening_center) >= required_clearance
+    )
+
+
+def _host_wall_score(
+    tag: TagAnchor,
+    wall: WallSegment,
+    walls: list[WallSegment],
+) -> tuple[float, tuple[int, int], float, float]:
+    proj_x, proj_y, t = _project_point_to_segment(tag.center[0], tag.center[1], wall)
+    dist = math.hypot(tag.center[0] - proj_x, tag.center[1] - proj_y)
+    projected_center = (int(round(proj_x)), int(round(proj_y)))
+    junction_support = _junction_support(wall, walls, projected_center)
+    endpoint_penalty = 28.0 if t <= 0.04 or t >= 0.96 else (10.0 if t <= 0.1 or t >= 0.9 else 0.0)
+    if junction_support >= 0.55 and endpoint_penalty > 0.0:
+        endpoint_penalty *= 0.25
+    axial_center = (wall.start[0] + wall.end[0]) / 2.0 if wall.orientation == Orientation.HORIZONTAL else (wall.start[1] + wall.end[1]) / 2.0
+    tag_axis = tag.center[0] if wall.orientation == Orientation.HORIZONTAL else tag.center[1]
+    half_span = abs(((wall.end[0] - wall.start[0]) if wall.orientation == Orientation.HORIZONTAL else (wall.end[1] - wall.start[1])) / 2.0)
+    axial_penalty = 0.0 if half_span <= 0 else max(0.0, abs(tag_axis - axial_center) - half_span) * 0.2
+    short_wall_bonus = 12.0 * _clamp01((SHORT_WALL_PREFERENCE_PX - float(wall.length_px)) / SHORT_WALL_PREFERENCE_PX)
+    junction_bonus = 20.0 * junction_support
+    return dist + endpoint_penalty + axial_penalty - short_wall_bonus - junction_bonus, projected_center, dist, junction_support
 
 
 def _bbox_on_wall(
@@ -250,14 +332,17 @@ def recover_candidates_from_tags(
         best_wall: WallSegment | None = None
         best_projection: tuple[int, int] | None = None
         best_dist = float("inf")
+        best_score = float("inf")
+        best_junction_support = 0.0
         for wall in walls:
-            proj_x, proj_y, _ = _project_point_to_segment(tag.center[0], tag.center[1], wall)
-            dist = math.hypot(tag.center[0] - proj_x, tag.center[1] - proj_y)
+            score, projection, dist, junction_support = _host_wall_score(tag, wall, walls)
             threshold = host_wall_dist_door_px if tag.tag_class == TagClass.DOOR else host_wall_dist_window_px
-            if dist <= threshold and dist < best_dist:
+            if dist <= threshold and score < best_score:
                 best_dist = dist
+                best_score = score
                 best_wall = wall
-                best_projection = (int(round(proj_x)), int(round(proj_y)))
+                best_projection = projection
+                best_junction_support = junction_support
 
         if best_wall is None or best_projection is None:
             if tag.tag_class == TagClass.DOOR:
@@ -276,7 +361,10 @@ def recover_candidates_from_tags(
             else:
                 window_rejected += 1
             continue
-        if not opening_has_endpoint_clearance(best_wall.orientation, best_wall.start, best_wall.end, bbox):
+        relaxed_endpoint_ok = _has_relaxed_endpoint_clearance(best_wall, bbox, best_junction_support)
+        if not opening_has_endpoint_clearance(best_wall.orientation, best_wall.start, best_wall.end, bbox) and not (
+            tag.tag_class == TagClass.DOOR and relaxed_endpoint_ok
+        ):
             endpoint_projection_rejections += 1
             if tag.tag_class == TagClass.DOOR:
                 door_rejected += 1
@@ -286,8 +374,9 @@ def recover_candidates_from_tags(
         center_fill = _center_strip_fill(wall_mask, bbox, best_wall.orientation)
         interior_fill = _fill_ratio(_roi(wall_mask, bbox))
         support = _side_support(wall_mask, bbox, best_wall.orientation)
+        structural_support = max(support, best_junction_support * 0.55)
         opening_pixels = _opening_pixels(wall_mask, bbox, best_wall.orientation)
-        wall_break_score = _clamp01((0.55 * (1.0 - center_fill)) + (0.45 * support))
+        wall_break_score = _clamp01((0.45 * (1.0 - center_fill)) + (0.35 * support) + (0.20 * best_junction_support))
 
         door_feature = 0.0
         window_feature = 0.0
@@ -297,31 +386,32 @@ def recover_candidates_from_tags(
         if tag.tag_class == TagClass.DOOR:
             door_feature = _door_feature_score(binary, wall_mask, best_wall, bbox, tag, alignment_score)
             classification_score = _clamp01(
-                (0.40 * door_feature)
+                (0.44 * door_feature)
                 + (0.22 * alignment_score)
-                + (0.20 * wall_break_score)
+                + (0.16 * wall_break_score)
                 + (0.18 * opening_pixels)
             )
             door_exception_verified = (
-                door_feature >= 0.85
-                and alignment_score >= 0.50
-                and wall_break_score >= 0.50
-                and opening_pixels >= 0.80
-                and center_fill <= 0.25
-                and interior_fill <= 0.20
+                door_feature >= 0.76
+                and alignment_score >= 0.38
+                and structural_support >= 0.20
+                and best_junction_support >= 0.55
+                and center_fill <= 0.92
+                and interior_fill <= 0.86
             )
             verified = (
                 (
                     door_feature >= DOOR_RECOVERY_MIN_FEATURE_SCORE
                     and alignment_score >= DOOR_RECOVERY_MIN_ALIGNMENT
-                    and opening_pixels >= DOOR_OPENING_PIXELS_MIN
-                    and classification_score >= DOOR_RECOVERY_MIN_CLASSIFICATION
-                    and support >= 0.05
+                    and opening_pixels >= (DOOR_OPENING_PIXELS_MIN - (0.08 if best_junction_support >= 0.55 else 0.0))
+                    and classification_score >= (DOOR_RECOVERY_MIN_CLASSIFICATION - (0.06 if tag.symbol_source == "legend_calibrated" else 0.0) - (0.04 if best_junction_support >= 0.55 else 0.0))
+                    and structural_support >= 0.05
                 )
                 or door_exception_verified
             ) and (
-                center_fill < SOLID_WALL_CENTER_FILL_REJECT
-                and interior_fill < SOLID_WALL_INNER_FILL_REJECT
+                (center_fill < SOLID_WALL_CENTER_FILL_REJECT and interior_fill < SOLID_WALL_INNER_FILL_REJECT)
+                or (tag.symbol_source == "legend_calibrated" and door_feature >= 0.78 and alignment_score >= 0.48)
+                or (best_junction_support >= 0.55 and door_feature >= 0.70 and alignment_score >= 0.36 and relaxed_endpoint_ok)
             )
             confidence = classification_score
             verification_mode = "door_symbol_recovered"
@@ -332,31 +422,31 @@ def recover_candidates_from_tags(
         else:
             window_feature = _window_feature_score(binary, wall_mask, best_wall, bbox, tag, alignment_score)
             classification_score = _clamp01(
-                (0.42 * window_feature)
+                (0.46 * window_feature)
                 + (0.20 * alignment_score)
-                + (0.18 * wall_break_score)
+                + (0.14 * wall_break_score)
                 + (0.20 * opening_pixels)
             )
             window_exception_verified = (
                 window_feature >= 0.72
                 and alignment_score >= 0.15
-                and opening_pixels >= 0.40
+                and opening_pixels >= 0.28
                 and support >= 0.20
-                and center_fill <= 0.65
-                and interior_fill <= 0.35
+                and center_fill <= 0.90
+                and interior_fill <= 0.82
             )
             verified = (
                 (
                     window_feature >= WINDOW_RECOVERY_MIN_FEATURE_SCORE
                     and alignment_score >= WINDOW_RECOVERY_MIN_ALIGNMENT
                     and opening_pixels >= WINDOW_OPENING_PIXELS_MIN
-                    and classification_score >= WINDOW_RECOVERY_MIN_CLASSIFICATION
-                    and support >= 0.08
+                    and classification_score >= (WINDOW_RECOVERY_MIN_CLASSIFICATION - (0.06 if tag.symbol_source == "legend_calibrated" else 0.0))
+                    and structural_support >= 0.08
                 )
                 or window_exception_verified
             ) and (
-                center_fill < SOLID_WALL_CENTER_FILL_REJECT
-                and interior_fill < SOLID_WALL_INNER_FILL_REJECT
+                (center_fill < SOLID_WALL_CENTER_FILL_REJECT and interior_fill < SOLID_WALL_INNER_FILL_REJECT)
+                or (tag.symbol_source == "legend_calibrated" and window_feature >= 0.74 and alignment_score >= 0.32)
             )
             confidence = classification_score
             verification_mode = "window_frame_recovered"
@@ -387,6 +477,9 @@ def recover_candidates_from_tags(
                 confidence=round(confidence, 2),
                 tag_ids=[tag.id],
                 verification_mode=verification_mode,
+                host_score=round(_clamp01(1.0 - min(1.0, best_score / max(1.0, (host_wall_dist_door_px if tag.tag_class == TagClass.DOOR else host_wall_dist_window_px)))), 2),
+                symbol_source=tag.symbol_source,
+                legend_symbol_id=tag.legend_symbol_id,
             )
         )
 

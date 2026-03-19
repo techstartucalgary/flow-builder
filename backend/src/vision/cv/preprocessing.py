@@ -1,10 +1,12 @@
 """
-Preprocessing stage — image loading, binarisation, morphological wall isolation.
+Preprocessing stage — image loading, binarisation, ROI estimation, and
+directional wall isolation.
 
 Public API
 ----------
 load_image(file_bytes, mime_type) → np.ndarray  (BGR uint8)
 binarise(gray)                    → np.ndarray  (binary uint8, 0/255)
+build_structural_roi(binary)      → np.ndarray  (binary uint8, 0/255)
 isolate_walls(binary)             → (h_mask, v_mask)
 """
 
@@ -16,10 +18,15 @@ import cv2
 # ---------------------------------------------------------------------------
 # Tunables (exposed so the API can accept overrides later)
 # ---------------------------------------------------------------------------
-DEFAULT_H_KERNEL_LEN = 50   # px — horizontal morphological kernel width
-DEFAULT_V_KERNEL_LEN = 50   # px — vertical morphological kernel height
+DEFAULT_H_KERNEL_LEN = 50    # px — horizontal morphological kernel width
+DEFAULT_V_KERNEL_LEN = 50    # px — vertical morphological kernel height
 ADAPTIVE_BLOCK_SIZE = 25     # must be odd
 ADAPTIVE_C = 12              # constant subtracted from mean
+STRUCTURAL_ROI_H_KERNEL_LEN = 24
+STRUCTURAL_ROI_V_KERNEL_LEN = 24
+STRUCTURAL_ROI_CLOSE_KERNEL_PX = 21
+STRUCTURAL_ROI_DILATE_KERNEL_PX = 61
+STRUCTURAL_ROI_MIN_COMPONENT_AREA_FRAC = 0.004
 
 
 # ---------------------------------------------------------------------------
@@ -78,20 +85,18 @@ def load_image(file_bytes: bytes, mime_type: str, dpi: int = 200, page_number: i
 
 def crop_drawing_area(
     img: np.ndarray,
-    left_pct: float = 0.02,
-    top_pct: float = 0.05,
-    right_pct: float = 0.72,
-    bottom_pct: float = 0.95,
+    left_pct: float = 0.0,
+    top_pct: float = 0.0,
+    right_pct: float = 1.0,
+    bottom_pct: float = 1.0,
 ) -> np.ndarray:
     """
-    Crop to the floor-plan drawing area, excluding the title block,
-    legend column, and margin notes.
+    Crop to a caller-specified drawing area.
 
-    The default percentages assume a standard ARCH-D landscape sheet
-    where the drawing occupies roughly the left 70 % and the title
-    block / legend sit on the right.
-
-    Parameters can be overridden per-project via the API.
+    Defaults intentionally preserve the full sheet. Downstream wall
+    extraction relies on a content-aware structural ROI instead of fixed
+    left/right crop assumptions, but explicit crop overrides remain
+    available for diagnostics and manual tuning.
     """
     h, w = img.shape[:2]
     x1 = int(w * left_pct)
@@ -119,6 +124,65 @@ def binarise(gray: np.ndarray) -> np.ndarray:
         ADAPTIVE_C,
     )
     return binary
+
+
+def build_structural_roi(binary: np.ndarray) -> np.ndarray:
+    """
+    Estimate the dominant floor-plan region from long horizontal/vertical
+    line structure and return it as a padded binary mask.
+
+    The mask is intentionally loose: it should keep the full plan body and
+    nearby openings while excluding detached legend and schedule blocks.
+    """
+    if binary.size == 0:
+        return np.zeros_like(binary)
+
+    h_seed, v_seed = isolate_walls(
+        binary,
+        h_kernel_len=STRUCTURAL_ROI_H_KERNEL_LEN,
+        v_kernel_len=STRUCTURAL_ROI_V_KERNEL_LEN,
+    )
+    seed = cv2.bitwise_or(h_seed, v_seed)
+    if np.count_nonzero(seed) == 0:
+        return np.full_like(binary, 255)
+
+    close_kernel = cv2.getStructuringElement(
+        cv2.MORPH_RECT,
+        (STRUCTURAL_ROI_CLOSE_KERNEL_PX, STRUCTURAL_ROI_CLOSE_KERNEL_PX),
+    )
+    dilate_kernel = cv2.getStructuringElement(
+        cv2.MORPH_RECT,
+        (STRUCTURAL_ROI_DILATE_KERNEL_PX, STRUCTURAL_ROI_DILATE_KERNEL_PX),
+    )
+    seed = cv2.morphologyEx(seed, cv2.MORPH_CLOSE, close_kernel)
+    seed = cv2.dilate(seed, dilate_kernel, iterations=1)
+
+    n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(seed, connectivity=8)
+    if n_labels <= 1:
+        return np.full_like(binary, 255)
+
+    min_component_area = max(
+        1200,
+        int(binary.shape[0] * binary.shape[1] * STRUCTURAL_ROI_MIN_COMPONENT_AREA_FRAC),
+    )
+    best_label = 0
+    best_area = 0
+    for label_idx in range(1, n_labels):
+        area = int(stats[label_idx, cv2.CC_STAT_AREA])
+        if area < min_component_area:
+            continue
+        if area > best_area:
+            best_area = area
+            best_label = label_idx
+
+    if best_label == 0:
+        best_label = int(np.argmax(stats[1:, cv2.CC_STAT_AREA]) + 1)
+
+    roi = np.zeros_like(binary, dtype=np.uint8)
+    roi[labels == best_label] = 255
+    roi = cv2.dilate(roi, dilate_kernel, iterations=1)
+    roi = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, close_kernel)
+    return roi
 
 
 def isolate_walls(

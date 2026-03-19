@@ -98,10 +98,10 @@ class TakeoffRequest(BaseModel):
     )
     sheet_width_ft: float = Field(default=4.0, gt=0.0, description="Sheet width in feet.")
     sheet_length_ft: float = Field(default=12.0, gt=0.0, description="Sheet length in feet.")
-    crop_left: float = Field(default=0.02, ge=0.0, le=1.0, description="Crop left boundary (fraction of width).")
-    crop_top: float = Field(default=0.05, ge=0.0, le=1.0, description="Crop top boundary (fraction of height).")
-    crop_right: float = Field(default=0.72, ge=0.0, le=1.0, description="Crop right boundary (fraction of width).")
-    crop_bottom: float = Field(default=0.95, ge=0.0, le=1.0, description="Crop bottom boundary (fraction of height).")
+    crop_left: float = Field(default=0.0, ge=0.0, le=1.0, description="Crop left boundary (fraction of width).")
+    crop_top: float = Field(default=0.0, ge=0.0, le=1.0, description="Crop top boundary (fraction of height).")
+    crop_right: float = Field(default=1.0, ge=0.0, le=1.0, description="Crop right boundary (fraction of width).")
+    crop_bottom: float = Field(default=1.0, ge=0.0, le=1.0, description="Crop bottom boundary (fraction of height).")
 
 
 class TakeoffResult(BaseModel):
@@ -522,10 +522,10 @@ def _generate_annotated_image(
     mime_type: str,
     geometry_result,
     page_number: int = 0,
-    crop_left: float = 0.02,
-    crop_top: float = 0.05,
-    crop_right: float = 0.72,
-    crop_bottom: float = 0.95,
+    crop_left: float = 0.0,
+    crop_top: float = 0.0,
+    crop_right: float = 1.0,
+    crop_bottom: float = 1.0,
 ) -> str:
     """Draw CV detections on the floor plan and return as a base64 PNG string."""
     bgr = load_image(file_bytes, mime_type, dpi=200, page_number=page_number)

@@ -42,10 +42,10 @@ class CVUrlRequest(BaseModel):
     dpi: int = Field(default=200, ge=72, le=600, description="Render DPI for PDFs")
     h_kernel: int = Field(default=50, ge=10, le=200, description="Horizontal kernel length (px)")
     v_kernel: int = Field(default=50, ge=10, le=200, description="Vertical kernel length (px)")
-    crop_left: float = Field(default=0.02, ge=0.0, le=1.0, description="Crop left boundary (fraction)")
-    crop_top: float = Field(default=0.05, ge=0.0, le=1.0, description="Crop top boundary (fraction)")
-    crop_right: float = Field(default=0.72, ge=0.0, le=1.0, description="Crop right boundary (fraction)")
-    crop_bottom: float = Field(default=0.95, ge=0.0, le=1.0, description="Crop bottom boundary (fraction)")
+    crop_left: float = Field(default=0.0, ge=0.0, le=1.0, description="Crop left boundary (fraction)")
+    crop_top: float = Field(default=0.0, ge=0.0, le=1.0, description="Crop top boundary (fraction)")
+    crop_right: float = Field(default=1.0, ge=0.0, le=1.0, description="Crop right boundary (fraction)")
+    crop_bottom: float = Field(default=1.0, ge=0.0, le=1.0, description="Crop bottom boundary (fraction)")
     scale_px_per_ft: Optional[float] = Field(default=None, description="Pixels-per-foot if known")
     sheet: Optional[str] = Field(default=None, description="Sheet number override")
     floor_level: Optional[str] = Field(default=None, description="Floor level override")
@@ -224,10 +224,10 @@ async def analyze_upload(
     dpi: int = Form(default=200, description="Render DPI for PDFs"),
     h_kernel: int = Form(default=50, description="Horizontal kernel length (px)"),
     v_kernel: int = Form(default=50, description="Vertical kernel length (px)"),
-    crop_left: float = Form(default=0.02, description="Crop left boundary (fraction)"),
-    crop_top: float = Form(default=0.05, description="Crop top boundary (fraction)"),
-    crop_right: float = Form(default=0.72, description="Crop right boundary (fraction)"),
-    crop_bottom: float = Form(default=0.95, description="Crop bottom boundary (fraction)"),
+    crop_left: float = Form(default=0.0, description="Crop left boundary (fraction)"),
+    crop_top: float = Form(default=0.0, description="Crop top boundary (fraction)"),
+    crop_right: float = Form(default=1.0, description="Crop right boundary (fraction)"),
+    crop_bottom: float = Form(default=1.0, description="Crop bottom boundary (fraction)"),
     scale_px_per_ft: Optional[float] = Form(default=None, description="Pixels-per-foot if known"),
     sheet: Optional[str] = Form(default=None, description="Sheet number override"),
     floor_level: Optional[str] = Form(default=None, description="Floor level override"),

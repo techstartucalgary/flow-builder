@@ -1,12 +1,13 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Circle, Layer, Line, Stage, Text } from 'react-konva';
+import { Circle, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type Konva from 'konva';
 
 import { safeClone } from '@/lib/clone';
 import { clamp, polygonBounds, worldFromScreen } from '@/lib/geometry';
 import { isObjectUrl, normalizeBaseImageUrl } from '@/lib/imageUrl';
+import { computeOpeningOverlayGeometry, createHostedOpeningGeometry } from '@/lib/openingGeometry';
 import { snapPointToWalls, snapToGrid, snapWallEndpointAngle } from '@/lib/snapping';
 import type {
   AnnotationElement,
@@ -314,6 +315,35 @@ export default function ViewportStage({
     return wall;
   }, [entities.byId, placementFeedback?.hostWallId]);
 
+  const wallsById = useMemo(
+    () => Object.fromEntries(
+      entities.byType.wall
+        .map((wallId) => [wallId, entities.byId[wallId]])
+        .filter((entry): entry is [string, AnnotationElement] => Boolean(entry[1])),
+    ),
+    [entities.byId, entities.byType.wall],
+  );
+
+  const openingPlacementPreview = useMemo(() => {
+    if (!placementFeedback || !previewHostWall || (toolMode !== 'door' && toolMode !== 'window')) return null;
+    const draftGeometry = createHostedOpeningGeometry(toolMode, placementFeedback.point.x, placementFeedback.point.y, previewHostWall);
+    return computeOpeningOverlayGeometry(
+      {
+        id: `${toolMode}_preview`,
+        type: toolMode,
+        geometry: draftGeometry,
+        attrs: {
+          status: 'new',
+          locked: false,
+          visible: true,
+          confidence: 1,
+        },
+        relations: { hostWallId: previewHostWall.id },
+      },
+      previewHostWall,
+    );
+  }, [placementFeedback, previewHostWall, toolMode]);
+
   const marqueeBounds = useMemo(() => {
     if (!marqueeDraft) return null;
     return {
@@ -445,7 +475,12 @@ export default function ViewportStage({
       if (!point) return;
       const world = worldFromScreen(point.x, point.y, camera.panX, camera.panY, camera.zoom);
       const placementPoint = placementFeedback?.point ?? world;
-      createElementAt(toolMode as AnnotationElementType, placementPoint.x, placementPoint.y);
+      createElementAt(
+        toolMode as AnnotationElementType,
+        placementPoint.x,
+        placementPoint.y,
+        placementFeedback?.hostWallId ? { hostWallId: placementFeedback.hostWallId } : undefined,
+      );
     }
   }
 
@@ -565,6 +600,7 @@ export default function ViewportStage({
           <Layer>
             <AnnotationRenderLayer
               elements={displayElements}
+              wallsById={wallsById}
               selectedIds={selection}
               preset={viewPreset}
               issuesByElementId={renderHints.highlightIssues ? issuesByElementId : undefined}
@@ -625,25 +661,59 @@ export default function ViewportStage({
                 opacity={0.38}
               />
               {placementFeedback ? (
-                <Circle
-                  x={placementFeedback.point.x}
-                  y={placementFeedback.point.y}
-                  radius={8}
-                  fill="#fbbf24"
-                  opacity={0.9}
-                />
+                openingPlacementPreview && (toolMode === 'door' || toolMode === 'window') ? (
+                  <Rect
+                    x={openingPlacementPreview.centerX}
+                    y={openingPlacementPreview.centerY}
+                    width={openingPlacementPreview.width}
+                    height={openingPlacementPreview.height}
+                    rotation={openingPlacementPreview.rotationDeg}
+                    offsetX={openingPlacementPreview.width / 2}
+                    offsetY={openingPlacementPreview.height / 2}
+                    fill="rgba(251,191,36,0.18)"
+                    stroke="#fbbf24"
+                    strokeWidth={2}
+                    cornerRadius={Math.max(4, Math.min(8, openingPlacementPreview.height / 2))}
+                    opacity={0.95}
+                  />
+                ) : (
+                  <Circle
+                    x={placementFeedback.point.x}
+                    y={placementFeedback.point.y}
+                    radius={8}
+                    fill="#fbbf24"
+                    opacity={0.9}
+                  />
+                )
               ) : null}
             </Layer>
           ) : null}
           {placementFeedback && (toolMode === 'door' || toolMode === 'window' || toolMode === 'room') ? (
             <Layer listening={false}>
-              <Circle
-                x={placementFeedback.point.x}
-                y={placementFeedback.point.y}
-                radius={6}
-                fill={toolMode === 'door' ? '#fb7185' : toolMode === 'window' ? '#60a5fa' : '#22d3ee'}
-                opacity={0.9}
-              />
+              {openingPlacementPreview && (toolMode === 'door' || toolMode === 'window') ? (
+                <Rect
+                  x={openingPlacementPreview.centerX}
+                  y={openingPlacementPreview.centerY}
+                  width={openingPlacementPreview.width}
+                  height={openingPlacementPreview.height}
+                  rotation={openingPlacementPreview.rotationDeg}
+                  offsetX={openingPlacementPreview.width / 2}
+                  offsetY={openingPlacementPreview.height / 2}
+                  fill={toolMode === 'door' ? 'rgba(251,113,133,0.28)' : 'rgba(96,165,250,0.28)'}
+                  stroke={toolMode === 'door' ? '#fb7185' : '#60a5fa'}
+                  strokeWidth={2}
+                  cornerRadius={Math.max(4, Math.min(8, openingPlacementPreview.height / 2))}
+                  opacity={0.95}
+                />
+              ) : (
+                <Circle
+                  x={placementFeedback.point.x}
+                  y={placementFeedback.point.y}
+                  radius={6}
+                  fill={toolMode === 'door' ? '#fb7185' : toolMode === 'window' ? '#60a5fa' : '#22d3ee'}
+                  opacity={0.9}
+                />
+              )}
             </Layer>
           ) : null}
           {calibrationDraft?.start ? (

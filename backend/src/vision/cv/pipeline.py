@@ -31,12 +31,18 @@ from src.vision.cv.models import (
     TagClass,
     WallSegment,
 )
-from src.vision.cv.preprocessing import binarise, crop_drawing_area, isolate_walls, load_image
-from src.vision.cv.tag_detection import detect_tags
+from src.vision.cv.preprocessing import (
+    binarise,
+    build_structural_roi,
+    crop_drawing_area,
+    isolate_walls,
+    load_image,
+)
+from src.vision.cv.tag_detection import calibrate_symbols_from_legend, detect_tags
 from src.vision.cv.wall_detection import (
     Gap,
     detect_gaps_with_debug,
-    extract_wall_segments,
+    extract_wall_segments_with_debug,
     suppress_measurement_artifacts,
 )
 
@@ -252,6 +258,24 @@ def _has_opening_overlap(openings: list[Opening], wall_id: str, bbox: tuple[int,
     return False
 
 
+def _opening_geometry_for_wall(
+    wall: WallSegment,
+    *,
+    center: tuple[int, int],
+    bbox: tuple[int, int, int, int],
+    axis_span_px: Optional[float] = None,
+) -> dict[str, float | tuple[float, float]]:
+    span = float(axis_span_px if axis_span_px is not None else (bbox[2] if wall.orientation == Orientation.HORIZONTAL else bbox[3]))
+    normal = float(bbox[3] if wall.orientation == Orientation.HORIZONTAL else bbox[2])
+    rotation = 0.0 if wall.orientation == Orientation.HORIZONTAL else 90.0
+    return {
+        "projected_center": (float(center[0]), float(center[1])),
+        "axis_span_px": span,
+        "normal_span_px": normal,
+        "rotation_deg": rotation,
+    }
+
+
 def _split_walls_at_tags(
     walls: list[WallSegment],
     tags: list[TagAnchor],
@@ -453,6 +477,7 @@ def _correlate_verified_openings(
     solid_wall_projection_rejections = 0
     openings_rejected_host_fit = 0
     openings_rejected_endpoint_projection = 0
+    walls_by_id = {wall.id: wall for wall in walls}
 
     next_opening_index = 1
 
@@ -489,6 +514,7 @@ def _correlate_verified_openings(
         tag_ids = list(classification["tag_ids"])
         matched_tag_ids.update(tag_ids)
         is_double = tag_class == TagClass.DOOR and len(tag_ids) >= 2
+        supporting_tags = [tag for tag in tags if tag.id in tag_ids]
         source = (
             "gap_verified_tag_classified"
             if tag_ids
@@ -527,6 +553,19 @@ def _correlate_verified_openings(
                     "verification_mode": "gap_only",
                     "host_gap_id": gap.id,
                 },
+                host_score=round(min(1.0, max(0.0, 1.0 - (_point_to_segment_dist(gap.center[0], gap.center[1], host_wall) / max(1.0, float(_wall_threshold(tag_class)))))), 2),
+                symbol_source=(
+                    "legend_calibrated"
+                    if any(tag.symbol_source == "legend_calibrated" for tag in supporting_tags)
+                    else ("generic" if tag_ids else "none")
+                ),
+                legend_symbol_id=next((tag.legend_symbol_id for tag in supporting_tags if tag.legend_symbol_id), None),
+                **_opening_geometry_for_wall(
+                    host_wall,
+                    center=(int(gap.center[0]), int(gap.center[1])),
+                    bbox=(int(gap.bbox[0]), int(gap.bbox[1]), int(gap.bbox[2]), int(gap.bbox[3])),
+                    axis_span_px=float(gap.width_px),
+                ),
             )
         )
         next_opening_index += 1
@@ -555,6 +594,10 @@ def _correlate_verified_openings(
         if not candidate.verified or candidate.tag_class is None:
             candidate_rejected += 1
             continue
+        candidate_wall = walls_by_id.get(candidate.wall_id)
+        if candidate_wall is None:
+            candidate_rejected += 1
+            continue
         if _has_opening_overlap(openings, candidate.wall_id, candidate.bbox):
             if candidate.tag_class == TagClass.DOOR:
                 door_candidates_rejected_after_symbol_check += 1
@@ -577,7 +620,11 @@ def _correlate_verified_openings(
                 wall_id=candidate.wall_id,
                 tag_ids=list(candidate.tag_ids),
                 is_double_door=candidate.tag_class == TagClass.DOOR and len(candidate.tag_ids) >= 2,
-                source="opening_feature_verified",
+                source=(
+                    "fused"
+                    if candidate.opening_pixels_score >= 0.36 and candidate.wall_break_score >= 0.22
+                    else "symbol_projected"
+                ),
                 confidence=round(candidate.confidence, 2),
                 verification={
                     "opening_pixels_score": candidate.opening_pixels_score,
@@ -589,6 +636,20 @@ def _correlate_verified_openings(
                     "verification_mode": candidate.verification_mode,
                     "host_gap_id": candidate.host_gap_id,
                 },
+                host_score=candidate.host_score,
+                symbol_source=candidate.symbol_source if candidate.symbol_source in {"generic", "legend_calibrated"} else "generic",
+                legend_symbol_id=candidate.legend_symbol_id,
+                **_opening_geometry_for_wall(
+                    candidate_wall,
+                    center=(int(candidate.center[0]), int(candidate.center[1])),
+                    bbox=(
+                        int(candidate.bbox[0]),
+                        int(candidate.bbox[1]),
+                        int(candidate.bbox[2]),
+                        int(candidate.bbox[3]),
+                    ),
+                    axis_span_px=float(candidate.width_px),
+                ),
             )
         )
         next_opening_index += 1
@@ -681,10 +742,10 @@ def run(
     page_number: int = 0,
     h_kernel: int = 50,
     v_kernel: int = 50,
-    crop_left: float = 0.02,
-    crop_top: float = 0.05,
-    crop_right: float = 0.72,
-    crop_bottom: float = 0.95,
+    crop_left: float = 0.0,
+    crop_top: float = 0.0,
+    crop_right: float = 1.0,
+    crop_bottom: float = 1.0,
     scale_px_per_ft: Optional[float] = None,
     sheet: Optional[str] = None,
     floor_level: Optional[str] = None,
@@ -714,28 +775,60 @@ def run(
     """
 
     # ── 1. Load & preprocess ───────────────────────────────────────────
-    bgr = load_image(file_bytes, mime_type, dpi=dpi, page_number=page_number)
-    bgr = crop_drawing_area(bgr, crop_left, crop_top, crop_right, crop_bottom)
+    full_bgr = load_image(file_bytes, mime_type, dpi=dpi, page_number=page_number)
+    full_gray = cv2.cvtColor(full_bgr, cv2.COLOR_BGR2GRAY)
+    full_binary = binarise(full_gray)
+    symbol_calibration = calibrate_symbols_from_legend(full_gray, full_binary)
+
+    bgr = crop_drawing_area(full_bgr, crop_left, crop_top, crop_right, crop_bottom)
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     binary = binarise(gray)
+    structural_roi = build_structural_roi(binary)
+    plan_region_area_px = int(np.count_nonzero(structural_roi))
+
     h_mask, v_mask = isolate_walls(binary, h_kernel_len=h_kernel, v_kernel_len=v_kernel)
+    thin_h_mask, thin_v_mask = isolate_walls(
+        binary,
+        h_kernel_len=max(16, h_kernel // 2),
+        v_kernel_len=max(16, v_kernel // 2),
+    )
+    h_mask = cv2.bitwise_and(h_mask, structural_roi)
+    v_mask = cv2.bitwise_and(v_mask, structural_roi)
+    thin_h_mask = cv2.bitwise_and(thin_h_mask, structural_roi)
+    thin_v_mask = cv2.bitwise_and(thin_v_mask, structural_roi)
 
     # ── 2. Vectorise walls ─────────────────────────────────────────────
-    walls = extract_wall_segments(h_mask, v_mask)
-    walls, suppression_debug = suppress_measurement_artifacts(walls, binary)
-    combined_wall_mask = cv2.bitwise_or(h_mask, v_mask)
+    walls, extraction_debug = extract_wall_segments_with_debug(
+        h_mask,
+        v_mask,
+        thin_h_mask=thin_h_mask,
+        thin_v_mask=thin_v_mask,
+        structural_roi=structural_roi,
+    )
+    suppression_input = cv2.bitwise_and(binary, structural_roi)
+    walls, suppression_debug = suppress_measurement_artifacts(walls, suppression_input)
+    combined_h_mask = cv2.bitwise_or(h_mask, thin_h_mask)
+    combined_v_mask = cv2.bitwise_or(v_mask, thin_v_mask)
+    combined_wall_mask = cv2.bitwise_or(combined_h_mask, combined_v_mask)
 
     # ── 3. Detect gaps (opening candidates) ────────────────────────────
     gaps, gap_debug = detect_gaps_with_debug(walls, combined_wall_mask)
 
     # ── 4. Detect tags (circles → doors, hexagons → windows) ──────────
     #       Tags are filtered to only those near a detected wall segment.
-    tags, tag_debug = detect_tags(gray, binary, combined_wall_mask, walls)
+    tags, tag_debug = detect_tags(
+        gray,
+        binary,
+        combined_wall_mask,
+        walls,
+        symbol_calibration=symbol_calibration,
+        structural_roi=structural_roi,
+    )
 
     # ── 4b. Measure visual thickness (both faces) ────────────────────
     #        Uses orientation-matched masks (h_mask for H walls,
     #        v_mask for V walls) to prevent perpendicular contamination.
-    _measure_visual_thickness(walls, h_mask, v_mask)
+    _measure_visual_thickness(walls, combined_h_mask, combined_v_mask)
 
     # ── 5. Double-door pair grouping ───────────────────────────────────
     double_pairs = _mark_double_doors(tags)
@@ -786,6 +879,10 @@ def run(
         total_wall_segments=len(walls),
         walls_raw=suppression_debug["walls_raw"],
         walls_after_suppression=suppression_debug["walls_after_suppression"],
+        plan_region_area_px=plan_region_area_px,
+        walls_from_thin_branch=extraction_debug["walls_from_thin_branch"],
+        short_segments_promoted=extraction_debug["short_segments_promoted"],
+        walls_suppressed_as_text=suppression_debug["walls_suppressed_as_text"],
         door_tags_raw=tag_debug["door_tags_raw"],
         door_tags_after_dedupe=tag_debug["door_tags_after_dedupe"],
         door_tags=sum(1 for t in tags if t.tag_class == TagClass.DOOR),

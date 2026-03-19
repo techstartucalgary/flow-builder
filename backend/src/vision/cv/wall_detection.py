@@ -34,6 +34,9 @@ MIN_WALL_THICKNESS_PX = 5       # drops dim lines / hatch lines
 MIN_WALL_LENGTH_PX = 45         # preserve short partitions and nib walls
 SHORT_WALL_STRICT_LEN_PX = 70   # apply extra guardrail for short segments
 SHORT_WALL_MIN_THICKNESS_PX = 8
+THIN_BRANCH_MIN_WALL_THICKNESS_PX = 3
+THIN_BRANCH_MIN_WALL_LENGTH_PX = 30
+THIN_BRANCH_MAX_WALL_LENGTH_PX = 120
 MIN_FILL_RATIO = 0.45           # slightly relaxed for annotation-heavy plans
 
 # Midline scanning
@@ -63,6 +66,9 @@ THIN_LONG_MAX_THICKNESS_PX = 7
 THIN_LONG_MIN_ASPECT = 35.0
 EXTREME_THIN_LONG_MIN_LEN_PX = 420
 EXTREME_THIN_MAX_THICKNESS_PX = 6
+COLLINEAR_SUPPORT_CROSS_TOL = 12
+COLLINEAR_SUPPORT_GAP_PX = 90
+STRUCTURAL_SUPPORT_DIST_PX = 20
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +111,11 @@ def _contours_to_segments(
     mask: np.ndarray,
     orientation: Orientation,
     prefix: str,
+    *,
+    min_thickness_px: int = MIN_WALL_THICKNESS_PX,
+    min_length_px: int = MIN_WALL_LENGTH_PX,
+    short_wall_strict_len_px: int = SHORT_WALL_STRICT_LEN_PX,
+    short_wall_min_thickness_px: int = SHORT_WALL_MIN_THICKNESS_PX,
 ) -> list[WallSegment]:
     """
     Find external contours on a wall mask and split each into one or more
@@ -124,7 +135,7 @@ def _contours_to_segments(
         else:
             thickness = w
 
-        if thickness < MIN_WALL_THICKNESS_PX:
+        if thickness < min_thickness_px:
             continue
 
         # Fill ratio filter
@@ -143,10 +154,14 @@ def _contours_to_segments(
 
             for run_start, run_end in _find_pixel_runs(strip):
                 seg_len = run_end - run_start
-                if seg_len < MIN_WALL_LENGTH_PX:
+                if seg_len < min_length_px:
                     continue
                 # Short segments are kept only when thick enough to be walls.
-                if seg_len < SHORT_WALL_STRICT_LEN_PX and thickness < SHORT_WALL_MIN_THICKNESS_PX:
+                if (
+                    short_wall_strict_len_px > 0
+                    and seg_len < short_wall_strict_len_px
+                    and thickness < short_wall_min_thickness_px
+                ):
                     continue
                 segments.append(WallSegment(
                     id=f"{prefix}-{idx:02d}",
@@ -165,9 +180,13 @@ def _contours_to_segments(
 
             for run_start, run_end in _find_pixel_runs(strip):
                 seg_len = run_end - run_start
-                if seg_len < MIN_WALL_LENGTH_PX:
+                if seg_len < min_length_px:
                     continue
-                if seg_len < SHORT_WALL_STRICT_LEN_PX and thickness < SHORT_WALL_MIN_THICKNESS_PX:
+                if (
+                    short_wall_strict_len_px > 0
+                    and seg_len < short_wall_strict_len_px
+                    and thickness < short_wall_min_thickness_px
+                ):
                     continue
                 segments.append(WallSegment(
                     id=f"{prefix}-{idx:02d}",
@@ -198,6 +217,107 @@ def _along_range(seg: WallSegment) -> tuple[int, int]:
     if seg.orientation == Orientation.HORIZONTAL:
         return (seg.start[0], seg.end[0])
     return (seg.start[1], seg.end[1])
+
+
+def _point_to_segment_dist(point: tuple[int, int], seg: WallSegment) -> float:
+    x1, y1 = seg.start
+    x2, y2 = seg.end
+    dx = x2 - x1
+    dy = y2 - y1
+    if dx == 0 and dy == 0:
+        return float(np.hypot(point[0] - x1, point[1] - y1))
+    t = max(0.0, min(1.0, ((point[0] - x1) * dx + (point[1] - y1) * dy) / float(dx * dx + dy * dy)))
+    proj_x = x1 + (t * dx)
+    proj_y = y1 + (t * dy)
+    return float(np.hypot(point[0] - proj_x, point[1] - proj_y))
+
+
+def _ranges_gap(a: tuple[int, int], b: tuple[int, int]) -> int:
+    a0, a1 = min(a), max(a)
+    b0, b1 = min(b), max(b)
+    if a1 < b0:
+        return b0 - a1
+    if b1 < a0:
+        return a0 - b1
+    return 0
+
+
+def _segment_inside_roi(seg: WallSegment, roi_mask: np.ndarray | None) -> bool:
+    if roi_mask is None or roi_mask.size == 0:
+        return True
+    if seg.orientation == Orientation.HORIZONTAL:
+        points = [
+            seg.start,
+            seg.end,
+            ((seg.start[0] + seg.end[0]) // 2, seg.start[1]),
+        ]
+    else:
+        points = [
+            seg.start,
+            seg.end,
+            (seg.start[0], (seg.start[1] + seg.end[1]) // 2),
+        ]
+    inside = 0
+    for px, py in points:
+        if 0 <= py < roi_mask.shape[0] and 0 <= px < roi_mask.shape[1] and roi_mask[py, px] > 0:
+            inside += 1
+    return inside >= 2
+
+
+def _collinear_support_gap(seg: WallSegment, other: WallSegment) -> int:
+    if seg.orientation != other.orientation:
+        return COLLINEAR_SUPPORT_GAP_PX + 1
+    if abs(_cross(seg) - _cross(other)) > COLLINEAR_SUPPORT_CROSS_TOL:
+        return COLLINEAR_SUPPORT_GAP_PX + 1
+    return _ranges_gap(_along_range(seg), _along_range(other))
+
+
+def _segments_overlap(seg: WallSegment, other: WallSegment, cross_tol: int = COLLINEAR_SUPPORT_CROSS_TOL) -> bool:
+    if seg.orientation != other.orientation:
+        return False
+    if abs(_cross(seg) - _cross(other)) > cross_tol:
+        return False
+    return _ranges_gap(_along_range(seg), _along_range(other)) == 0
+
+
+def _has_orthogonal_support(seg: WallSegment, reference_segments: list[WallSegment]) -> bool:
+    for ref in reference_segments:
+        if ref.orientation == seg.orientation:
+            continue
+        for endpoint in (seg.start, seg.end):
+            if _point_to_segment_dist(endpoint, ref) <= STRUCTURAL_SUPPORT_DIST_PX:
+                return True
+    return False
+
+
+def _walls_form_junction(seg: WallSegment, other: WallSegment, threshold_px: int) -> bool:
+    if seg.orientation == other.orientation:
+        return False
+    horizontal = seg if seg.orientation == Orientation.HORIZONTAL else other
+    vertical = other if horizontal is seg else seg
+    hx0, hx1 = sorted((horizontal.start[0], horizontal.end[0]))
+    vy0, vy1 = sorted((vertical.start[1], vertical.end[1]))
+    return (
+        hx0 - threshold_px <= vertical.start[0] <= hx1 + threshold_px
+        and vy0 - threshold_px <= horizontal.start[1] <= vy1 + threshold_px
+    )
+
+
+def _has_collinear_support(seg: WallSegment, reference_segments: list[WallSegment]) -> bool:
+    min_reference_length = max(MIN_WALL_LENGTH_PX, seg.length_px)
+    for ref in reference_segments:
+        if ref.id == seg.id:
+            continue
+        if ref.length_px < min_reference_length:
+            continue
+        gap = _collinear_support_gap(seg, ref)
+        if gap <= COLLINEAR_SUPPORT_GAP_PX:
+            return True
+    return False
+
+
+def _has_structural_support(seg: WallSegment, reference_segments: list[WallSegment]) -> bool:
+    return _has_orthogonal_support(seg, reference_segments) or _has_collinear_support(seg, reference_segments)
 
 
 def _merge_segments(
@@ -577,23 +697,106 @@ def _detect_cluster_gaps(
 # Public functions
 # ---------------------------------------------------------------------------
 
-def extract_wall_segments(
+def extract_wall_segments_with_debug(
     h_mask: np.ndarray,
     v_mask: np.ndarray,
-) -> list[WallSegment]:
+    *,
+    thin_h_mask: np.ndarray | None = None,
+    thin_v_mask: np.ndarray | None = None,
+    structural_roi: np.ndarray | None = None,
+) -> tuple[list[WallSegment], dict[str, int]]:
     """
-    Convert horizontal and vertical wall masks into ``WallSegment`` objects.
+    Convert wall masks into ``WallSegment`` objects and report recovery stats.
 
-    Pipeline: contour extraction → thickness + fill filter → midline scan
-    (split at openings) → group-then-merge (verify gap pixels).
+    The primary branch preserves the existing behaviour. An optional thin-wall
+    branch recovers short and narrow interior partitions, but only when they
+    remain inside the structural ROI and have clear support from existing wall
+    geometry.
     """
     h_raw = _contours_to_segments(h_mask, Orientation.HORIZONTAL, "H")
     v_raw = _contours_to_segments(v_mask, Orientation.VERTICAL, "V")
 
     h_merged = _merge_segments(h_raw, "H", h_mask)
     v_merged = _merge_segments(v_raw, "V", v_mask)
+    primary_segments = h_merged + v_merged
 
-    return h_merged + v_merged
+    admitted_thin_segments: list[WallSegment] = []
+    short_segments_promoted = 0
+
+    if thin_h_mask is not None and thin_v_mask is not None:
+        thin_h_raw = _contours_to_segments(
+            thin_h_mask,
+            Orientation.HORIZONTAL,
+            "TH",
+            min_thickness_px=THIN_BRANCH_MIN_WALL_THICKNESS_PX,
+            min_length_px=THIN_BRANCH_MIN_WALL_LENGTH_PX,
+            short_wall_strict_len_px=0,
+            short_wall_min_thickness_px=THIN_BRANCH_MIN_WALL_THICKNESS_PX,
+        )
+        thin_v_raw = _contours_to_segments(
+            thin_v_mask,
+            Orientation.VERTICAL,
+            "TV",
+            min_thickness_px=THIN_BRANCH_MIN_WALL_THICKNESS_PX,
+            min_length_px=THIN_BRANCH_MIN_WALL_LENGTH_PX,
+            short_wall_strict_len_px=0,
+            short_wall_min_thickness_px=THIN_BRANCH_MIN_WALL_THICKNESS_PX,
+        )
+        thin_h_merged = _merge_segments(thin_h_raw, "TH", thin_h_mask)
+        thin_v_merged = _merge_segments(thin_v_raw, "TV", thin_v_mask)
+
+        reference_segments = list(primary_segments)
+        for candidate in sorted(thin_h_merged + thin_v_merged, key=lambda seg: (seg.length_px, seg.thickness), reverse=True):
+            if candidate.length_px > THIN_BRANCH_MAX_WALL_LENGTH_PX:
+                continue
+            if not _segment_inside_roi(candidate, structural_roi):
+                continue
+            if any(_segments_overlap(candidate, existing) for existing in reference_segments):
+                continue
+            orthogonal_support = _has_orthogonal_support(candidate, reference_segments)
+            collinear_support = _has_collinear_support(candidate, reference_segments)
+            if not orthogonal_support and not (
+                collinear_support and candidate.length_px < SHORT_WALL_STRICT_LEN_PX
+            ):
+                continue
+            admitted_thin_segments.append(candidate)
+            reference_segments.append(candidate)
+            if candidate.length_px < MIN_WALL_LENGTH_PX or (
+                candidate.length_px < SHORT_WALL_STRICT_LEN_PX
+                and candidate.thickness < SHORT_WALL_MIN_THICKNESS_PX
+            ):
+                short_segments_promoted += 1
+
+    combined_h_mask = h_mask if thin_h_mask is None else cv2.bitwise_or(h_mask, thin_h_mask)
+    combined_v_mask = v_mask if thin_v_mask is None else cv2.bitwise_or(v_mask, thin_v_mask)
+
+    h_all = [segment for segment in primary_segments + admitted_thin_segments if segment.orientation == Orientation.HORIZONTAL]
+    v_all = [segment for segment in primary_segments + admitted_thin_segments if segment.orientation == Orientation.VERTICAL]
+
+    final_h = _merge_segments(h_all, "H", combined_h_mask)
+    final_v = _merge_segments(v_all, "V", combined_v_mask)
+    return final_h + final_v, {
+        "walls_from_thin_branch": len(admitted_thin_segments),
+        "short_segments_promoted": short_segments_promoted,
+    }
+
+
+def extract_wall_segments(
+    h_mask: np.ndarray,
+    v_mask: np.ndarray,
+    *,
+    thin_h_mask: np.ndarray | None = None,
+    thin_v_mask: np.ndarray | None = None,
+    structural_roi: np.ndarray | None = None,
+) -> list[WallSegment]:
+    walls, _ = extract_wall_segments_with_debug(
+        h_mask,
+        v_mask,
+        thin_h_mask=thin_h_mask,
+        thin_v_mask=thin_v_mask,
+        structural_roi=structural_roi,
+    )
+    return walls
 
 
 def detect_gaps(
@@ -767,26 +970,36 @@ def _component_mask(binary: np.ndarray) -> np.ndarray:
     return cv2.dilate(text_like, kernel, iterations=1)
 
 
-def _endpoint_connectivity(walls: list[WallSegment], threshold_px: int) -> list[tuple[int, int]]:
-    """Count nearby neighbors for each wall endpoint."""
-    threshold2 = threshold_px * threshold_px
-    endpoint_deg = [[0, 0] for _ in walls]
+def _support_metrics(walls: list[WallSegment], threshold_px: int) -> list[dict[str, int]]:
+    """Measure endpoint and collinear support for each wall."""
+    metrics: list[dict[str, int]] = []
+    for index, wall in enumerate(walls):
+        endpoint_support = 0
+        junction_support = 0
+        collinear_support = 0
 
-    for i in range(len(walls)):
-        a = walls[i]
-        a_points = (a.start, a.end)
-        for j in range(i + 1, len(walls)):
-            b = walls[j]
-            b_points = (b.start, b.end)
-            for ai, ap in enumerate(a_points):
-                for bi, bp in enumerate(b_points):
-                    dx = ap[0] - bp[0]
-                    dy = ap[1] - bp[1]
-                    if (dx * dx + dy * dy) <= threshold2:
-                        endpoint_deg[i][ai] += 1
-                        endpoint_deg[j][bi] += 1
+        for other_index, other in enumerate(walls):
+            if index == other_index:
+                continue
+            if _collinear_support_gap(wall, other) <= COLLINEAR_SUPPORT_GAP_PX:
+                collinear_support += 1
+            for endpoint in (wall.start, wall.end):
+                if _point_to_segment_dist(endpoint, other) <= float(threshold_px):
+                    endpoint_support += 1
+                    break
+            if other.orientation != wall.orientation:
+                if _walls_form_junction(wall, other, threshold_px) or (
+                    _point_to_segment_dist(other.start, wall) <= float(threshold_px)
+                    or _point_to_segment_dist(other.end, wall) <= float(threshold_px)
+                ):
+                    junction_support += 1
 
-    return [(deg[0], deg[1]) for deg in endpoint_deg]
+        metrics.append({
+            "endpoint_support": endpoint_support,
+            "junction_support": junction_support,
+            "collinear_support": collinear_support,
+        })
+    return metrics
 
 
 def _text_density_near_segment(mask: np.ndarray, wall: WallSegment, pad: int = 12) -> float:
@@ -812,17 +1025,22 @@ def suppress_measurement_artifacts(
 
     A wall is removed only if multiple signals agree:
       1) thin + very high aspect ratio
-      2) weak endpoint connectivity to other walls
+      2) weak structural connectivity to other walls
       3) near dense text-like connected components
     """
     walls_raw = len(walls)
     if walls_raw == 0:
-        return walls, {"walls_raw": 0, "walls_after_suppression": 0}
+        return walls, {
+            "walls_raw": 0,
+            "walls_after_suppression": 0,
+            "walls_suppressed_as_text": 0,
+        }
 
     text_mask = _component_mask(binary)
-    connectivity = _endpoint_connectivity(walls, CONNECTIVITY_ENDPOINT_DIST_PX)
+    connectivity = _support_metrics(walls, CONNECTIVITY_ENDPOINT_DIST_PX)
 
     filtered: list[WallSegment] = []
+    walls_suppressed_as_text = 0
     for idx, wall in enumerate(walls):
         length = max(1, int(wall.length_px))
         thickness = max(1, int(wall.thickness))
@@ -833,8 +1051,11 @@ def suppress_measurement_artifacts(
             and length >= THIN_LONG_MIN_LEN_PX
             and aspect >= THIN_LONG_MIN_ASPECT
         )
-        start_deg, end_deg = connectivity[idx]
-        weakly_connected = start_deg == 0 and end_deg == 0
+        endpoint_support = int(connectivity[idx]["endpoint_support"])
+        junction_support = int(connectivity[idx]["junction_support"])
+        collinear_support = int(connectivity[idx]["collinear_support"])
+        structurally_supported = endpoint_support > 0 or junction_support > 0 or collinear_support > 0
+        weakly_connected = not structurally_supported
 
         text_density = _text_density_near_segment(text_mask, wall)
         near_text = text_density >= TEXT_NEAR_DENSITY and length >= 120
@@ -844,16 +1065,19 @@ def suppress_measurement_artifacts(
             score += 1
         if weakly_connected:
             score += 1
-        if near_text:
+        if near_text and not structurally_supported:
             score += 1
 
         extreme_ruler = (
             thickness <= EXTREME_THIN_MAX_THICKNESS_PX
             and length >= EXTREME_THIN_LONG_MIN_LEN_PX
+            and not structurally_supported
             and (weakly_connected or near_text)
         )
 
         if score >= 2 or extreme_ruler:
+            if near_text:
+                walls_suppressed_as_text += 1
             continue
 
         filtered.append(wall)
@@ -861,4 +1085,5 @@ def suppress_measurement_artifacts(
     return filtered, {
         "walls_raw": walls_raw,
         "walls_after_suppression": len(filtered),
+        "walls_suppressed_as_text": walls_suppressed_as_text,
     }

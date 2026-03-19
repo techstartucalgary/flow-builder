@@ -28,6 +28,7 @@ function makeBaseElement(type: AnnotationElementType, id: string): Pick<Annotati
     type,
     attrs: {
       status: 'auto',
+      geometryEdited: false,
       locked: false,
       visible: true,
       confidence: 0.9,
@@ -75,7 +76,32 @@ export function fromCVTakeoffResult(
     for (const opening of openings) {
       const type = opening.tag_class === 'door' ? 'door' : 'window';
       if (!SUPPORTED_TYPES.has(type)) continue;
-      const [x, y, width, height] = opening.bbox;
+      const [bboxX, bboxY, bboxWidth, bboxHeight] = opening.bbox;
+      let x = bboxX;
+      let y = bboxY;
+      let width = bboxWidth;
+      let height = bboxHeight;
+      if (
+        Array.isArray(opening.projected_center)
+        && opening.projected_center.length === 2
+        && typeof opening.axis_span_px === 'number'
+        && typeof opening.normal_span_px === 'number'
+      ) {
+        const [centerX, centerY] = opening.projected_center;
+        if (typeof centerX === 'number' && typeof centerY === 'number') {
+          if (bboxWidth >= bboxHeight) {
+            width = Math.max(1, Math.round(opening.axis_span_px));
+            height = Math.max(1, Math.round(opening.normal_span_px));
+            x = Math.round(centerX - (width / 2));
+            y = Math.round(centerY - (height / 2));
+          } else {
+            width = Math.max(1, Math.round(opening.normal_span_px));
+            height = Math.max(1, Math.round(opening.axis_span_px));
+            x = Math.round(centerX - (width / 2));
+            y = Math.round(centerY - (height / 2));
+          }
+        }
+      }
       if (width <= 0 || height <= 0) continue;
       const confidence = typeof opening.confidence === 'number' ? opening.confidence : 0.5;
       const source = opening.source || 'gap_verified';
@@ -104,18 +130,29 @@ export function fromCVTakeoffResult(
           source,
           confidence,
           tagIds: Array.isArray(opening.tag_ids) ? opening.tag_ids : [],
-          verification: opening.verification
-            ? {
-                openingPixelsScore: opening.verification.opening_pixels_score,
-                wallBreakScore: opening.verification.wall_break_score,
-                classificationScore: opening.verification.classification_score,
-                doorFeatureScore: opening.verification.door_feature_score,
-                windowFeatureScore: opening.verification.window_feature_score,
-                tagAlignmentScore: opening.verification.tag_alignment_score,
-                verificationMode: opening.verification.verification_mode,
-                hostGapId: opening.verification.host_gap_id,
-              }
-            : undefined,
+          verification: (
+            opening.verification
+            || typeof opening.host_score === 'number'
+            || Array.isArray(opening.projected_center)
+          ) ? {
+            openingPixelsScore: opening.verification?.opening_pixels_score,
+            wallBreakScore: opening.verification?.wall_break_score,
+            classificationScore: opening.verification?.classification_score,
+            doorFeatureScore: opening.verification?.door_feature_score,
+            windowFeatureScore: opening.verification?.window_feature_score,
+            tagAlignmentScore: opening.verification?.tag_alignment_score,
+            verificationMode: opening.verification?.verification_mode,
+            hostGapId: opening.verification?.host_gap_id,
+            hostScore: opening.host_score,
+            symbolSource: opening.symbol_source,
+            legendSymbolId: opening.legend_symbol_id || undefined,
+            projectedCenter: Array.isArray(opening.projected_center)
+              ? [opening.projected_center[0], opening.projected_center[1]]
+              : undefined,
+            axisSpanPx: typeof opening.axis_span_px === 'number' ? opening.axis_span_px : undefined,
+            normalSpanPx: typeof opening.normal_span_px === 'number' ? opening.normal_span_px : undefined,
+            rotationDeg: typeof opening.rotation_deg === 'number' ? opening.rotation_deg : undefined,
+          } : undefined,
         },
         attrs: {
           ...makeBaseElement(type, `${type}_${opening.id}`).attrs,
@@ -170,6 +207,7 @@ export function fromCVTakeoffResult(
       updatedAt: createdAt,
       revision: 0,
       coordinateSpaceId: cv.metadata.coordinate_space_id,
+      hasManualGeometryEdits: false,
     },
     layers: defaultLayers(),
     elements: elements.filter((element) => SUPPORTED_TYPES.has(element.type)),

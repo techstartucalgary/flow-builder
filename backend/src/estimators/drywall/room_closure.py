@@ -86,6 +86,28 @@ class _EndpointRecord:
     inward: tuple[float, float]
 
 
+@dataclass(frozen=True)
+class _OrthogonalFragment:
+    index: int
+    mask: np.ndarray
+    bbox: tuple[int, int, int, int]
+    area_px: int
+
+
+@dataclass(frozen=True)
+class _FragmentSeam:
+    left_index: int
+    right_index: int
+    orientation: Literal["horizontal", "vertical"]
+    start: tuple[int, int]
+    end: tuple[int, int]
+    gap_px: int
+    span_px: int
+    contact_ratio: float
+    wall_support_ratio: float
+    door_support_ratio: float
+
+
 def _mask_dimensions(snapshot: TakeoffGeometrySnapshot) -> tuple[int, int]:
     width_px = int(snapshot.image_width or 0)
     height_px = int(snapshot.image_height or 0)
@@ -1256,6 +1278,296 @@ def _orthogonal_cell_candidate_masks(
     }
 
 
+def _door_closure_mask(snapshot: TakeoffGeometrySnapshot, shape: tuple[int, int]) -> np.ndarray:
+    mask = np.zeros(shape, dtype=np.uint8)
+    seal_hosted_openings_for_area(snapshot, mask, door_only=True, wall_aware=True)
+    return mask
+
+
+def _sample_local_support(mask: np.ndarray, x: int, y: int, *, x_radius: int, y_radius: int) -> bool:
+    x0 = max(0, x - x_radius)
+    y0 = max(0, y - y_radius)
+    x1 = min(mask.shape[1], x + x_radius + 1)
+    y1 = min(mask.shape[0], y + y_radius + 1)
+    return bool(np.any(mask[y0:y1, x0:x1] > 0))
+
+
+def _line_support_ratio(
+    mask: np.ndarray,
+    start: tuple[int, int],
+    end: tuple[int, int],
+    *,
+    orientation: Literal["horizontal", "vertical"],
+    probe_radius: int,
+) -> float:
+    span = max(abs(end[0] - start[0]), abs(end[1] - start[1]))
+    if span <= 0:
+        return 0.0
+
+    samples = max(7, min(41, int(round(span / 12.0))))
+    hits = 0
+    for index in range(samples):
+        t = (index + 0.5) / samples
+        x = int(round(start[0] + ((end[0] - start[0]) * t)))
+        y = int(round(start[1] + ((end[1] - start[1]) * t)))
+        if orientation == "vertical":
+            if _sample_local_support(mask, x, y, x_radius=probe_radius, y_radius=1):
+                hits += 1
+        else:
+            if _sample_local_support(mask, x, y, x_radius=1, y_radius=probe_radius):
+                hits += 1
+    return float(hits / samples)
+
+
+def _fragment_contact_ratio(
+    left_mask: np.ndarray,
+    right_mask: np.ndarray,
+    start: tuple[int, int],
+    end: tuple[int, int],
+    *,
+    orientation: Literal["horizontal", "vertical"],
+    gap_px: int,
+) -> float:
+    span = max(abs(end[0] - start[0]), abs(end[1] - start[1]))
+    if span <= 0:
+        return 0.0
+
+    samples = max(7, min(41, int(round(span / 12.0))))
+    hits = 0
+    offset = max(1, int(round(gap_px / 2.0)) + 1)
+    probe_radius = max(1, gap_px + 2)
+    for index in range(samples):
+        t = (index + 0.5) / samples
+        x = int(round(start[0] + ((end[0] - start[0]) * t)))
+        y = int(round(start[1] + ((end[1] - start[1]) * t)))
+        if orientation == "vertical":
+            left_hit = _sample_local_support(left_mask, x - offset, y, x_radius=probe_radius, y_radius=1)
+            right_hit = _sample_local_support(right_mask, x + offset, y, x_radius=probe_radius, y_radius=1)
+        else:
+            left_hit = _sample_local_support(left_mask, x, y - offset, x_radius=1, y_radius=probe_radius)
+            right_hit = _sample_local_support(right_mask, x, y + offset, x_radius=1, y_radius=probe_radius)
+        if left_hit and right_hit:
+            hits += 1
+    return float(hits / samples)
+
+
+def _classify_fragment_seam(
+    left: _OrthogonalFragment,
+    right: _OrthogonalFragment,
+    wall_mask: np.ndarray,
+    door_mask: np.ndarray,
+    *,
+    max_gap_px: int,
+    min_shared_span_px: int,
+) -> _FragmentSeam | None:
+    candidate_seams: list[_FragmentSeam] = []
+
+    horizontal_overlap = min(left.bbox[2], right.bbox[2]) - max(left.bbox[0], right.bbox[0])
+    vertical_overlap = min(left.bbox[3], right.bbox[3]) - max(left.bbox[1], right.bbox[1])
+
+    left_to_right_gap = right.bbox[0] - left.bbox[2]
+    right_to_left_gap = left.bbox[0] - right.bbox[2]
+    if 0 <= left_to_right_gap <= max_gap_px and vertical_overlap >= min_shared_span_px:
+        seam_x = int(round((left.bbox[2] + right.bbox[0]) / 2.0))
+        start = (seam_x, max(left.bbox[1], right.bbox[1]) + 1)
+        end = (seam_x, min(left.bbox[3], right.bbox[3]) - 1)
+        candidate_seams.append(_FragmentSeam(
+            left_index=left.index,
+            right_index=right.index,
+            orientation="vertical",
+            start=start,
+            end=end,
+            gap_px=int(left_to_right_gap),
+            span_px=int(vertical_overlap),
+            contact_ratio=_fragment_contact_ratio(left.mask, right.mask, start, end, orientation="vertical", gap_px=left_to_right_gap),
+            wall_support_ratio=_line_support_ratio(wall_mask, start, end, orientation="vertical", probe_radius=max(1, left_to_right_gap + 2)),
+            door_support_ratio=_line_support_ratio(door_mask, start, end, orientation="vertical", probe_radius=max(1, left_to_right_gap + 2)),
+        ))
+    if 0 <= right_to_left_gap <= max_gap_px and vertical_overlap >= min_shared_span_px:
+        seam_x = int(round((right.bbox[2] + left.bbox[0]) / 2.0))
+        start = (seam_x, max(left.bbox[1], right.bbox[1]) + 1)
+        end = (seam_x, min(left.bbox[3], right.bbox[3]) - 1)
+        candidate_seams.append(_FragmentSeam(
+            left_index=left.index,
+            right_index=right.index,
+            orientation="vertical",
+            start=start,
+            end=end,
+            gap_px=int(right_to_left_gap),
+            span_px=int(vertical_overlap),
+            contact_ratio=_fragment_contact_ratio(right.mask, left.mask, start, end, orientation="vertical", gap_px=right_to_left_gap),
+            wall_support_ratio=_line_support_ratio(wall_mask, start, end, orientation="vertical", probe_radius=max(1, right_to_left_gap + 2)),
+            door_support_ratio=_line_support_ratio(door_mask, start, end, orientation="vertical", probe_radius=max(1, right_to_left_gap + 2)),
+        ))
+
+    top_to_bottom_gap = right.bbox[1] - left.bbox[3]
+    bottom_to_top_gap = left.bbox[1] - right.bbox[3]
+    if 0 <= top_to_bottom_gap <= max_gap_px and horizontal_overlap >= min_shared_span_px:
+        seam_y = int(round((left.bbox[3] + right.bbox[1]) / 2.0))
+        start = (max(left.bbox[0], right.bbox[0]) + 1, seam_y)
+        end = (min(left.bbox[2], right.bbox[2]) - 1, seam_y)
+        candidate_seams.append(_FragmentSeam(
+            left_index=left.index,
+            right_index=right.index,
+            orientation="horizontal",
+            start=start,
+            end=end,
+            gap_px=int(top_to_bottom_gap),
+            span_px=int(horizontal_overlap),
+            contact_ratio=_fragment_contact_ratio(left.mask, right.mask, start, end, orientation="horizontal", gap_px=top_to_bottom_gap),
+            wall_support_ratio=_line_support_ratio(wall_mask, start, end, orientation="horizontal", probe_radius=max(1, top_to_bottom_gap + 2)),
+            door_support_ratio=_line_support_ratio(door_mask, start, end, orientation="horizontal", probe_radius=max(1, top_to_bottom_gap + 2)),
+        ))
+    if 0 <= bottom_to_top_gap <= max_gap_px and horizontal_overlap >= min_shared_span_px:
+        seam_y = int(round((right.bbox[3] + left.bbox[1]) / 2.0))
+        start = (max(left.bbox[0], right.bbox[0]) + 1, seam_y)
+        end = (min(left.bbox[2], right.bbox[2]) - 1, seam_y)
+        candidate_seams.append(_FragmentSeam(
+            left_index=left.index,
+            right_index=right.index,
+            orientation="horizontal",
+            start=start,
+            end=end,
+            gap_px=int(bottom_to_top_gap),
+            span_px=int(horizontal_overlap),
+            contact_ratio=_fragment_contact_ratio(right.mask, left.mask, start, end, orientation="horizontal", gap_px=bottom_to_top_gap),
+            wall_support_ratio=_line_support_ratio(wall_mask, start, end, orientation="horizontal", probe_radius=max(1, bottom_to_top_gap + 2)),
+            door_support_ratio=_line_support_ratio(door_mask, start, end, orientation="horizontal", probe_radius=max(1, bottom_to_top_gap + 2)),
+        ))
+
+    if not candidate_seams:
+        return None
+    return max(candidate_seams, key=lambda seam: (seam.contact_ratio, seam.span_px, -seam.gap_px))
+
+
+def _draw_fragment_bridge(mask: np.ndarray, seam: _FragmentSeam) -> None:
+    pad = max(1, seam.gap_px + 1)
+    if seam.orientation == "vertical":
+        x0 = max(0, seam.start[0] - pad)
+        x1 = min(mask.shape[1] - 1, seam.start[0] + pad)
+        y0 = max(0, min(seam.start[1], seam.end[1]))
+        y1 = min(mask.shape[0] - 1, max(seam.start[1], seam.end[1]))
+    else:
+        x0 = max(0, min(seam.start[0], seam.end[0]))
+        x1 = min(mask.shape[1] - 1, max(seam.start[0], seam.end[0]))
+        y0 = max(0, seam.start[1] - pad)
+        y1 = min(mask.shape[0] - 1, seam.start[1] + pad)
+    cv2.rectangle(mask, (x0, y0), (x1, y1), 255, -1)
+
+
+def _largest_subcomponent(mask: np.ndarray) -> np.ndarray:
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats((mask > 0).astype(np.uint8), connectivity=4)
+    if num_labels <= 2:
+        return mask
+
+    best_label = 1
+    best_area = int(stats[1, cv2.CC_STAT_AREA])
+    for label in range(2, num_labels):
+        area = int(stats[label, cv2.CC_STAT_AREA])
+        if area > best_area:
+            best_label = label
+            best_area = area
+    reduced = np.zeros_like(mask, dtype=np.uint8)
+    reduced[labels == best_label] = 255
+    return reduced
+
+
+def _merge_orthogonal_fragments(
+    snapshot: TakeoffGeometrySnapshot,
+    candidate_masks: list[np.ndarray],
+) -> tuple[list[np.ndarray], dict[str, int]]:
+    if len(candidate_masks) <= 1:
+        return candidate_masks, {
+            "fragment_count_before_merge": len(candidate_masks),
+            "merged_room_count": len(candidate_masks),
+            "merge_count": 0,
+            "soft_seam_count": 0,
+            "hard_separator_count": 0,
+        }
+
+    fragments = [
+        _OrthogonalFragment(
+            index=index,
+            mask=candidate_mask,
+            bbox=_mask_bbox(candidate_mask),
+            area_px=int(np.count_nonzero(candidate_mask)),
+        )
+        for index, candidate_mask in enumerate(candidate_masks)
+    ]
+
+    wall_mask = build_wall_mask_from_snapshot(snapshot)
+    door_mask = _door_closure_mask(snapshot, wall_mask.shape)
+    median_thickness = max(2.0, _median_wall_thickness(snapshot) * UPSCALE_FACTOR)
+    max_gap_px = max(4, int(round(median_thickness * 1.75)))
+    min_shared_span_px = max(8, int(round(median_thickness * 1.25)))
+    soft_seam_count = 0
+    hard_separator_count = 0
+    seams: list[_FragmentSeam] = []
+    parent = list(range(len(fragments)))
+
+    def find(index: int) -> int:
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
+
+    def union(left_index: int, right_index: int) -> None:
+        left_root = find(left_index)
+        right_root = find(right_index)
+        if left_root != right_root:
+            parent[right_root] = left_root
+
+    for index, left in enumerate(fragments):
+        for right in fragments[index + 1:]:
+            seam = _classify_fragment_seam(
+                left,
+                right,
+                wall_mask,
+                door_mask,
+                max_gap_px=max_gap_px,
+                min_shared_span_px=min_shared_span_px,
+            )
+            if seam is None or seam.contact_ratio < 0.55:
+                continue
+            if seam.wall_support_ratio >= 0.2 or seam.door_support_ratio >= 0.12:
+                hard_separator_count += 1
+                continue
+            soft_seam_count += 1
+            seams.append(seam)
+            union(left.index, right.index)
+
+    groups: dict[int, list[_OrthogonalFragment]] = {}
+    for fragment in fragments:
+        groups.setdefault(find(fragment.index), []).append(fragment)
+
+    seam_lookup: dict[int, list[_FragmentSeam]] = {}
+    for seam in seams:
+        root = find(seam.left_index)
+        if root == find(seam.right_index):
+            seam_lookup.setdefault(root, []).append(seam)
+
+    close_kernel_size = max(3, min(9, (int(round(median_thickness * 0.45)) | 1)))
+    close_kernel = np.ones((close_kernel_size, close_kernel_size), dtype=np.uint8)
+    merged_masks: list[np.ndarray] = []
+
+    for root, group_fragments in groups.items():
+        merged_mask = np.zeros_like(candidate_masks[0], dtype=np.uint8)
+        for fragment in group_fragments:
+            merged_mask[fragment.mask > 0] = 255
+        for seam in seam_lookup.get(root, []):
+            _draw_fragment_bridge(merged_mask, seam)
+        merged_mask = cv2.morphologyEx(merged_mask, cv2.MORPH_CLOSE, close_kernel)
+        merged_masks.append(_largest_subcomponent(merged_mask))
+
+    return merged_masks, {
+        "fragment_count_before_merge": len(candidate_masks),
+        "merged_room_count": len(merged_masks),
+        "merge_count": max(0, len(candidate_masks) - len(merged_masks)),
+        "soft_seam_count": soft_seam_count,
+        "hard_separator_count": hard_separator_count,
+    }
+
+
 def _component_polygon(
     component_mask: np.ndarray,
     width_px: int,
@@ -1851,6 +2163,7 @@ def _extract_room_regions_orthogonal_pass(
     scale_px_per_ft = _positive_scale(snapshot)
     min_region_area_px = int(round(max(1.0, MIN_ROOM_REGION_SQFT) * ((scale_px_per_ft or 1.0) * UPSCALE_FACTOR) ** 2))
     candidate_masks, total_component_area_px, cell_debug = _orthogonal_cell_candidate_masks(snapshot, min_region_area_px)
+    candidate_masks, merge_debug = _merge_orthogonal_fragments(snapshot, candidate_masks)
     existing_rooms = _extract_existing_room_metadata(existing_document or {})
     used_existing_ids: set[str] = set()
 
@@ -1998,6 +2311,7 @@ def _extract_room_regions_orthogonal_pass(
                 key: value for key, value in rejection_counts.items() if value > 0
             },
             **cell_debug,
+            **merge_debug,
         },
     )
 
@@ -2012,12 +2326,15 @@ def _rooms_overlap_penalty(rooms: list[ExtractedRoom]) -> float:
     return penalty
 
 
-def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, float, float, float]:
+def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, int, float, float, float, float]:
     coverage_ratio = float(result.debug.get("coverage_ratio", 0.0))
     overlap_penalty = _rooms_overlap_penalty(result.rooms)
     dominant_ratio = 0.0
     if result.total_area_sqft > 0 and result.rooms:
         dominant_ratio = max(room.area_sqft for room in result.rooms) / max(result.total_area_sqft, 1e-6)
+    fragment_count_before_merge = int(result.debug.get("fragment_count_before_merge", len(result.rooms)))
+    merged_room_count = int(result.debug.get("merged_room_count", len(result.rooms)))
+    fragmentation_penalty = max(0.0, float(fragment_count_before_merge - merged_room_count))
     hard_failures = sum(
         int(result.debug.get(key, 0))
         for key in (
@@ -2033,6 +2350,7 @@ def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, float, 
         1 if len(result.rooms) > 1 else 0,
         len(result.rooms),
         coverage_ratio,
+        -fragmentation_penalty,
         -overlap_penalty - max(0.0, dominant_ratio - DOMINANT_ROOM_AREA_RATIO),
         -float(hard_failures),
     )

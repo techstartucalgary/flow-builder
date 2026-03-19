@@ -48,10 +48,10 @@ def annotate(
     dpi: int = 200,
     h_kernel: int = 50,
     v_kernel: int = 50,
-    crop_left: float = 0.02,
-    crop_top: float = 0.05,
-    crop_right: float = 0.72,
-    crop_bottom: float = 0.95,
+    crop_left: float = 0.0,
+    crop_top: float = 0.0,
+    crop_right: float = 1.0,
+    crop_bottom: float = 1.0,
     sheet: str | None = None,
     floor_level: str | None = None,
     address: str | None = None,
@@ -212,10 +212,10 @@ def main() -> None:
     parser.add_argument("--dpi", type=int, default=200, help="Render DPI for PDFs")
     parser.add_argument("--h-kernel", type=int, default=50, help="Horizontal morph kernel length")
     parser.add_argument("--v-kernel", type=int, default=50, help="Vertical morph kernel length")
-    parser.add_argument("--crop-left", type=float, default=0.02)
-    parser.add_argument("--crop-top", type=float, default=0.05)
-    parser.add_argument("--crop-right", type=float, default=0.72)
-    parser.add_argument("--crop-bottom", type=float, default=0.95)
+    parser.add_argument("--crop-left", type=float, default=0.0)
+    parser.add_argument("--crop-top", type=float, default=0.0)
+    parser.add_argument("--crop-right", type=float, default=1.0)
+    parser.add_argument("--crop-bottom", type=float, default=1.0)
     parser.add_argument("--sheet", default=None, help="Sheet number metadata")
     parser.add_argument("--floor-level", default=None, help="Floor level metadata")
     parser.add_argument("--address", default=None, help="Address metadata")

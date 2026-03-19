@@ -75,6 +75,14 @@ class TagAnchor(BaseModel):
         default=None,
         description="ID of the paired tag when is_double=True",
     )
+    symbol_source: Literal["generic", "legend_calibrated"] = Field(
+        default="generic",
+        description="Whether this tag was detected with generic heuristics or legend-informed calibration.",
+    )
+    legend_symbol_id: Optional[str] = Field(
+        default=None,
+        description="Optional symbol identifier from a detected legend / schedule.",
+    )
 
 
 class Opening(BaseModel):
@@ -98,7 +106,7 @@ class Opening(BaseModel):
         description="Tag(s) that anchor this opening",
     )
     is_double_door: bool = False
-    source: Literal["gap_verified", "gap_verified_tag_classified", "opening_feature_verified"] = Field(
+    source: Literal["gap_verified", "gap_verified_tag_classified", "opening_feature_verified", "symbol_projected", "fused"] = Field(
         default="gap_verified",
         description="How this opening was verified/classified.",
     )
@@ -111,6 +119,34 @@ class Opening(BaseModel):
     verification: dict[str, float | str | None] = Field(
         default_factory=dict,
         description="Verification and classification details for this opening.",
+    )
+    projected_center: Optional[tuple[float, float]] = Field(
+        default=None,
+        description="Opening center projected onto the host wall centerline.",
+    )
+    axis_span_px: Optional[float] = Field(
+        default=None,
+        description="Opening span measured along the host wall axis in px.",
+    )
+    normal_span_px: Optional[float] = Field(
+        default=None,
+        description="Opening depth measured across wall thickness in px.",
+    )
+    rotation_deg: Optional[float] = Field(
+        default=None,
+        description="Host-wall-aligned rotation for rendering the opening overlay.",
+    )
+    host_score: Optional[float] = Field(
+        default=None,
+        description="Heuristic score for the selected host wall assignment.",
+    )
+    symbol_source: Literal["none", "generic", "legend_calibrated"] = Field(
+        default="none",
+        description="Provenance for the symbol evidence that supported this opening.",
+    )
+    legend_symbol_id: Optional[str] = Field(
+        default=None,
+        description="Optional legend symbol identifier associated with this opening.",
     )
     width_ft: Optional[float] = None
     height_ft: Optional[float] = None
@@ -151,6 +187,10 @@ class DebugInfo(BaseModel):
     total_wall_segments: int = 0
     walls_raw: int = 0
     walls_after_suppression: int = 0
+    plan_region_area_px: int = 0
+    walls_from_thin_branch: int = 0
+    short_segments_promoted: int = 0
+    walls_suppressed_as_text: int = 0
     door_tags: int = 0
     window_tags: int = 0
     door_tags_raw: int = 0

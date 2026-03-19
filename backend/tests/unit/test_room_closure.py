@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import cv2
 import json
+import numpy as np
 import sys
 from pathlib import Path
 import unittest
@@ -11,7 +13,11 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from src.estimators.drywall.annotation_geometry import build_takeoff_geometry_snapshot  # noqa: E402
-from src.estimators.drywall.room_closure import compute_enclosed_regions, extract_room_regions  # noqa: E402
+from src.estimators.drywall.room_closure import (  # noqa: E402
+    _merge_orthogonal_fragments,
+    compute_enclosed_regions,
+    extract_room_regions,
+)
 
 
 def _document(elements: list[dict], scale_px_per_ft: float = 10.0) -> dict:
@@ -44,6 +50,48 @@ def _document(elements: list[dict], scale_px_per_ft: float = 10.0) -> dict:
 
 
 class RoomClosureTests(unittest.TestCase):
+    def test_merge_orthogonal_fragments_merges_soft_vertical_seam(self):
+        document = _document([
+            {"id": "top", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 20, "x2": 260, "y2": 20, "thicknessPx": 6}},
+            {"id": "right", "type": "wall", "geometry": {"kind": "segment", "x1": 260, "y1": 20, "x2": 260, "y2": 180, "thicknessPx": 6}},
+            {"id": "bottom", "type": "wall", "geometry": {"kind": "segment", "x1": 260, "y1": 180, "x2": 20, "y2": 180, "thicknessPx": 6}},
+            {"id": "left", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 180, "x2": 20, "y2": 20, "thicknessPx": 6}},
+        ])
+        snapshot = build_takeoff_geometry_snapshot(document, revision=1, effective_scale_px_per_ft=10.0)
+
+        shape = (document["baseImage"]["heightPx"] * 2, document["baseImage"]["widthPx"] * 2)
+        left_mask = np.zeros(shape, dtype=np.uint8)
+        right_mask = np.zeros(shape, dtype=np.uint8)
+        cv2.rectangle(left_mask, (60, 60), (200, 280), 255, -1)
+        cv2.rectangle(right_mask, (208, 60), (340, 280), 255, -1)
+
+        merged_masks, debug = _merge_orthogonal_fragments(snapshot, [left_mask, right_mask])
+
+        self.assertEqual(len(merged_masks), 1)
+        self.assertGreaterEqual(int(debug.get("soft_seam_count", 0)), 1)
+        self.assertEqual(int(debug.get("hard_separator_count", 0)), 0)
+
+    def test_merge_orthogonal_fragments_keeps_real_wall_separator(self):
+        document = _document([
+            {"id": "top", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 20, "x2": 260, "y2": 20, "thicknessPx": 6}},
+            {"id": "right", "type": "wall", "geometry": {"kind": "segment", "x1": 260, "y1": 20, "x2": 260, "y2": 180, "thicknessPx": 6}},
+            {"id": "bottom", "type": "wall", "geometry": {"kind": "segment", "x1": 260, "y1": 180, "x2": 20, "y2": 180, "thicknessPx": 6}},
+            {"id": "left", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 180, "x2": 20, "y2": 20, "thicknessPx": 6}},
+            {"id": "partition", "type": "wall", "geometry": {"kind": "segment", "x1": 100, "y1": 20, "x2": 100, "y2": 180, "thicknessPx": 6}},
+        ])
+        snapshot = build_takeoff_geometry_snapshot(document, revision=1, effective_scale_px_per_ft=10.0)
+
+        shape = (document["baseImage"]["heightPx"] * 2, document["baseImage"]["widthPx"] * 2)
+        left_mask = np.zeros(shape, dtype=np.uint8)
+        right_mask = np.zeros(shape, dtype=np.uint8)
+        cv2.rectangle(left_mask, (60, 60), (196, 280), 255, -1)
+        cv2.rectangle(right_mask, (204, 60), (340, 280), 255, -1)
+
+        merged_masks, debug = _merge_orthogonal_fragments(snapshot, [left_mask, right_mask])
+
+        self.assertEqual(len(merged_masks), 2)
+        self.assertGreaterEqual(int(debug.get("hard_separator_count", 0)), 1)
+
     def test_hosted_window_does_not_break_closed_shell(self):
         snapshot = build_takeoff_geometry_snapshot(
             _document([
@@ -158,8 +206,11 @@ class RoomClosureTests(unittest.TestCase):
         result = extract_room_regions(snapshot, existing_document=document)
 
         self.assertGreaterEqual(len(result.rooms), 5)
+        self.assertLessEqual(len(result.rooms), 7)
         self.assertGreaterEqual(float(result.debug.get("coverage_ratio", 0.0)), 0.72)
         self.assertEqual(str(result.debug.get("selected_pass")), "orthogonal")
+        self.assertGreater(int(result.debug.get("fragment_count_before_merge", 0)), len(result.rooms))
+        self.assertGreaterEqual(int(result.debug.get("merge_count", 0)), 1)
         dominant_ratio = max((room.area_sqft for room in result.rooms), default=0.0) / max(result.total_area_sqft, 1.0)
         self.assertLessEqual(dominant_ratio, 0.58)
 

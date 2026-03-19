@@ -3,10 +3,12 @@
 import { Fragment } from 'react';
 import { Circle, Line, Rect } from 'react-konva';
 
+import { computeOpeningOverlayGeometry, getHostWallForOpening } from '@/lib/openingGeometry';
 import type { AnnotationElement, EditorViewPreset, OpeningRelations, RoomRelations } from '@/types/annotation';
 
 interface AnnotationRenderLayerProps {
   elements: AnnotationElement[];
+  wallsById: Record<string, AnnotationElement>;
   selectedIds: string[];
   preset: EditorViewPreset;
   issuesByElementId?: Set<string>;
@@ -110,9 +112,11 @@ function styleForPreset(
 
   if (element.type === 'door' || element.type === 'window') {
     const source = relations?.source;
+    const baseStroke = element.type === 'door' ? '#fb7185' : '#60a5fa';
+    const baseFill = element.type === 'door' ? 'rgba(251,113,133,0.22)' : 'rgba(96,165,250,0.22)';
     if (source === 'gap_verified') {
       return {
-        stroke: element.type === 'door' ? '#fb7185' : '#60a5fa',
+        stroke: baseStroke,
         fill: element.type === 'door' ? 'rgba(251,113,133,0.32)' : 'rgba(96,165,250,0.32)',
         strokeWidth: selected ? 3 : 2.5,
         opacity: 1,
@@ -123,8 +127,8 @@ function styleForPreset(
     }
     if (source === 'gap_verified_tag_classified') {
       return {
-        stroke: element.type === 'door' ? '#fda4af' : '#93c5fd',
-        fill: element.type === 'door' ? 'rgba(251,113,133,0.2)' : 'rgba(96,165,250,0.2)',
+        stroke: baseStroke,
+        fill: baseFill,
         strokeWidth: selected ? 3 : 2,
         opacity: 0.95,
         dash: [6, 4],
@@ -133,11 +137,11 @@ function styleForPreset(
       };
     }
     return {
-      stroke: element.type === 'door' ? '#fbbf24' : '#22d3ee',
-      fill: element.type === 'door' ? 'rgba(251,191,36,0.14)' : 'rgba(34,211,238,0.14)',
+      stroke: baseStroke,
+      fill: baseFill,
       strokeWidth: selected ? 3 : 2,
       opacity: 0.92,
-      dash: [10, 6],
+      dash: source === 'symbol_projected' ? [10, 6] : [8, 5],
       shadowColor: hasIssue ? '#f59e0b' : undefined,
       shadowBlur: hasIssue ? 12 : 0,
     };
@@ -155,6 +159,7 @@ function styleForPreset(
 
 export default function AnnotationRenderLayer({
   elements,
+  wallsById,
   selectedIds,
   preset,
   issuesByElementId,
@@ -167,6 +172,15 @@ export default function AnnotationRenderLayer({
       {elements.map((element) => {
         const selected = selectedIds.includes(element.id);
         const hasIssue = issuesByElementId?.has(element.id) ?? false;
+        const openingHostWall = (
+          (element.type === 'door' || element.type === 'window')
+          && element.geometry.kind === 'rect'
+        ) ? getHostWallForOpening(element, wallsById) : null;
+        const openingOverlay = (
+          openingHostWall
+          && (element.type === 'door' || element.type === 'window')
+          && element.geometry.kind === 'rect'
+        ) ? computeOpeningOverlayGeometry(element, openingHostWall) : null;
         const { stroke, fill, strokeWidth, opacity, dash, shadowBlur, shadowColor } = styleForPreset(
           element,
           preset,
@@ -237,11 +251,13 @@ export default function AnnotationRenderLayer({
           <Fragment key={element.id}>
             <Rect
               id={element.id}
-              x={element.geometry.x}
-              y={element.geometry.y}
-              width={element.geometry.width}
-              height={element.geometry.height}
-              rotation={element.geometry.rotationDeg}
+              x={openingOverlay ? openingOverlay.centerX : element.geometry.x}
+              y={openingOverlay ? openingOverlay.centerY : element.geometry.y}
+              width={openingOverlay ? openingOverlay.width : element.geometry.width}
+              height={openingOverlay ? openingOverlay.height : element.geometry.height}
+              rotation={openingOverlay ? openingOverlay.rotationDeg : element.geometry.rotationDeg}
+              offsetX={openingOverlay ? openingOverlay.width / 2 : 0}
+              offsetY={openingOverlay ? openingOverlay.height / 2 : 0}
               stroke={stroke}
               strokeWidth={strokeWidth}
               opacity={opacity}
@@ -249,7 +265,9 @@ export default function AnnotationRenderLayer({
               shadowColor={shadowColor}
               shadowBlur={shadowBlur}
               fill={selected ? 'rgba(56,189,248,0.15)' : fill}
-              cornerRadius={element.type === 'door' || element.type === 'window' ? 4 : 2}
+              cornerRadius={element.type === 'door' || element.type === 'window'
+                ? (openingOverlay ? Math.max(4, Math.min(8, openingOverlay.height / 2)) : 4)
+                : 2}
               draggable={!element.attrs.locked}
               onClick={(e) => onSelect(element.id, Boolean(e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey))}
               onTap={() => onSelect(element.id)}
@@ -258,8 +276,8 @@ export default function AnnotationRenderLayer({
             />
             {selected && (
               <Circle
-                x={element.geometry.x}
-                y={element.geometry.y}
+                x={openingOverlay ? openingOverlay.centerX : element.geometry.x}
+                y={openingOverlay ? openingOverlay.centerY : element.geometry.y}
                 radius={4}
                 fill={stroke}
                 listening={false}

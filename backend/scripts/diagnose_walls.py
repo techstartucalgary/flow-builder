@@ -77,10 +77,10 @@ def diagnose(
     dpi: int = 200,
     h_kernel: int = 50,
     v_kernel: int = 50,
-    crop_left: float = 0.02,
-    crop_top: float = 0.05,
-    crop_right: float = 0.72,
-    crop_bottom: float = 0.95,
+    crop_left: float = 0.0,
+    crop_top: float = 0.0,
+    crop_right: float = 1.0,
+    crop_bottom: float = 1.0,
 ) -> None:
     infile = Path(input_path)
     if not infile.exists():
@@ -289,10 +289,10 @@ def main() -> None:
     parser.add_argument("--dpi", type=int, default=200)
     parser.add_argument("--h-kernel", type=int, default=50)
     parser.add_argument("--v-kernel", type=int, default=50)
-    parser.add_argument("--crop-left", type=float, default=0.02)
-    parser.add_argument("--crop-top", type=float, default=0.05)
-    parser.add_argument("--crop-right", type=float, default=0.72)
-    parser.add_argument("--crop-bottom", type=float, default=0.95)
+    parser.add_argument("--crop-left", type=float, default=0.0)
+    parser.add_argument("--crop-top", type=float, default=0.0)
+    parser.add_argument("--crop-right", type=float, default=1.0)
+    parser.add_argument("--crop-bottom", type=float, default=1.0)
     args = parser.parse_args()
 
     diagnose(

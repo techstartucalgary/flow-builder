@@ -28,6 +28,7 @@ export interface BaseElementAttrs {
   name?: string;
   confidence?: number;
   status: AnnotationStatus;
+  geometryEdited?: boolean;
   locked: boolean;
   visible: boolean;
   notes?: string;
@@ -59,7 +60,7 @@ export interface PolygonGeometry {
 
 export type ElementGeometry = SegmentGeometry | RectGeometry | PolygonGeometry;
 
-export type OpeningSource = 'gap_verified' | 'gap_verified_tag_classified' | 'opening_feature_verified' | 'tag_projected';
+export type OpeningSource = 'gap_verified' | 'gap_verified_tag_classified' | 'opening_feature_verified' | 'symbol_projected' | 'fused' | 'tag_projected';
 
 export interface OpeningVerificationMeta {
   openingPixelsScore?: number;
@@ -70,6 +71,13 @@ export interface OpeningVerificationMeta {
   tagAlignmentScore?: number;
   verificationMode?: 'gap_only' | 'door_symbol_recovered' | 'window_frame_recovered';
   hostGapId?: string;
+  hostScore?: number;
+  symbolSource?: 'none' | 'generic' | 'legend_calibrated';
+  legendSymbolId?: string;
+  projectedCenter?: [number, number];
+  axisSpanPx?: number;
+  normalSpanPx?: number;
+  rotationDeg?: number;
 }
 
 export interface OpeningRelations {
@@ -174,6 +182,7 @@ export interface AnnotationDocumentMeta {
   updatedAt: string;
   revision: number;
   coordinateSpaceId?: string;
+  hasManualGeometryEdits?: boolean;
   roomExtractionVersion?: string;
   roomExtractionRevision?: number;
   roomExtractionStatus?: 'closed' | 'ambiguous' | 'open';
@@ -270,6 +279,8 @@ export interface CVTag {
   center: [number, number];
   radius: number;
   confidence?: number;
+  symbol_source?: 'generic' | 'legend_calibrated';
+  legend_symbol_id?: string | null;
 }
 
 export interface CVCropMetadata {
@@ -290,6 +301,13 @@ export interface CVOpening {
   tag_ids?: string[];
   source?: OpeningSource;
   confidence?: number;
+  projected_center?: [number, number];
+  axis_span_px?: number;
+  normal_span_px?: number;
+  rotation_deg?: number;
+  host_score?: number;
+  symbol_source?: 'none' | 'generic' | 'legend_calibrated';
+  legend_symbol_id?: string | null;
   verification?: {
     opening_pixels_score?: number;
     wall_break_score?: number;
