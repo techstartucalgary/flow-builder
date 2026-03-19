@@ -17,18 +17,26 @@ MIN_INTERIOR_REGION_SQFT = 100.0
 MIN_ROOM_REGION_SQFT = 16.0
 MAX_SEAL_GAP_FT = 25.0
 MAX_TOPOLOGY_REPAIR_FT = 2.5
+MAX_INFERRED_DOOR_GAP_FT = 5.0
+MAX_CORNER_REPAIR_FT = 1.0
 MAX_DOOR_CLOSURE_TANGENT_FT = 5.0
 ROOM_SUPPORT_DISTANCE_PX = 14.0
 ROOM_SUPPORT_MIN_RATIO = 0.8
 POLYGON_SIMPLIFY_RATIO = 0.006
 POLYGON_SIMPLIFY_MIN_PX = 2.0
 ORTHOGONAL_MIN_RATIO = 0.72
+FALLBACK_SUPPORT_MIN_RATIO = 0.6
+FALLBACK_ORTHOGONAL_MIN_RATIO = 0.4
 OVERSIZED_ROOM_AREA_SQFT = 700.0
 OVERSIZED_ROOM_TOTAL_AREA_RATIO = 0.58
 INTERIOR_SPLIT_WALL_MIN_FT = 3.0
 MIN_INTERNAL_BARRIER_COUNT = 2
 MAX_INFERRED_DOOR_HOST_DIST_FT = 3.5
 WATERSHED_MAX_SEGMENTS = 6
+PASS_COVERAGE_TARGET_RATIO = 0.72
+LOW_COVERAGE_AMBIGUOUS_RATIO = 0.45
+DOMINANT_ROOM_AREA_RATIO = 0.58
+ORTHOGONAL_CELL_MIN_SPAN_PX = 3
 FlooringMaterial = Literal["hardwood", "carpet", "tile", "vinyl", "laminate"]
 
 
@@ -381,6 +389,7 @@ def _endpoint_pair_allowed(
     *,
     max_gap_px: float,
     axis_tol_px: float,
+    doorway_dot_min: float = 0.55,
 ) -> bool:
     if left.orientation != right.orientation:
         return False
@@ -399,10 +408,32 @@ def _endpoint_pair_allowed(
             return False
 
     direction = (dx / distance, dy / distance)
-    if (left.inward[0] * direction[0] + left.inward[1] * direction[1]) < 0.55:
+    if (left.inward[0] * direction[0] + left.inward[1] * direction[1]) < doorway_dot_min:
         return False
-    if (right.inward[0] * -direction[0] + right.inward[1] * -direction[1]) < 0.55:
+    if (right.inward[0] * -direction[0] + right.inward[1] * -direction[1]) < doorway_dot_min:
         return False
+    return True
+
+
+def _orthogonal_endpoint_pair_allowed(
+    left: _EndpointRecord,
+    right: _EndpointRecord,
+    *,
+    max_gap_px: float,
+    axis_tol_px: float,
+) -> bool:
+    if left.orientation == right.orientation:
+        return False
+
+    dx = float(right.point[0] - left.point[0])
+    dy = float(right.point[1] - left.point[1])
+    distance = hypot(dx, dy)
+    if distance <= 0 or distance > max_gap_px:
+        return False
+
+    if abs(dx) > axis_tol_px and abs(dy) > axis_tol_px:
+        return False
+
     return True
 
 
@@ -416,6 +447,9 @@ def _seal_open_endpoint_gaps(
     if len(records) < 2:
         return {
             "count": 0,
+            "topology_count": 0,
+            "doorway_gap_count": 0,
+            "corner_count": 0,
             "max_gap_px": 0.0,
             "total_gap_px": 0.0,
         }
@@ -423,35 +457,41 @@ def _seal_open_endpoint_gaps(
     scale = _positive_scale(snapshot)
     max_gap_px_cap = 60.0 if max_topology_repair_ft > MAX_TOPOLOGY_REPAIR_FT else 28.0
     max_gap_px = min(scale * max_topology_repair_ft if scale > 0 else 24.0, max_gap_px_cap)
+    inferred_door_gap_px = min(scale * MAX_INFERRED_DOOR_GAP_FT if scale > 0 else 96.0, 150.0)
+    corner_gap_px = min(scale * MAX_CORNER_REPAIR_FT if scale > 0 else 32.0, 45.0)
     axis_tol_px = max(2.0, min(6.0, scale * 0.2 if scale > 0 else 4.0))
     median_thickness = _median_wall_thickness(snapshot)
     line_thickness = max(1, int(round(median_thickness * UPSCALE_FACTOR)))
+    wide_axis_tol_px = max(axis_tol_px * 4.0, 24.0)
 
-    best_for_index: dict[int, tuple[int, float]] = {}
+    candidate_pairs: list[tuple[float, str, int, int, float]] = []
     for i, left in enumerate(records):
-        candidate_index = -1
-        candidate_distance = float("inf")
-        for j, right in enumerate(records):
-            if i == j:
-                continue
-            if not _endpoint_pair_allowed(left, right, max_gap_px=max_gap_px, axis_tol_px=axis_tol_px):
-                continue
+        for j in range(i + 1, len(records)):
+            right = records[j]
             distance = hypot(right.point[0] - left.point[0], right.point[1] - left.point[1])
-            if distance < candidate_distance:
-                candidate_distance = distance
-                candidate_index = j
-        if candidate_index >= 0:
-            best_for_index[i] = (candidate_index, candidate_distance)
+            if _endpoint_pair_allowed(left, right, max_gap_px=max_gap_px, axis_tol_px=axis_tol_px):
+                candidate_pairs.append((distance, "topology", i, j, distance))
+                continue
+            if _endpoint_pair_allowed(
+                left,
+                right,
+                max_gap_px=inferred_door_gap_px,
+                axis_tol_px=wide_axis_tol_px,
+            ):
+                candidate_pairs.append((distance + 4.0, "doorway", i, j, distance))
+                continue
+            if _orthogonal_endpoint_pair_allowed(left, right, max_gap_px=corner_gap_px, axis_tol_px=wide_axis_tol_px):
+                candidate_pairs.append((distance + 2.0, "corner", i, j, distance))
 
     count = 0
+    topology_count = 0
+    doorway_gap_count = 0
+    corner_count = 0
     total_gap_px = 0.0
     max_repaired_gap_px = 0.0
     used: set[int] = set()
-    for i, (j, distance) in sorted(best_for_index.items(), key=lambda item: item[1][1]):
+    for _, repair_kind, i, j, distance in sorted(candidate_pairs, key=lambda item: item[0]):
         if i in used or j in used:
-            continue
-        reverse = best_for_index.get(j)
-        if not reverse or reverse[0] != i:
             continue
         a = (int(round(records[i].point[0] * UPSCALE_FACTOR)), int(round(records[i].point[1] * UPSCALE_FACTOR)))
         b = (int(round(records[j].point[0] * UPSCALE_FACTOR)), int(round(records[j].point[1] * UPSCALE_FACTOR)))
@@ -459,11 +499,20 @@ def _seal_open_endpoint_gaps(
         used.add(i)
         used.add(j)
         count += 1
+        if repair_kind == "topology":
+            topology_count += 1
+        elif repair_kind == "doorway":
+            doorway_gap_count += 1
+        else:
+            corner_count += 1
         total_gap_px += distance
         max_repaired_gap_px = max(max_repaired_gap_px, distance)
 
     return {
         "count": count,
+        "topology_count": topology_count,
+        "doorway_gap_count": doorway_gap_count,
+        "corner_count": corner_count,
         "max_gap_px": round(max_repaired_gap_px, 4),
         "total_gap_px": round(total_gap_px, 4),
     }
@@ -728,16 +777,45 @@ def _orthogonalize_polygon(points: list[tuple[int, int]]) -> list[tuple[int, int
         dy = next_point[1] - point[1]
         if dx == 0 and dy == 0:
             continue
-        if abs(dx) >= abs(dy) * 2:
+        angle_deg = abs(float(np.degrees(np.arctan2(dy, dx))))
+        axis_delta = min(
+            abs(angle_deg),
+            abs(angle_deg - 90.0),
+            abs(angle_deg - 180.0),
+        )
+        if axis_delta > 12.0:
+            continue
+        if abs(dx) >= abs(dy):
             avg_y = int(round((point[1] + next_point[1]) / 2))
             adjusted[index] = (adjusted[index][0], avg_y)
             adjusted[(index + 1) % len(adjusted)] = (adjusted[(index + 1) % len(adjusted)][0], avg_y)
-        elif abs(dy) >= abs(dx) * 2:
+        else:
             avg_x = int(round((point[0] + next_point[0]) / 2))
             adjusted[index] = (avg_x, adjusted[index][1])
             adjusted[(index + 1) % len(adjusted)] = (avg_x, adjusted[(index + 1) % len(adjusted)][1])
 
     return _dedupe_polygon_points(adjusted)
+
+
+def _remove_small_spikes(
+    points: list[tuple[int, int]],
+    scale_px_per_ft: float,
+) -> list[tuple[int, int]]:
+    if len(points) < 5:
+        return points
+
+    max_spike_px = max(6.0, 0.35 * max(scale_px_per_ft, 1.0))
+    cleaned: list[tuple[int, int]] = []
+    for index, point in enumerate(points):
+        prev_point = points[index - 1]
+        next_point = points[(index + 1) % len(points)]
+        prev_len = hypot(point[0] - prev_point[0], point[1] - prev_point[1])
+        next_len = hypot(next_point[0] - point[0], next_point[1] - point[1])
+        direct_len = hypot(next_point[0] - prev_point[0], next_point[1] - prev_point[1])
+        if prev_len <= max_spike_px and next_len <= max_spike_px and direct_len <= max_spike_px * 2.5:
+            continue
+        cleaned.append(point)
+    return cleaned if len(cleaned) >= 4 else points
 
 
 def _snap_polygon_to_wall_guides(
@@ -945,6 +1023,7 @@ def _clean_polygon(points: list[tuple[int, int]], snapshot: TakeoffGeometrySnaps
     current = _rectify_diagonal_edges(current, snapshot, bbox)
     current = _orthogonalize_polygon(current)
     current = _snap_polygon_to_wall_guides(current, snapshot, bbox)
+    current = _remove_small_spikes(current, _positive_scale(snapshot))
     current = _remove_short_edges(current)
     current = _remove_nearly_collinear(current)
     return _dedupe_polygon_points(current)
@@ -955,6 +1034,226 @@ def _mask_bbox(mask: np.ndarray) -> tuple[int, int, int, int]:
     if len(xs) == 0 or len(ys) == 0:
         return 0, 0, 0, 0
     return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
+
+
+def _all_walls_orthogonal(snapshot: TakeoffGeometrySnapshot) -> bool:
+    return bool(snapshot.walls) and all(wall.orientation in {"horizontal", "vertical"} for wall in snapshot.walls)
+
+
+def _wall_barrier_rect(wall: NormalizedWall, snapshot: TakeoffGeometrySnapshot) -> tuple[int, int, int, int]:
+    thickness = float((wall.visual_thickness or wall.thickness or _median_wall_thickness(snapshot)) * UPSCALE_FACTOR)
+    half_thickness = max(2.0, thickness / 2.0 + 2.0)
+    x1 = float(wall.start[0] * UPSCALE_FACTOR)
+    y1 = float(wall.start[1] * UPSCALE_FACTOR)
+    x2 = float(wall.end[0] * UPSCALE_FACTOR)
+    y2 = float(wall.end[1] * UPSCALE_FACTOR)
+
+    if wall.orientation == "horizontal":
+        return (
+            int(round(min(x1, x2))),
+            int(round(y1 - half_thickness)),
+            int(round(max(x1, x2))),
+            int(round(y1 + half_thickness)),
+        )
+
+    return (
+        int(round(x1 - half_thickness)),
+        int(round(min(y1, y2))),
+        int(round(x1 + half_thickness)),
+        int(round(max(y1, y2))),
+    )
+
+
+def _repair_barrier_rect(
+    left: _EndpointRecord,
+    right: _EndpointRecord,
+    snapshot: TakeoffGeometrySnapshot,
+) -> tuple[int, int, int, int]:
+    thickness = float(_median_wall_thickness(snapshot) * UPSCALE_FACTOR)
+    half_thickness = max(2.0, thickness / 2.0 + 2.0)
+    ax = float(left.point[0] * UPSCALE_FACTOR)
+    ay = float(left.point[1] * UPSCALE_FACTOR)
+    bx = float(right.point[0] * UPSCALE_FACTOR)
+    by = float(right.point[1] * UPSCALE_FACTOR)
+    return (
+        int(round(min(ax, bx) - half_thickness)),
+        int(round(min(ay, by) - half_thickness)),
+        int(round(max(ax, bx) + half_thickness)),
+        int(round(max(ay, by) + half_thickness)),
+    )
+
+
+def _collect_barrier_rects(snapshot: TakeoffGeometrySnapshot) -> tuple[list[tuple[int, int, int, int]], dict[str, int]]:
+    if not _all_walls_orthogonal(snapshot):
+        return [], {"wall_rect_count": 0, "repair_rect_count": 0}
+
+    rects = [_wall_barrier_rect(wall, snapshot) for wall in snapshot.walls]
+    records = _endpoint_records(snapshot)
+    scale = _positive_scale(snapshot)
+    inferred_door_gap_px = min(scale * MAX_INFERRED_DOOR_GAP_FT if scale > 0 else 96.0, 150.0)
+    corner_gap_px = min(scale * MAX_CORNER_REPAIR_FT if scale > 0 else 32.0, 45.0)
+    axis_tol_px = max(8.0, min(24.0, scale * 0.5 if scale > 0 else 16.0))
+
+    repair_pairs: list[tuple[float, int, int]] = []
+    for i, left in enumerate(records):
+        for j in range(i + 1, len(records)):
+            right = records[j]
+            distance = hypot(right.point[0] - left.point[0], right.point[1] - left.point[1])
+            if _endpoint_pair_allowed(left, right, max_gap_px=inferred_door_gap_px, axis_tol_px=axis_tol_px):
+                repair_pairs.append((distance + 2.0, i, j))
+            elif _orthogonal_endpoint_pair_allowed(left, right, max_gap_px=corner_gap_px, axis_tol_px=axis_tol_px):
+                repair_pairs.append((distance, i, j))
+
+    used: set[int] = set()
+    repair_rect_count = 0
+    for _, i, j in sorted(repair_pairs, key=lambda item: item[0]):
+        if i in used or j in used:
+            continue
+        rects.append(_repair_barrier_rect(records[i], records[j], snapshot))
+        used.add(i)
+        used.add(j)
+        repair_rect_count += 1
+
+    return rects, {
+        "wall_rect_count": len(snapshot.walls),
+        "repair_rect_count": repair_rect_count,
+    }
+
+
+def _merge_sorted_coordinates(values: list[int], limit: int) -> list[int]:
+    if not values:
+        return [0, limit]
+
+    tolerance = 1
+    merged: list[int] = []
+    for value in sorted(max(0, min(limit, int(value))) for value in values):
+        if not merged or abs(value - merged[-1]) > tolerance:
+            merged.append(value)
+        else:
+            merged[-1] = int(round((merged[-1] + value) / 2))
+    if merged[0] != 0:
+        merged.insert(0, 0)
+    if merged[-1] != limit:
+        merged.append(limit)
+    return merged
+
+
+def _boundary_is_clear(mask: np.ndarray, start: tuple[int, int], end: tuple[int, int]) -> bool:
+    samples = 5
+    for index in range(samples):
+        t = (index + 0.5) / samples
+        px = int(round(start[0] + ((end[0] - start[0]) * t)))
+        py = int(round(start[1] + ((end[1] - start[1]) * t)))
+        px = max(0, min(mask.shape[1] - 1, px))
+        py = max(0, min(mask.shape[0] - 1, py))
+        if mask[py, px] > 0:
+            return False
+    return True
+
+
+def _orthogonal_cell_candidate_masks(
+    snapshot: TakeoffGeometrySnapshot,
+    min_area_px: int,
+) -> tuple[list[np.ndarray], float, dict[str, int]]:
+    rects, rect_debug = _collect_barrier_rects(snapshot)
+    if not rects:
+        return [], 0.0, rect_debug
+
+    width_px, height_px = _mask_dimensions(snapshot)
+    mask = np.zeros((max(1, height_px * UPSCALE_FACTOR + 4), max(1, width_px * UPSCALE_FACTOR + 4)), dtype=np.uint8)
+    x_values: list[int] = [0, mask.shape[1] - 1]
+    y_values: list[int] = [0, mask.shape[0] - 1]
+    for x0, y0, x1, y1 in rects:
+        rx0 = max(0, min(mask.shape[1] - 1, x0))
+        ry0 = max(0, min(mask.shape[0] - 1, y0))
+        rx1 = max(0, min(mask.shape[1] - 1, x1))
+        ry1 = max(0, min(mask.shape[0] - 1, y1))
+        cv2.rectangle(mask, (rx0, ry0), (rx1, ry1), 255, -1)
+        x_values.extend([rx0, rx1])
+        y_values.extend([ry0, ry1])
+
+    xs = _merge_sorted_coordinates(x_values, mask.shape[1] - 1)
+    ys = _merge_sorted_coordinates(y_values, mask.shape[0] - 1)
+
+    free_cells: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    for x_index in range(len(xs) - 1):
+        for y_index in range(len(ys) - 1):
+            x0, x1 = xs[x_index], xs[x_index + 1]
+            y0, y1 = ys[y_index], ys[y_index + 1]
+            if x1 - x0 < ORTHOGONAL_CELL_MIN_SPAN_PX or y1 - y0 < ORTHOGONAL_CELL_MIN_SPAN_PX:
+                continue
+            cx = int(round((x0 + x1) / 2))
+            cy = int(round((y0 + y1) / 2))
+            if mask[cy, cx] > 0:
+                continue
+            free_cells[(x_index, y_index)] = (x0, y0, x1, y1)
+
+    if not free_cells:
+        return [], 0.0, {
+            **rect_debug,
+            "grid_x_count": len(xs),
+            "grid_y_count": len(ys),
+            "free_cell_count": 0,
+            "interior_component_count": 0,
+        }
+
+    components: list[list[tuple[int, int]]] = []
+    visited: set[tuple[int, int]] = set()
+    for node in free_cells:
+        if node in visited:
+            continue
+        queue = [node]
+        visited.add(node)
+        component: list[tuple[int, int]] = []
+        touches_border = False
+        while queue:
+            x_index, y_index = queue.pop()
+            component.append((x_index, y_index))
+            if x_index == 0 or y_index == 0 or x_index == len(xs) - 2 or y_index == len(ys) - 2:
+                touches_border = True
+
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                neighbor = (x_index + dx, y_index + dy)
+                if neighbor in visited or neighbor not in free_cells:
+                    continue
+                if dx != 0:
+                    boundary_x = xs[max(x_index, neighbor[0])]
+                    start = (boundary_x, max(ys[y_index], ys[neighbor[1]]) + 1)
+                    end = (boundary_x, min(ys[y_index + 1], ys[neighbor[1] + 1]) - 1)
+                else:
+                    boundary_y = ys[max(y_index, neighbor[1])]
+                    start = (max(xs[x_index], xs[neighbor[0]]) + 1, boundary_y)
+                    end = (min(xs[x_index + 1], xs[neighbor[0] + 1]) - 1, boundary_y)
+                if start[0] > end[0] or start[1] > end[1]:
+                    continue
+                if not _boundary_is_clear(mask, start, end):
+                    continue
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+        if not touches_border:
+            components.append(component)
+
+    candidate_masks: list[np.ndarray] = []
+    total_component_area_px = 0.0
+    for component in components:
+        component_mask = np.zeros_like(mask, dtype=np.uint8)
+        component_area_px = 0
+        for x_index, y_index in component:
+            x0, y0, x1, y1 = free_cells[(x_index, y_index)]
+            component_area_px += max(0, x1 - x0) * max(0, y1 - y0)
+            cv2.rectangle(component_mask, (x0, y0), (x1, y1), 255, -1)
+        if component_area_px >= min_area_px:
+            total_component_area_px += float(component_area_px)
+            candidate_masks.append(component_mask)
+
+    return candidate_masks, total_component_area_px, {
+        **rect_debug,
+        "grid_x_count": len(xs),
+        "grid_y_count": len(ys),
+        "free_cell_count": len(free_cells),
+        "interior_component_count": len(components),
+    }
 
 
 def _component_polygon(
@@ -1180,6 +1479,10 @@ def _validate_room_polygon(
     area_px: float,
     scale_px_per_ft: float,
     touches_border: bool,
+    strict: bool = True,
+    force_ambiguous: bool = False,
+    support_min_ratio: float | None = None,
+    orthogonal_min_ratio: float | None = None,
 ) -> tuple[bool, str, dict[str, float | int | str | bool]]:
     if len(polygon) < 4:
         return False, "triangle_or_underfit", {"vertex_count": len(polygon)}
@@ -1191,30 +1494,47 @@ def _validate_room_polygon(
         return False, "self_intersection", {"vertex_count": len(polygon)}
 
     orthogonality_ratio = _polygon_orthogonality_ratio(polygon)
-    if orthogonality_ratio < ORTHOGONAL_MIN_RATIO:
-        return False, "non_orthogonal", {"orthogonality_ratio": round(orthogonality_ratio, 4)}
-
     support_ratio = _boundary_support_ratio(polygon, snapshot)
-    if support_ratio < ROOM_SUPPORT_MIN_RATIO:
-        return False, "weak_wall_support", {"boundary_support_ratio": round(support_ratio, 4)}
 
     aspect_ratio = _polygon_aspect_ratio(polygon)
-    if aspect_ratio < 0.035:
+    if aspect_ratio < 0.03:
         return False, "extremely_thin", {"aspect_ratio": round(aspect_ratio, 4)}
 
     bbox = _polygon_bounds(polygon)
     bbox_area = max(1.0, float((bbox[2] - bbox[0]) * (bbox[3] - bbox[1])))
     fill_ratio = float(area_px / bbox_area)
-    if fill_ratio < 0.16:
+    if fill_ratio < 0.12:
         return False, "spiky_or_underfilled", {"fill_ratio": round(fill_ratio, 4)}
 
+    support_min = support_min_ratio if support_min_ratio is not None else (ROOM_SUPPORT_MIN_RATIO if strict else FALLBACK_SUPPORT_MIN_RATIO)
+    orthogonal_min = orthogonal_min_ratio if orthogonal_min_ratio is not None else (ORTHOGONAL_MIN_RATIO if strict else FALLBACK_ORTHOGONAL_MIN_RATIO)
+    if support_ratio < support_min:
+        return False, "weak_wall_support", {
+            "boundary_support_ratio": round(support_ratio, 4),
+            "support_min_ratio": round(support_min, 4),
+        }
+    if orthogonality_ratio < orthogonal_min:
+        return False, "non_orthogonal", {
+            "orthogonality_ratio": round(orthogonality_ratio, 4),
+            "orthogonality_min_ratio": round(orthogonal_min, 4),
+        }
+
     area_sqft = _region_area_sqft(area_px, scale_px_per_ft)
+    acceptance_reason = "auto"
+    if force_ambiguous:
+        acceptance_reason = "oversized_unsplit"
+    elif not strict and orthogonality_ratio < ORTHOGONAL_MIN_RATIO:
+        acceptance_reason = "irregular_supported"
+    elif not strict and support_ratio < ROOM_SUPPORT_MIN_RATIO:
+        acceptance_reason = "fallback_supported"
     return True, "accepted", {
         "orthogonality_ratio": round(orthogonality_ratio, 4),
         "boundary_support_ratio": round(support_ratio, 4),
         "aspect_ratio": round(aspect_ratio, 4),
         "fill_ratio": round(fill_ratio, 4),
         "area_sqft": round(area_sqft, 4),
+        "accepted_reason": acceptance_reason,
+        "force_ambiguous": force_ambiguous,
     }
 
 
@@ -1341,10 +1661,6 @@ def _extract_room_regions_pass(
                     candidate_masks = watershed_masks
                     used_watershed_split = True
 
-        if attempted_split and len(candidate_masks) == 1 and internal_barrier_count >= MIN_INTERNAL_BARRIER_COUNT:
-            rejection_counts["oversized_unsplit"] += 1
-            continue
-
         for candidate_mask in candidate_masks:
             candidate_bbox_mask = _mask_bbox(candidate_mask)
             polygon = _component_polygon(candidate_mask, width_px, height_px, snapshot)
@@ -1365,6 +1681,8 @@ def _extract_room_regions_pass(
                 area_px=area_px,
                 scale_px_per_ft=scale_px_per_ft,
                 touches_border=touches_border,
+                strict=extraction_pass == "strict",
+                force_ambiguous=attempted_split and len(candidate_masks) == 1 and internal_barrier_count >= MIN_INTERNAL_BARRIER_COUNT,
             )
             if not valid:
                 rejection_counts[reason] = rejection_counts.get(reason, 0) + 1
@@ -1382,8 +1700,14 @@ def _extract_room_regions_pass(
 
             support_ratio = float(metrics.get("boundary_support_ratio", ROOM_SUPPORT_MIN_RATIO))
             orthogonality_ratio = float(metrics.get("orthogonality_ratio", ORTHOGONAL_MIN_RATIO))
+            accepted_reason = str(metrics.get("accepted_reason", "auto"))
             extraction_status: Literal["auto", "edited", "ambiguous"] = "auto"
-            if int(repair_debug["count"]) > 0 or touches_border or used_watershed_split:
+            if (
+                int(repair_debug["count"]) > 0
+                or touches_border
+                or used_watershed_split
+                or accepted_reason != "auto"
+            ):
                 extraction_status = "ambiguous"
             elif matched_attrs.get("status") == "edited":
                 extraction_status = "edited"
@@ -1415,7 +1739,7 @@ def _extract_room_regions_pass(
 
             rooms.append(
                 ExtractedRoom(
-                    id=matched_id or f"room_auto_{len(rooms) + 1}",
+                    id=matched_id or f"room_auto_{len(existing_rooms) + len(rooms) + 1}",
                     polygon=polygon,
                     bbox=bbox,
                     centroid=centroid,
@@ -1438,12 +1762,14 @@ def _extract_room_regions_pass(
                         "closure_status": closure.status,
                         "touches_border": touches_border,
                         "internal_barrier_count": internal_barrier_count,
+                        "accepted_reason": accepted_reason,
                     },
                 )
             )
 
     rooms = _dedupe_rooms(rooms)
     total_area_sqft = sum(room.area_sqft for room in rooms)
+    coverage_ratio = float(total_area_sqft / max(total_interior_area_sqft, total_area_sqft, 1.0))
     ambiguous_room_count = sum(1 for room in rooms if room.extraction_status == "ambiguous")
     if rooms:
         extraction_status = "closed" if ambiguous_room_count == 0 and rejection_counts["oversized_unsplit"] == 0 else "ambiguous"
@@ -1469,13 +1795,20 @@ def _extract_room_regions_pass(
         debug={
             "extraction_pass": extraction_pass,
             "room_count": len(rooms),
+            "accepted_ambiguous_count": ambiguous_room_count,
             "candidate_label_count": candidate_labels,
+            "accepted_area_sqft": round(float(total_area_sqft), 4),
+            "total_interior_area_sqft": round(float(total_interior_area_sqft), 4),
+            "coverage_ratio": round(coverage_ratio, 4),
             "closure_status": closure.status,
             "door_hosted_closure_count": int(door_debug["hosted_door_closures"]),
             "door_inferred_closure_count": int(door_debug["inferred_door_closures"]),
             "door_local_closure_count": int(door_debug["local_door_closures"]),
             "bbox_opening_fill_count": int(door_debug["bbox_opening_fills"]),
             "endpoint_repair_count": int(repair_debug["count"]),
+            "endpoint_topology_repair_count": int(repair_debug["topology_count"]),
+            "endpoint_doorway_gap_count": int(repair_debug["doorway_gap_count"]),
+            "endpoint_corner_repair_count": int(repair_debug["corner_count"]),
             "endpoint_repair_total_gap_px": float(repair_debug["total_gap_px"]),
             "endpoint_repair_max_gap_px": float(repair_debug["max_gap_px"]),
             "morph_kernel_px": kernel_size,
@@ -1493,9 +1826,216 @@ def _extract_room_regions_pass(
             "reject_weak_support_count": rejection_counts["weak_wall_support"],
             "reject_thin_count": rejection_counts["extremely_thin"],
             "reject_spiky_count": rejection_counts["spiky_or_underfilled"],
+            "reject_reason_histogram": {
+                key: value for key, value in rejection_counts.items() if value > 0
+            },
         },
     )
 
+
+def _extract_room_regions_orthogonal_pass(
+    snapshot: TakeoffGeometrySnapshot,
+    *,
+    existing_document: dict[str, Any] | None = None,
+) -> RoomExtractionResult:
+    if not snapshot.walls or not _all_walls_orthogonal(snapshot):
+        return RoomExtractionResult(
+            rooms=[],
+            status="open",
+            confidence="low",
+            total_area_sqft=0.0,
+            debug={"extraction_pass": "orthogonal", "reason": "non_orthogonal_walls"},
+        )
+
+    width_px, height_px = _mask_dimensions(snapshot)
+    scale_px_per_ft = _positive_scale(snapshot)
+    min_region_area_px = int(round(max(1.0, MIN_ROOM_REGION_SQFT) * ((scale_px_per_ft or 1.0) * UPSCALE_FACTOR) ** 2))
+    candidate_masks, total_component_area_px, cell_debug = _orthogonal_cell_candidate_masks(snapshot, min_region_area_px)
+    existing_rooms = _extract_existing_room_metadata(existing_document or {})
+    used_existing_ids: set[str] = set()
+
+    rooms: list[ExtractedRoom] = []
+    rejection_counts = {
+        "too_small": 0,
+        "oversized_unsplit": 0,
+        "triangle_or_underfit": 0,
+        "touches_border": 0,
+        "self_intersection": 0,
+        "non_orthogonal": 0,
+        "weak_wall_support": 0,
+        "extremely_thin": 0,
+        "spiky_or_underfilled": 0,
+    }
+    closure = compute_enclosed_regions(snapshot)
+
+    for index, candidate_mask in enumerate(candidate_masks, start=1):
+        candidate_bbox_mask = _mask_bbox(candidate_mask)
+        polygon = _component_polygon(candidate_mask, width_px, height_px, snapshot)
+        if len(polygon) < 3:
+            rejection_counts["triangle_or_underfit"] += 1
+            continue
+
+        area_px = _shoelace_area(polygon)
+        touches_border = (
+            candidate_bbox_mask[0] <= 1
+            or candidate_bbox_mask[1] <= 1
+            or candidate_bbox_mask[2] >= candidate_mask.shape[1] - 2
+            or candidate_bbox_mask[3] >= candidate_mask.shape[0] - 2
+        )
+        valid, reason, metrics = _validate_room_polygon(
+            polygon,
+            snapshot,
+            area_px=area_px,
+            scale_px_per_ft=scale_px_per_ft,
+            touches_border=touches_border,
+            strict=False,
+            support_min_ratio=0.25,
+        )
+        if not valid:
+            rejection_counts[reason] = rejection_counts.get(reason, 0) + 1
+            continue
+
+        bbox = _polygon_bounds(polygon)
+        centroid = _polygon_centroid(polygon)
+        area_sqft = _region_area_sqft(area_px, scale_px_per_ft) if scale_px_per_ft > 0 else 0.0
+        matched = _match_existing_room(polygon, existing_rooms, used_existing_ids)
+        matched_id = str(matched.get("id")) if matched else ""
+        if matched_id:
+            used_existing_ids.add(matched_id)
+        matched_attrs = matched.get("attrs", {}) if matched else {}
+        matched_relations = matched.get("relations", {}) if matched else {}
+
+        support_ratio = float(metrics.get("boundary_support_ratio", FALLBACK_SUPPORT_MIN_RATIO))
+        orthogonality_ratio = float(metrics.get("orthogonality_ratio", FALLBACK_ORTHOGONAL_MIN_RATIO))
+        accepted_reason = str(metrics.get("accepted_reason", "fallback_supported"))
+
+        extraction_status: Literal["auto", "edited", "ambiguous"] = "ambiguous"
+        if matched_attrs.get("status") == "edited" and accepted_reason == "auto":
+            extraction_status = "edited"
+
+        confidence = min(1.0, (support_ratio * 0.6) + (max(orthogonality_ratio, 0.45) * 0.4) - 0.06)
+        extraction_confidence = max(0.0, round(confidence, 4))
+
+        material = matched_relations.get("material")
+        if material not in {"hardwood", "carpet", "tile", "vinyl", "laminate"}:
+            material = None
+
+        attrs = {
+            "status": matched_attrs.get("status", "auto") if extraction_status == "edited" else "auto",
+            "locked": bool(matched_attrs.get("locked", False)),
+            "visible": bool(matched_attrs.get("visible", True)),
+            "confidence": extraction_confidence,
+        }
+        if matched_attrs.get("notes"):
+            attrs["notes"] = matched_attrs.get("notes")
+        if matched_attrs.get("name"):
+            attrs["name"] = matched_attrs.get("name")
+
+        rooms.append(
+            ExtractedRoom(
+                id=matched_id or f"room_auto_{len(existing_rooms) + len(rooms) + 1}",
+                polygon=polygon,
+                bbox=bbox,
+                centroid=centroid,
+                area_sqft=round(area_sqft, 4),
+                area_px=round(area_px, 4),
+                quantity_required=round(max(area_sqft, 0.0), 4),
+                quantity_unit="sqft",
+                extraction_status=extraction_status,
+                extraction_confidence=extraction_confidence,
+                touches_border=touches_border,
+                material=material,
+                name=str(attrs.get("name")) if attrs.get("name") else None,
+                attrs=attrs,
+                diagnostics={
+                    "component_label": index,
+                    "candidate_component_area_px": int(np.count_nonzero(candidate_mask)),
+                    "boundary_support_ratio": round(support_ratio, 4),
+                    "orthogonality_ratio": round(orthogonality_ratio, 4),
+                    "closure_status": closure.status,
+                    "touches_border": touches_border,
+                    "accepted_reason": accepted_reason,
+                },
+            )
+        )
+
+    rooms = _dedupe_rooms(rooms)
+    total_area_sqft = sum(room.area_sqft for room in rooms)
+    total_component_area_sqft = _region_area_sqft(total_component_area_px, scale_px_per_ft * UPSCALE_FACTOR)
+    coverage_ratio = float(total_area_sqft / max(total_component_area_sqft, total_area_sqft, 1.0))
+    ambiguous_room_count = sum(1 for room in rooms if room.extraction_status == "ambiguous")
+
+    if rooms:
+        extraction_status: Literal["closed", "open", "ambiguous"] = "ambiguous"
+        if coverage_ratio >= PASS_COVERAGE_TARGET_RATIO and ambiguous_room_count <= max(1, len(rooms) // 3):
+            extraction_status = "closed"
+        extraction_confidence: Literal["high", "medium", "low"]
+        if coverage_ratio >= PASS_COVERAGE_TARGET_RATIO and len(rooms) >= 4:
+            extraction_confidence = "high"
+        elif coverage_ratio >= LOW_COVERAGE_AMBIGUOUS_RATIO:
+            extraction_confidence = "medium"
+        else:
+            extraction_confidence = "low"
+    else:
+        extraction_status = "open" if closure.status == "open" else "ambiguous"
+        extraction_confidence = "low"
+
+    return RoomExtractionResult(
+        rooms=rooms,
+        status=extraction_status,
+        confidence=extraction_confidence,
+        total_area_sqft=round(float(total_area_sqft), 4),
+        debug={
+            "extraction_pass": "orthogonal",
+            "room_count": len(rooms),
+            "accepted_ambiguous_count": ambiguous_room_count,
+            "candidate_label_count": len(candidate_masks),
+            "accepted_area_sqft": round(float(total_area_sqft), 4),
+            "total_interior_area_sqft": round(float(total_component_area_sqft), 4),
+            "coverage_ratio": round(coverage_ratio, 4),
+            "closure_status": closure.status,
+            "reject_reason_histogram": {
+                key: value for key, value in rejection_counts.items() if value > 0
+            },
+            **cell_debug,
+        },
+    )
+
+
+def _rooms_overlap_penalty(rooms: list[ExtractedRoom]) -> float:
+    if len(rooms) < 2:
+        return 0.0
+    penalty = 0.0
+    for index, left in enumerate(rooms):
+        for right in rooms[index + 1:]:
+            penalty += _bbox_iou(left.bbox, right.bbox)
+    return penalty
+
+
+def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, float, float, float]:
+    coverage_ratio = float(result.debug.get("coverage_ratio", 0.0))
+    overlap_penalty = _rooms_overlap_penalty(result.rooms)
+    dominant_ratio = 0.0
+    if result.total_area_sqft > 0 and result.rooms:
+        dominant_ratio = max(room.area_sqft for room in result.rooms) / max(result.total_area_sqft, 1e-6)
+    hard_failures = sum(
+        int(result.debug.get(key, 0))
+        for key in (
+            "reject_touches_border_count",
+            "reject_self_intersection_count",
+            "reject_non_orthogonal_count",
+            "reject_weak_support_count",
+            "reject_oversized_unsplit_count",
+        )
+    )
+    return (
+        1 if coverage_ratio >= PASS_COVERAGE_TARGET_RATIO else 0,
+        1 if len(result.rooms) > 1 else 0,
+        len(result.rooms),
+        coverage_ratio,
+        -overlap_penalty - max(0.0, dominant_ratio - DOMINANT_ROOM_AREA_RATIO),
+        -float(hard_failures),
+    )
 
 def extract_room_regions(
     snapshot: TakeoffGeometrySnapshot,
@@ -1510,9 +2050,6 @@ def extract_room_regions(
     strict_result.debug["fallback_attempted"] = False
     strict_result.debug["fallback_used"] = False
 
-    if strict_result.rooms:
-        return strict_result
-
     fallback_result = _extract_room_regions_pass(
         snapshot,
         existing_document=existing_document,
@@ -1522,19 +2059,34 @@ def extract_room_regions(
         heal_iterations=2,
         use_alternate_closure=True,
     )
+    orthogonal_result = _extract_room_regions_orthogonal_pass(
+        snapshot,
+        existing_document=existing_document,
+    )
 
-    strict_result.debug["fallback_attempted"] = True
-    strict_result.debug["fallback_candidate_label_count"] = int(fallback_result.debug.get("candidate_label_count", 0))
-    strict_result.debug["fallback_room_count"] = len(fallback_result.rooms)
+    candidate_results = [strict_result, fallback_result]
+    if orthogonal_result.debug.get("reason") != "non_orthogonal_walls":
+        candidate_results.append(orthogonal_result)
 
-    if fallback_result.rooms:
-        fallback_result.debug["fallback_attempted"] = True
-        fallback_result.debug["fallback_used"] = True
-        fallback_result.debug["strict_candidate_label_count"] = int(strict_result.debug.get("candidate_label_count", 0))
-        fallback_result.debug["strict_room_count"] = len(strict_result.rooms)
-        return fallback_result
+    selected = max(candidate_results, key=_pass_selection_key)
+    selected.debug["selected_pass"] = str(selected.debug.get("extraction_pass", "strict"))
+    selected.debug["strict_room_count"] = len(strict_result.rooms)
+    selected.debug["fallback_room_count"] = len(fallback_result.rooms)
+    selected.debug["strict_candidate_label_count"] = int(strict_result.debug.get("candidate_label_count", 0))
+    selected.debug["fallback_candidate_label_count"] = int(fallback_result.debug.get("candidate_label_count", 0))
+    selected.debug["strict_coverage_ratio"] = float(strict_result.debug.get("coverage_ratio", 0.0))
+    selected.debug["fallback_coverage_ratio"] = float(fallback_result.debug.get("coverage_ratio", 0.0))
+    if orthogonal_result.debug.get("reason") != "non_orthogonal_walls":
+        selected.debug["orthogonal_room_count"] = len(orthogonal_result.rooms)
+        selected.debug["orthogonal_coverage_ratio"] = float(orthogonal_result.debug.get("coverage_ratio", 0.0))
+    selected.debug["fallback_attempted"] = True
+    selected.debug["fallback_used"] = str(selected.debug.get("extraction_pass")) == "fallback"
 
-    return strict_result
+    if selected.rooms and float(selected.debug.get("coverage_ratio", 0.0)) < LOW_COVERAGE_AMBIGUOUS_RATIO:
+        selected.status = "ambiguous"
+        selected.confidence = "low"
+
+    return selected
 
 
 def _compute_mask_enclosed_area_sqft(mask: np.ndarray, scale_px_per_ft: Optional[float]) -> tuple[float, dict[str, float | int]]:

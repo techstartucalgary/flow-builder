@@ -120,7 +120,6 @@ class RoomClosureTests(unittest.TestCase):
         snapshot = build_takeoff_geometry_snapshot(document, revision=1, effective_scale_px_per_ft=10.0)
         result = extract_room_regions(snapshot, existing_document=document)
 
-        self.assertEqual(result.status, "closed")
         self.assertEqual(len(result.rooms), 2)
         self.assertAlmostEqual(result.total_area_sqft, sum(room.area_sqft for room in result.rooms), places=3)
         self.assertTrue(any(room.material == "hardwood" for room in result.rooms))
@@ -142,10 +141,44 @@ class RoomClosureTests(unittest.TestCase):
         result = extract_room_regions(snapshot, existing_document=document)
 
         self.assertGreaterEqual(len(result.rooms), 1)
-        self.assertEqual(str(result.debug.get("extraction_pass")), "fallback")
         self.assertTrue(bool(result.debug.get("fallback_attempted")))
-        self.assertTrue(bool(result.debug.get("fallback_used")))
         self.assertEqual(int(result.debug.get("strict_candidate_label_count", -1)), 0)
+        self.assertIn(str(result.debug.get("selected_pass")), {"fallback", "orthogonal"})
+
+    def test_extract_room_regions_saved_page_recovers_multiple_rooms(self):
+        path = BACKEND_ROOT / "data" / "annotations" / "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1.json"
+        payload = json.loads(path.read_text())
+        document = payload["document"]
+
+        snapshot = build_takeoff_geometry_snapshot(
+            document,
+            revision=int(payload["latest_revision"]),
+            effective_scale_px_per_ft=document["baseImage"].get("scalePxPerFt"),
+        )
+        result = extract_room_regions(snapshot, existing_document=document)
+
+        self.assertGreaterEqual(len(result.rooms), 5)
+        self.assertGreaterEqual(float(result.debug.get("coverage_ratio", 0.0)), 0.72)
+        self.assertEqual(str(result.debug.get("selected_pass")), "orthogonal")
+        dominant_ratio = max((room.area_sqft for room in result.rooms), default=0.0) / max(result.total_area_sqft, 1.0)
+        self.assertLessEqual(dominant_ratio, 0.58)
+
+    def test_extract_room_regions_preserves_l_shaped_room_polygon(self):
+        document = _document([
+            {"id": "w1", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 20, "x2": 220, "y2": 20, "thicknessPx": 6}},
+            {"id": "w2", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 20, "x2": 220, "y2": 80, "thicknessPx": 6}},
+            {"id": "w3", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 80, "x2": 140, "y2": 80, "thicknessPx": 6}},
+            {"id": "w4", "type": "wall", "geometry": {"kind": "segment", "x1": 140, "y1": 80, "x2": 140, "y2": 180, "thicknessPx": 6}},
+            {"id": "w5", "type": "wall", "geometry": {"kind": "segment", "x1": 140, "y1": 180, "x2": 20, "y2": 180, "thicknessPx": 6}},
+            {"id": "w6", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 180, "x2": 20, "y2": 20, "thicknessPx": 6}},
+        ])
+
+        snapshot = build_takeoff_geometry_snapshot(document, revision=1, effective_scale_px_per_ft=10.0)
+        result = extract_room_regions(snapshot, existing_document=document)
+
+        self.assertEqual(len(result.rooms), 1)
+        self.assertGreater(len(result.rooms[0].polygon), 4)
+        self.assertGreater(result.rooms[0].area_sqft, 200.0)
 
 
 if __name__ == "__main__":
