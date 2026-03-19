@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { safeClone } from '@/lib/clone';
@@ -48,6 +48,15 @@ interface FormValues {
   quantityRequired: number;
 }
 
+function FieldSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">{title}</div>
+      {children}
+    </div>
+  );
+}
+
 export default function PropertyPanel({ element, issues, revision, onApply, onFocusElement }: PropertyPanelProps) {
   const { register, handleSubmit, reset } = useForm<FormValues>({
     defaultValues: {
@@ -77,15 +86,9 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
 
   useEffect(() => {
     if (!element) return;
-    const wallRelations =
-      element.type === 'wall'
-        ? (element.relations as WallRelations | undefined)
-        : undefined;
-    const roomRelations =
-      element.type === 'room'
-        ? (element.relations as RoomRelations | undefined)
-        : undefined;
-    const values: FormValues = {
+    const wallRelations = element.type === 'wall' ? (element.relations as WallRelations | undefined) : undefined;
+    const roomRelations = element.type === 'room' ? (element.relations as RoomRelations | undefined) : undefined;
+    reset({
       name: element.attrs.name || '',
       confidence: element.attrs.confidence ?? 1,
       locked: element.attrs.locked,
@@ -107,30 +110,14 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
       material: roomRelations?.material ?? '',
       areaSqFt: Number(roomRelations?.areaSqFt ?? 0),
       quantityRequired: Number(roomRelations?.quantityRequired ?? roomRelations?.areaSqFt ?? 0),
-    };
-    reset(values);
+    });
   }, [element, reset]);
 
-  if (!element) {
-    return (
-      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-gray-400">
-        Select an element to edit properties.
-      </div>
-    );
-  }
-
-  const openingRelations =
-    element.type === 'door' || element.type === 'window'
-      ? (element.relations as OpeningRelations | undefined)
-      : undefined;
-  const wallRelations =
-    element.type === 'wall'
-      ? (element.relations as WallRelations | undefined)
-      : undefined;
-  const roomRelations =
-    element.type === 'room'
-      ? (element.relations as RoomRelations | undefined)
-      : undefined;
+  const wallRelations = element?.type === 'wall' ? (element.relations as WallRelations | undefined) : undefined;
+  const roomRelations = element?.type === 'room' ? (element.relations as RoomRelations | undefined) : undefined;
+  const openingRelations = element?.type === 'door' || element?.type === 'window'
+    ? (element.relations as OpeningRelations | undefined)
+    : undefined;
   const verification = openingRelations?.verification;
 
   function applyImmediate(mutator: (draft: AnnotationElement) => void) {
@@ -140,16 +127,33 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
     onApply(updated);
   }
 
+  function toggleLock() {
+    applyImmediate((updated) => {
+      updated.attrs.locked = !updated.attrs.locked;
+    });
+  }
+
+  function toggleVisibility() {
+    applyImmediate((updated) => {
+      updated.attrs.visible = !updated.attrs.visible;
+    });
+  }
+
+  function markReviewed() {
+    applyImmediate((updated) => {
+      updated.attrs.status = 'edited';
+    });
+  }
+
   function setWallSurfaceClass(nextSurfaceClass: WallSurfaceClass) {
     applyImmediate((updated) => {
       if (updated.type !== 'wall') return;
-      const nextRelations = {
+      updated.relations = {
         ...((updated.relations as WallRelations | undefined) ?? {}),
         surfaceClass: nextSurfaceClass,
-        surfaceClassSource: 'manual' as const,
+        surfaceClassSource: 'manual',
         boardSides: (nextSurfaceClass === 'partition' ? 2 : 1) as 1 | 2,
       };
-      updated.relations = nextRelations;
       updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
     });
   }
@@ -176,39 +180,27 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
     });
   }
 
-  function toggleLock() {
-    applyImmediate((updated) => {
-      updated.attrs.locked = !updated.attrs.locked;
-    });
-  }
-
-  function toggleVisibility() {
-    applyImmediate((updated) => {
-      updated.attrs.visible = !updated.attrs.visible;
-    });
-  }
-
-  function markReviewed() {
-    applyImmediate((updated) => {
-      updated.attrs.status = 'edited';
-    });
-  }
-
   function setRoomMaterial(nextMaterial: FlooringMaterial | null) {
     applyImmediate((updated) => {
       if (updated.type !== 'room') return;
       const nextRelations = { ...((updated.relations as RoomRelations | undefined) ?? {}) };
-      if (nextMaterial) {
-        nextRelations.material = nextMaterial;
-      } else {
-        delete nextRelations.material;
-      }
+      if (nextMaterial) nextRelations.material = nextMaterial;
+      else delete nextRelations.material;
       const areaSqFt = Number(nextRelations.areaSqFt ?? 0);
       nextRelations.quantityRequired = areaSqFt > 0 ? areaSqFt : Number(nextRelations.quantityRequired ?? 0);
       nextRelations.quantityUnit = 'sqft';
       updated.relations = nextRelations;
       updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
     });
+  }
+
+  if (!element) {
+    return (
+      <div className="ws-panel p-3 text-xs text-gray-400">
+        <div className="ws-section-header mb-2">Selection</div>
+        Select an element to edit its most important fields. Use the Issues or Rooms tab if you want task-specific guidance instead.
+      </div>
+    );
   }
 
   return (
@@ -230,34 +222,12 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
           updated.geometry.thicknessPx = Number(values.thicknessPx);
           updated.geometry.rotationDeg = Number(values.rotationDeg);
           if (updated.type === 'wall') {
-            const nextRelations = (
-              updated.relations && typeof updated.relations === 'object'
-                ? { ...(updated.relations as WallRelations) }
-                : {}
-            );
-            const nextSurfaceClass = values.surfaceClass;
-            const nextBoardSides = Number(values.boardSides) === 2 ? 2 : 1;
-            const nextExcludeFromTakeoff = values.excludeFromTakeoff;
-            const shouldPersistManualOverride = (
-              wallRelations?.surfaceClassSource === 'manual'
-              || nextSurfaceClass !== (wallRelations?.surfaceClass ?? 'unknown')
-              || nextBoardSides !== (wallRelations?.boardSides ?? ((wallRelations?.surfaceClass ?? 'unknown') === 'partition' ? 2 : 1))
-              || nextExcludeFromTakeoff !== (wallRelations?.excludeFromTakeoff ?? false)
-            );
-
-            if (shouldPersistManualOverride) {
-              nextRelations.surfaceClass = nextSurfaceClass;
-              nextRelations.surfaceClassSource = 'manual';
-              nextRelations.boardSides = nextBoardSides;
-              nextRelations.excludeFromTakeoff = nextExcludeFromTakeoff;
-              updated.relations = nextRelations;
-            } else {
-              delete nextRelations.surfaceClass;
-              delete nextRelations.surfaceClassSource;
-              delete nextRelations.boardSides;
-              delete nextRelations.excludeFromTakeoff;
-              updated.relations = Object.keys(nextRelations).length ? nextRelations : undefined;
-            }
+            const nextRelations = { ...((updated.relations as WallRelations | undefined) ?? {}) };
+            nextRelations.surfaceClass = values.surfaceClass;
+            nextRelations.surfaceClassSource = 'manual';
+            nextRelations.boardSides = Number(values.boardSides) === 2 ? 2 : 1;
+            nextRelations.excludeFromTakeoff = values.excludeFromTakeoff;
+            updated.relations = nextRelations;
           }
         } else if (updated.geometry.kind === 'rect') {
           updated.geometry.x = Number(values.x);
@@ -268,16 +238,12 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
         }
 
         if (updated.type === 'room') {
-          const nextRelations = (
-            updated.relations && typeof updated.relations === 'object'
-              ? { ...(updated.relations as RoomRelations) }
-              : {}
-          );
-          const computedAreaSqFt = Number(nextRelations.areaSqFt ?? roomRelations?.areaSqFt ?? 0);
+          const nextRelations = { ...((updated.relations as RoomRelations | undefined) ?? {}) };
+          const areaSqFt = Number(nextRelations.areaSqFt ?? roomRelations?.areaSqFt ?? 0);
           if (values.material) nextRelations.material = values.material;
           else delete nextRelations.material;
-          nextRelations.areaSqFt = computedAreaSqFt;
-          nextRelations.quantityRequired = computedAreaSqFt > 0 ? computedAreaSqFt : Number(nextRelations.quantityRequired ?? 0);
+          nextRelations.areaSqFt = areaSqFt;
+          nextRelations.quantityRequired = areaSqFt > 0 ? areaSqFt : Number(nextRelations.quantityRequired ?? 0);
           nextRelations.quantityUnit = 'sqft';
           updated.relations = nextRelations;
         }
@@ -286,148 +252,26 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
       })}
       className="ws-panel p-3 space-y-3 text-xs"
     >
-      <div className="ws-section-header">Selection / Evidence</div>
-      <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-[11px] text-gray-300 space-y-1.5">
-        <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold">Identity</div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="uppercase tracking-wide text-gray-500">Element</span>
-          <span className="font-mono text-gray-200">{element.id}</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="uppercase tracking-wide text-gray-500">Type</span>
-          <span className="text-gray-200">{element.type}</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="uppercase tracking-wide text-gray-500">Revision</span>
-          <span className="text-gray-200">{revision}</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="uppercase tracking-wide text-gray-500">Status</span>
-          <span className="text-gray-200">{element.attrs.status}</span>
-        </div>
-        {wallRelations?.surfaceClass && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="uppercase tracking-wide text-gray-500">Surface</span>
-            <span className="text-gray-200">
-              {wallRelations.surfaceClass}
-              {wallRelations.surfaceClassSource === 'manual' ? ' (manual)' : ' (auto)'}
-            </span>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="ws-section-header">Selection</div>
+          <div className="mt-1 text-sm font-medium text-white">{element.attrs.name || element.id}</div>
+          <div className="mt-1 text-[11px] text-[var(--ws-text-secondary)]">
+            {element.type} · Revision {revision} · {element.attrs.status}
           </div>
-        )}
-        {openingRelations?.source && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="uppercase tracking-wide text-gray-500">Source</span>
-            <span className="text-gray-200">{openingRelations.source}</span>
-          </div>
-        )}
-        {openingRelations?.hostWallId && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="uppercase tracking-wide text-gray-500">Host Wall</span>
-            <span className="font-mono text-gray-200">{openingRelations.hostWallId}</span>
-          </div>
-        )}
-        {element.type === 'room' && (
-          <>
-            <div className="flex items-center justify-between gap-2">
-              <span className="uppercase tracking-wide text-gray-500">Area</span>
-              <span className="text-gray-200">{(roomRelations?.areaSqFt ?? 0).toFixed(2)} sq ft</span>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="uppercase tracking-wide text-gray-500">Material</span>
-              <span className="text-gray-200 capitalize">{roomRelations?.material ?? 'Unassigned'}</span>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="uppercase tracking-wide text-gray-500">Quantity</span>
-              <span className="text-gray-200">
-                {(roomRelations?.quantityRequired ?? 0).toFixed(2)} {roomRelations?.quantityUnit ?? 'sqft'}
-              </span>
-            </div>
-          </>
-        )}
+        </div>
+        {onFocusElement ? (
+          <button
+            type="button"
+            onClick={() => onFocusElement(element.id)}
+            className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition hover:bg-cyan-500/20"
+          >
+            Focus on Canvas
+          </button>
+        ) : null}
       </div>
 
-      {verification && (
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-3 text-[11px] text-cyan-100 space-y-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-200/80">Verification</div>
-          {verification.verificationMode && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Mode</span>
-              <span>{verification.verificationMode}</span>
-            </div>
-          )}
-          {typeof verification.wallBreakScore === 'number' && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Wall break</span>
-              <span>{verification.wallBreakScore.toFixed(2)}</span>
-            </div>
-          )}
-          {typeof verification.openingPixelsScore === 'number' && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Opening pixels</span>
-              <span>{verification.openingPixelsScore.toFixed(2)}</span>
-            </div>
-          )}
-          {typeof verification.classificationScore === 'number' && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Classification</span>
-              <span>{verification.classificationScore.toFixed(2)}</span>
-            </div>
-          )}
-          {typeof verification.doorFeatureScore === 'number' && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Door feature</span>
-              <span>{verification.doorFeatureScore.toFixed(2)}</span>
-            </div>
-          )}
-          {typeof verification.windowFeatureScore === 'number' && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Window feature</span>
-              <span>{verification.windowFeatureScore.toFixed(2)}</span>
-            </div>
-          )}
-          {typeof verification.tagAlignmentScore === 'number' && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Tag alignment</span>
-              <span>{verification.tagAlignmentScore.toFixed(2)}</span>
-            </div>
-          )}
-          {verification.hostGapId && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-cyan-200/70">Host gap</span>
-              <span className="font-mono">{verification.hostGapId}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-1.5">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Issues</div>
-        {issues.length === 0 ? (
-          <div className="text-gray-500">No issues attached to this element.</div>
-        ) : (
-          issues.map((issue) => (
-            <div key={issue.id} className="rounded border border-red-500/20 bg-red-500/5 px-2 py-1">
-              <div className="font-semibold text-red-200">{issue.code}</div>
-              <div className="text-red-300/80">{issue.message}</div>
-            </div>
-          ))
-        )}
-      </div>
-
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Builder Actions</div>
-          {onFocusElement ? (
-            <button
-              type="button"
-              onClick={() => onFocusElement(element.id)}
-              className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-500/20"
-            >
-              Focus on Canvas
-            </button>
-          ) : null}
-        </div>
-
+      <FieldSection title="Quick Actions">
         <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
@@ -528,20 +372,147 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
             </button>
           </>
         ) : null}
-      </div>
+      </FieldSection>
+
+      <FieldSection title="Core Fields">
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-gray-400">
+            Name
+            <input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('name')} />
+          </label>
+          <label className="text-gray-400">
+            Confidence
+            <input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('confidence', { valueAsNumber: true })} />
+          </label>
+        </div>
+
+        {element.type === 'wall' ? (
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-gray-400">
+              Surface Class
+              <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('surfaceClass')}>
+                <option value="perimeter">Perimeter</option>
+                <option value="partition">Partition</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </label>
+            <label className="text-gray-400">
+              Board Sides
+              <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('boardSides', { valueAsNumber: true })}>
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+              </select>
+            </label>
+          </div>
+        ) : null}
+
+        {element.type === 'room' ? (
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-gray-400">
+              Material
+              <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('material')}>
+                <option value="">Unassigned</option>
+                {FLOORING_MATERIALS.map((material) => (
+                  <option key={material} value={material}>{material}</option>
+                ))}
+              </select>
+            </label>
+            <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-gray-200">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Area / Quantity</div>
+              <div className="mt-1">{(roomRelations?.areaSqFt ?? 0).toFixed(2)} sq ft</div>
+              <div className="text-gray-400">{(roomRelations?.quantityRequired ?? 0).toFixed(2)} sqft</div>
+            </div>
+          </div>
+        ) : null}
+
+        {(element.type === 'door' || element.type === 'window') ? (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-gray-200">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Host Wall</div>
+              <div className="mt-1 font-mono">{openingRelations?.hostWallId || 'Unhosted'}</div>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-gray-200">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Source</div>
+              <div className="mt-1">{openingRelations?.source || 'Manual'}</div>
+            </div>
+          </div>
+        ) : null}
+
+        <label className="text-gray-400">
+          Notes
+          <textarea className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" rows={3} {...register('notes')} />
+        </label>
+      </FieldSection>
+
+      <FieldSection title="Issues">
+        {issues.length === 0 ? (
+          <div className="text-gray-500">No issues attached to this element.</div>
+        ) : (
+          <div className="space-y-2">
+            {issues.map((issue) => (
+              <div key={issue.id} className="rounded border border-red-500/20 bg-red-500/5 px-2 py-2">
+                <div className="font-semibold text-red-200">{issue.code}</div>
+                <div className="text-red-300/80">{issue.message}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </FieldSection>
+
+      <FieldSection title="Evidence">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-gray-200">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Element</div>
+            <div className="mt-1 font-mono">{element.id}</div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-gray-200">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Type</div>
+            <div className="mt-1 capitalize">{element.type}</div>
+          </div>
+        </div>
+
+        {verification ? (
+          <div className="grid grid-cols-2 gap-2">
+            {typeof verification.wallBreakScore === 'number' ? (
+              <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-cyan-100">
+                Wall break: {verification.wallBreakScore.toFixed(2)}
+              </div>
+            ) : null}
+            {typeof verification.openingPixelsScore === 'number' ? (
+              <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-cyan-100">
+                Opening pixels: {verification.openingPixelsScore.toFixed(2)}
+              </div>
+            ) : null}
+            {typeof verification.classificationScore === 'number' ? (
+              <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-cyan-100">
+                Classification: {verification.classificationScore.toFixed(2)}
+              </div>
+            ) : null}
+            {verification.verificationMode ? (
+              <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-cyan-100">
+                Mode: {verification.verificationMode}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="text-gray-500">No verification evidence is attached to this element.</div>
+        )}
+      </FieldSection>
 
       <details className="rounded-xl border border-white/10 bg-black/10 px-3 py-3 text-[11px] text-gray-300">
         <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">
-          Advanced Fields
+          Advanced
         </summary>
         <div className="mt-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-gray-400">Name<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('name')} /></label>
-            <label className="text-gray-400">Confidence<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('confidence', { valueAsNumber: true })} /></label>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-gray-400">Visible<input className="ml-2" type="checkbox" {...register('visible')} /></label>
-            <label className="text-gray-400">Locked<input className="ml-2" type="checkbox" {...register('locked')} /></label>
+            <label className="text-gray-400">
+              Visible
+              <input className="ml-2" type="checkbox" {...register('visible')} />
+            </label>
+            <label className="text-gray-400">
+              Locked
+              <input className="ml-2" type="checkbox" {...register('locked')} />
+            </label>
           </div>
 
           {element.geometry.kind === 'rect' ? (
@@ -552,16 +523,8 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
               <label className="text-gray-400">Height<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('height', { valueAsNumber: true })} /></label>
             </div>
           ) : element.geometry.kind === 'polygon' ? (
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Polygon Geometry</div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-gray-400">Vertices</span>
-                <span>{element.geometry.points.length}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-gray-400">Area</span>
-                <span>{(roomRelations?.areaSqFt ?? 0).toFixed(2)} sq ft</span>
-              </div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3 text-gray-200">
+              Polygon geometry uses the extracted room boundary and is not directly editable here.
             </div>
           ) : (
             <>
@@ -571,58 +534,19 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
                 <label className="text-gray-400">X2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x2', { valueAsNumber: true })} /></label>
                 <label className="text-gray-400">Y2<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y2', { valueAsNumber: true })} /></label>
                 <label className="text-gray-400">Thickness<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('thicknessPx', { valueAsNumber: true })} /></label>
+                <label className="text-gray-400">Rotation<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('rotationDeg', { valueAsNumber: true })} /></label>
               </div>
-
-              {element.type === 'wall' ? (
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Manual Wall Overrides</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="text-gray-400">
-                      Surface Class
-                      <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('surfaceClass')}>
-                        <option value="perimeter">Perimeter</option>
-                        <option value="partition">Partition</option>
-                        <option value="unknown">Unknown</option>
-                      </select>
-                    </label>
-                    <label className="text-gray-400">
-                      Board Sides
-                      <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('boardSides', { valueAsNumber: true })}>
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label className="flex items-center justify-between gap-2 text-gray-400">
-                    <span>Exclude From Takeoff</span>
-                    <input type="checkbox" {...register('excludeFromTakeoff')} />
-                  </label>
-                </div>
-              ) : null}
             </>
           )}
 
-          {element.geometry.kind !== 'polygon' ? (
-            <label className="text-gray-400">Rotation<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('rotationDeg', { valueAsNumber: true })} /></label>
+          {element.type === 'wall' ? (
+            <label className="flex items-center justify-between gap-2 text-gray-400">
+              <span>Exclude From Takeoff</span>
+              <input type="checkbox" {...register('excludeFromTakeoff')} />
+            </label>
           ) : null}
-          {element.type === 'room' ? (
-            <div className="grid grid-cols-2 gap-2">
-              <label className="text-gray-400">
-                Material
-                <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('material')}>
-                  <option value="">Unassigned</option>
-                  {FLOORING_MATERIALS.map((material) => (
-                    <option key={material} value={material}>{material}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-gray-400">Area (sq ft)<input readOnly className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('areaSqFt', { valueAsNumber: true })} /></label>
-              <label className="text-gray-400">Quantity (sq ft)<input readOnly className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('quantityRequired', { valueAsNumber: true })} /></label>
-            </div>
-          ) : null}
-          <label className="text-gray-400">Notes<textarea className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" rows={3} {...register('notes')} /></label>
 
-          <button type="submit" className="w-full rounded bg-indigo-500/20 border border-indigo-400/40 py-1.5 text-indigo-200 hover:bg-indigo-500/30">
+          <button type="submit" className="w-full rounded border border-indigo-400/40 bg-indigo-500/20 py-1.5 text-indigo-200 hover:bg-indigo-500/30">
             Apply Advanced Changes
           </button>
         </div>

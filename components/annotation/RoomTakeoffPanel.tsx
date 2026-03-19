@@ -1,5 +1,8 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+
+import { filterRoomSummaries, summarizeRooms, type RoomTakeoffFilter } from '@/lib/roomTakeoffSelectors';
 import type { FlooringMaterial, RoomElement, RoomRelations } from '@/types/annotation';
 
 interface RoomTakeoffPanelProps {
@@ -9,6 +12,11 @@ interface RoomTakeoffPanelProps {
 }
 
 const MATERIALS: FlooringMaterial[] = ['hardwood', 'carpet', 'tile', 'vinyl', 'laminate'];
+const FILTERS: Array<{ id: RoomTakeoffFilter; label: string }> = [
+  { id: 'needs_material', label: 'Needs Material' },
+  { id: 'ambiguous', label: 'Ambiguous' },
+  { id: 'all', label: 'All' },
+];
 
 function roomRelations(room: RoomElement): RoomRelations | undefined {
   return room.relations as RoomRelations | undefined;
@@ -19,6 +27,7 @@ export default function RoomTakeoffPanel({
   selectedRoomId,
   onFocusRoom,
 }: RoomTakeoffPanelProps) {
+  const [filter, setFilter] = useState<RoomTakeoffFilter>('needs_material');
   const totals = MATERIALS.map((material) => {
     const quantity = rooms.reduce((sum, room) => {
       const relations = roomRelations(room);
@@ -29,10 +38,21 @@ export default function RoomTakeoffPanel({
 
   const unassignedCount = rooms.filter((room) => !roomRelations(room)?.material).length;
   const ambiguousCount = rooms.filter((room) => roomRelations(room)?.extractionStatus === 'ambiguous').length;
+  const visibleRooms = useMemo(
+    () => filterRoomSummaries(summarizeRooms(rooms), filter),
+    [filter, rooms],
+  );
 
   return (
     <div className="ws-panel p-3 space-y-3 text-xs">
-      <div className="ws-section-header">Room Flooring</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="ws-section-header">Room Flooring</div>
+        {rooms.length ? (
+          <span className="ws-chip" data-tone={unassignedCount > 0 || ambiguousCount > 0 ? 'warn' : 'good'}>
+            {unassignedCount > 0 ? `${unassignedCount} unassigned` : 'Ready'}
+          </span>
+        ) : null}
+      </div>
       <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 space-y-2 text-gray-300">
         <div className="flex items-center justify-between gap-2">
           <span className="uppercase tracking-wide text-gray-500">Rooms</span>
@@ -48,10 +68,30 @@ export default function RoomTakeoffPanel({
         </div>
       </div>
 
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 space-y-3">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Focus List</div>
+        <div className="inline-flex flex-wrap rounded-xl border border-white/10 bg-black/20 p-1">
+          {FILTERS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setFilter(item.id)}
+              className={`rounded-lg px-2.5 py-1.5 text-xs transition ${
+                filter === item.id
+                  ? 'border border-cyan-400/60 bg-cyan-500/15 text-cyan-100'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 space-y-2">
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Material Totals</div>
         {totals.length === 0 ? (
-          <div className="text-gray-500">Assign flooring to rooms to populate takeoff quantities.</div>
+          <div className="text-gray-500">Assign flooring materials to extracted rooms to populate takeoff quantities.</div>
         ) : (
           totals.map((entry) => (
             <div key={entry.material} className="flex items-center justify-between gap-2 text-gray-300">
@@ -65,10 +105,11 @@ export default function RoomTakeoffPanel({
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 space-y-2">
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Rooms</div>
         {rooms.length === 0 ? (
-          <div className="text-gray-500">No extracted rooms yet.</div>
+          <div className="text-gray-500">No extracted rooms yet. Refresh rooms after the walls and openings look correct.</div>
+        ) : visibleRooms.length === 0 ? (
+          <div className="text-gray-500">No rooms match the current filter.</div>
         ) : (
-          rooms.map((room) => {
-            const relations = roomRelations(room);
+          visibleRooms.map(({ room, relations }) => {
             const isSelected = room.id === selectedRoomId;
             return (
               <button

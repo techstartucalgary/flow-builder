@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 805,
+  "latest_revision": 831,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -17,8 +17,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-03-19T08:35:03.585Z",
-      "revision": 805
+      "updatedAt": "2026-03-19T09:17:22.074Z",
+      "revision": 831
     },
     "layers": {
       "wall": true,

@@ -12,13 +12,9 @@ import {
 } from '@/lib/annotationPersistence';
 import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import { openingFitsHostWall } from '@/lib/openingValidation';
+import EditorInspectorRail, { type InspectorTab } from '@/components/annotation/EditorInspectorRail';
+import EditorStatusBanner from '@/components/annotation/EditorStatusBanner';
 import EditorToolbar from '@/components/annotation/EditorToolbar';
-import BulkWallActionsPanel from '@/components/annotation/BulkWallActionsPanel';
-import IssueHighlighter from '@/components/annotation/IssueHighlighter';
-import LayerVisibilityPanel from '@/components/annotation/LayerVisibilityPanel';
-import PropertyPanel from '@/components/annotation/PropertyPanel';
-import RevisionStatusBar from '@/components/annotation/RevisionStatusBar';
-import RoomTakeoffPanel from '@/components/annotation/RoomTakeoffPanel';
 import ViewportStage from '@/components/annotation/ViewportStage';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import type {
@@ -245,6 +241,8 @@ export default function AnnotationEditorShell({
   const [showBaseImage, setShowBaseImage] = useState(true);
   const [tagOverlay, setTagOverlay] = useState<EditorTagOverlayState>({ showTags: false, tags: [] });
   const [pendingRebuild, setPendingRebuild] = useState<CvDocumentSnapshot | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>('selection');
   const [calibrationDraft, setCalibrationDraft] = useState<CalibrationDraft>({
     start: null,
     end: null,
@@ -457,6 +455,7 @@ export default function AnnotationEditorShell({
     setError(null);
     setWarning(null);
     setPendingRebuild(null);
+    setStatusMessage('Loading annotation workspace...');
     setTagOverlay((current) => ({ ...current, tags: [], coordinateSpaceId: undefined }));
 
     try {
@@ -493,6 +492,7 @@ export default function AnnotationEditorShell({
     } catch (err: any) {
       setError(err?.message || 'Failed to load annotation editor');
     } finally {
+      setStatusMessage(null);
       setLoading(false);
     }
   }, [fileMime, fileUrl, initializeDocument, refreshOpeningsFromCV, refreshRoomsFromDocument]);
@@ -500,6 +500,7 @@ export default function AnnotationEditorShell({
   const saveSnapshot = useCallback(async () => {
     if (!document) return;
     setSaveStatus('syncing');
+    setStatusMessage('Saving document changes...');
 
     try {
       const data = await saveAnnotationDocumentWithConflictRetry({
@@ -510,8 +511,10 @@ export default function AnnotationEditorShell({
       });
       markRevision(data.latest_revision);
       setSaveStatus('saved');
+      setStatusMessage(null);
     } catch {
       setSaveStatus('error');
+      setStatusMessage('Save failed. Resolve the editor state before generating.');
     }
   }, [document, markRevision, pageNumber, projectId, setSaveStatus]);
 
@@ -519,6 +522,7 @@ export default function AnnotationEditorShell({
     const element = entities.byId[issue.elementId] || null;
     const preset = presetForIssue(issue, element);
     setViewPreset(preset);
+    setInspectorTab('issues');
     setSelection([issue.elementId]);
     requestFocusOnElements([issue.elementId], element?.type === 'wall' ? 148 : 120);
   }, [entities.byId, requestFocusOnElements, setSelection, setViewPreset]);
@@ -529,6 +533,7 @@ export default function AnnotationEditorShell({
     if (element.type === 'wall') setViewPreset('walls_qa');
     else if (element.type === 'door' || element.type === 'window') setViewPreset('openings_qa');
     else setViewPreset('final');
+    setInspectorTab(element.type === 'room' ? 'rooms' : 'selection');
     setSelection([elementId]);
     requestFocusOnElements([elementId], element.type === 'wall' ? 148 : 120);
   }, [entities.byId, requestFocusOnElements, setSelection, setViewPreset]);
@@ -615,6 +620,11 @@ export default function AnnotationEditorShell({
   }, [calibrationDraft.end, calibrationDraft.error, calibrationDraft.knownDistanceFt, calibrationDraft.start, resetCalibration, toolMode]);
 
   useEffect(() => {
+    if (!selectedElement) return;
+    setInspectorTab(selectedElement.type === 'room' ? 'rooms' : 'selection');
+  }, [selectedElement]);
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const cmd = e.metaKey || e.ctrlKey;
       if (cmd && e.key.toLowerCase() === 'z') {
@@ -656,6 +666,7 @@ export default function AnnotationEditorShell({
       const pending = flushPendingOps();
       if (pending.length) {
         setSaveStatus('syncing');
+        setStatusMessage('Syncing annotation revisions...');
 
         try {
           const data = await postAnnotationRevisionsWithConflictRetry({
@@ -670,9 +681,11 @@ export default function AnnotationEditorShell({
           });
           markRevision(data.latest_revision);
           setSaveStatus('saved');
+          setStatusMessage(null);
         } catch {
           restorePendingOps(pending);
           setSaveStatus('error');
+          setStatusMessage('Revision sync failed.');
         }
         return;
       }
@@ -711,21 +724,31 @@ export default function AnnotationEditorShell({
         onRefreshOpenings={() => {
           if (!document) return;
           setSaveStatus('syncing');
+          setStatusMessage('Refreshing openings from CV...');
           void refreshOpeningsFromCV(document, document.meta.revision)
-            .then((result) => setSaveStatus(result.blocked ? 'unsaved' : 'saved'))
+            .then((result) => {
+              setSaveStatus(result.blocked ? 'unsaved' : 'saved');
+              setStatusMessage(result.blocked ? 'Refresh paused for coordinate review.' : null);
+            })
             .catch((err: any) => {
               setSaveStatus('error');
               setError(err?.message || 'Failed to refresh openings');
+              setStatusMessage('Opening refresh failed.');
             });
         }}
         onRefreshRooms={() => {
           if (!document) return;
           setSaveStatus('syncing');
+          setStatusMessage('Refreshing room extraction...');
           void refreshRoomsFromDocument(document, document.meta.revision)
-            .then(() => setSaveStatus('saved'))
+            .then(() => {
+              setSaveStatus('saved');
+              setStatusMessage(null);
+            })
             .catch((err: any) => {
               setSaveStatus('error');
               setError(err?.message || 'Failed to refresh rooms');
+              setStatusMessage('Room refresh failed.');
             });
         }}
         showBaseImage={showBaseImage}
@@ -738,39 +761,29 @@ export default function AnnotationEditorShell({
         onToggleWallSnap={toggleWallSnap}
       />
 
-      {warning && (
-        <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 flex items-center justify-between gap-3">
-          <span>{warning}</span>
-          <div className="flex items-center gap-2 shrink-0">
-            {pendingRebuild && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSaveStatus('syncing');
-                  void rebuildGeometryFromCV()
-                    .then(() => setSaveStatus('saved'))
-                    .catch((err: any) => {
-                      setSaveStatus('error');
-                      setError(err?.message || 'Failed to rebuild geometry from CV');
-                    });
-                }}
-                className="px-2 py-1 rounded border border-amber-300/50 bg-amber-400/10 text-amber-50 hover:bg-amber-400/20"
-              >
-                Rebuild geometry from current CV
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setWarning(null)}
-              className="px-2 py-1 rounded border border-white/10 text-gray-200 hover:bg-white/5"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {toolMode === 'calibrate' && (
+      <EditorStatusBanner
+        saveStatus={saveStatus}
+        statusMessage={statusMessage}
+        warning={warning}
+        error={error}
+        pendingRebuild={Boolean(pendingRebuild)}
+        onRebuild={pendingRebuild ? () => {
+          setSaveStatus('syncing');
+          setStatusMessage('Rebuilding geometry from the current CV snapshot...');
+          void rebuildGeometryFromCV()
+            .then(() => {
+              setSaveStatus('saved');
+              setStatusMessage(null);
+            })
+            .catch((err: any) => {
+              setSaveStatus('error');
+              setError(err?.message || 'Failed to rebuild geometry from CV');
+              setStatusMessage('Geometry rebuild failed.');
+            });
+        } : undefined}
+        onDismissWarning={warning ? () => setWarning(null) : undefined}
+      >
+        {toolMode === 'calibrate' ? (
         <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-3 text-xs text-cyan-50">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -846,7 +859,8 @@ export default function AnnotationEditorShell({
             <div className="mt-2 text-[11px] text-amber-100">{calibrationDraft.error}</div>
           ) : null}
         </div>
-      )}
+        ) : null}
+      </EditorStatusBanner>
 
       <div className="flex-1 min-h-0 grid grid-cols-[1fr_320px] gap-2">
         <ViewportStage
@@ -867,28 +881,22 @@ export default function AnnotationEditorShell({
           onCalibrationPoint={registerCalibrationPoint}
         />
 
-        <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
-          <RevisionStatusBar revision={document.meta.revision} status={saveStatus} />
-          <IssueHighlighter issues={document.issues} onSelectIssue={focusIssue} />
-          <BulkWallActionsPanel
-            selectedCount={selectedElements.length}
-            walls={selectedWalls}
-            onApplyMany={applyManyElements}
-          />
-          <PropertyPanel
-            element={selection.length === 1 ? selectedElement : null}
-            issues={selectedElement ? document.issues.filter((issue) => issue.elementId === selectedElement.id) : []}
-            revision={document.meta.revision}
-            onApply={updateElement}
-            onFocusElement={focusElementById}
-          />
-          <RoomTakeoffPanel
-            rooms={roomElements}
-            selectedRoomId={selectedElement?.type === 'room' ? selectedElement.id : null}
-            onFocusRoom={focusElementById}
-          />
-          <LayerVisibilityPanel document={document} onToggle={toggleLayer} />
-        </div>
+        <EditorInspectorRail
+          activeTab={inspectorTab}
+          onTabChange={setInspectorTab}
+          document={document}
+          saveStatus={saveStatus}
+          selectedElement={selection.length === 1 ? selectedElement : null}
+          selectedElements={selectedElements}
+          selectedWalls={selectedWalls}
+          roomElements={roomElements}
+          issuesForSelection={selectedElement ? document.issues.filter((issue) => issue.elementId === selectedElement.id) : []}
+          onSelectIssue={focusIssue}
+          onApplyMany={applyManyElements}
+          onApplyElement={updateElement}
+          onFocusElement={focusElementById}
+          onToggleLayer={toggleLayer}
+        />
       </div>
     </div>
   );
