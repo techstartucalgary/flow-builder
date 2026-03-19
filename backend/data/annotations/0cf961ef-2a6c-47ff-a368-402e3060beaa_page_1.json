@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 831,
+  "latest_revision": 837,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -17,8 +17,11 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-03-19T09:17:22.074Z",
-      "revision": 831
+      "updatedAt": "2026-03-19T10:03:23.341Z",
+      "revision": 837,
+      "roomExtractionVersion": "2026-03-room-refresh-v1",
+      "roomExtractionRevision": 835,
+      "roomExtractionStatus": "ambiguous"
     },
     "layers": {
       "wall": true,
@@ -584,6 +587,65 @@
           "y2": 1622.456743159687,
           "thicknessPx": 14,
           "rotationDeg": 0
+        }
+      },
+      {
+        "id": "room_auto_1",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              3239,
+              1421
+            ],
+            [
+              3239,
+              1612
+            ],
+            [
+              3519,
+              1612
+            ],
+            [
+              3519,
+              1421
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.875
+        },
+        "relations": {
+          "areaSqFt": 22.7385,
+          "quantityRequired": 22.7385,
+          "quantityUnit": "sqft",
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.875,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 3239,
+            "minY": 1421,
+            "maxX": 3519,
+            "maxY": 1612
+          },
+          "centroid": [
+            3379,
+            1516.5
+          ],
+          "diagnostics": {
+            "component_label": 2,
+            "component_area_px": 180059,
+            "candidate_component_area_px": 180059,
+            "boundary_support_ratio": 0.925,
+            "orthogonality_ratio": 1,
+            "closure_status": "open",
+            "touches_border": false,
+            "internal_barrier_count": 0
+          }
         }
       }
     ],

@@ -174,6 +174,9 @@ export interface AnnotationDocumentMeta {
   updatedAt: string;
   revision: number;
   coordinateSpaceId?: string;
+  roomExtractionVersion?: string;
+  roomExtractionRevision?: number;
+  roomExtractionStatus?: 'closed' | 'ambiguous' | 'open';
 }
 
 export interface AnnotationDocument {

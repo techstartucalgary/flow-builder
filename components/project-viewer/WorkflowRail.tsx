@@ -75,6 +75,12 @@ function toneForConfidence(confidence: TakeoffData['takeoffConfidence']): 'good'
   return 'danger';
 }
 
+function summaryTone(takeoff: TakeoffData): 'good' | 'warn' | 'accent' {
+  if (takeoff.roomClosureStatus !== 'closed') return 'warn';
+  if (!takeoff.estimateReady) return 'accent';
+  return 'good';
+}
+
 export default function WorkflowRail({
   mode,
   workflow,
@@ -145,6 +151,41 @@ export default function WorkflowRail({
               </div>
             ) : null}
           </div>
+
+          {generated ? (
+            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-white">Pinned Summary</div>
+                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                    Keep the latest floor area and sheet count visible while you work through blockers.
+                  </div>
+                </div>
+                <span className="ws-chip" data-tone={summaryTone(takeoff)}>
+                  {takeoff.roomClosureStatus === 'closed'
+                    ? takeoff.estimateReady ? 'stable' : 'draft'
+                    : 'provisional'}
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-cyan-400/20 bg-black/10 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Floor Area</div>
+                  <div className="mt-2 text-2xl font-semibold text-white">{formatSqFt(takeoff.floorArea)}</div>
+                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                    {takeoff.roomClosureStatus === 'closed' ? 'sq ft' : 'sq ft · provisional'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-cyan-400/20 bg-black/10 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Sheets</div>
+                  <div className="mt-2 text-2xl font-semibold text-white">{takeoff.sheetsRequired}</div>
+                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                    {takeoff.estimateReady ? 'ready estimate' : 'draft estimate'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
             <div className="flex items-center justify-between gap-3">

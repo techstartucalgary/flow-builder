@@ -124,6 +124,15 @@ type TakeoffDeltaSummary = {
   sheetsRequired: number;
 };
 
+type CachedPageTakeoff = {
+  takeoff: TakeoffData;
+  generated: boolean;
+  annotatedImage: string | null;
+  runComparisonMessage: string | null;
+  runComparisonReason: string | null;
+  metricDeltas: TakeoffDeltaSummary | null;
+};
+
 type PageWorkflowStatus = {
   visited: boolean;
   hasScale: boolean;
@@ -225,6 +234,10 @@ export default function ProjectViewerPage() {
   const [referenceFloorAreaSqFt, setReferenceFloorAreaSqFt] = useState<string>('');
   const [pendingReviewAction, setPendingReviewAction] = useState<ProjectWorkflowReviewAction | null>(null);
   const [pageStatuses, setPageStatuses] = useState<Record<number, PageWorkflowStatus>>({});
+  const takeoffCacheKey = useMemo(
+    () => `flowbuildr:takeoff:${projectId}:page:${pageNumber}`,
+    [pageNumber, projectId],
+  );
 
   // Overlay stepper
   const ANALYSIS_STEPS = [
@@ -265,14 +278,40 @@ export default function ProjectViewerPage() {
   }, [editorDocument, scalePxPerFt]);
 
   useEffect(() => {
-    setTakeoff(EMPTY_TAKEOFF);
-    setGenerated(false);
-    setAnnotatedImage(null);
-    setTakeoffError(null);
-    setRunComparisonMessage(null);
-    setRunComparisonReason(null);
-    setMetricDeltas(null);
-  }, [pageNumber, projectId]);
+    if (typeof window === 'undefined') return;
+
+    const raw = window.sessionStorage.getItem(takeoffCacheKey);
+    if (!raw) {
+      setTakeoff(EMPTY_TAKEOFF);
+      setGenerated(false);
+      setAnnotatedImage(null);
+      setTakeoffError(null);
+      setRunComparisonMessage(null);
+      setRunComparisonReason(null);
+      setMetricDeltas(null);
+      return;
+    }
+
+    try {
+      const cached = JSON.parse(raw) as CachedPageTakeoff;
+      setTakeoff(cached.takeoff ?? EMPTY_TAKEOFF);
+      setGenerated(Boolean(cached.generated));
+      setAnnotatedImage(cached.annotatedImage ?? null);
+      setTakeoffError(null);
+      setRunComparisonMessage(cached.runComparisonMessage ?? null);
+      setRunComparisonReason(cached.runComparisonReason ?? null);
+      setMetricDeltas(cached.metricDeltas ?? null);
+    } catch {
+      window.sessionStorage.removeItem(takeoffCacheKey);
+      setTakeoff(EMPTY_TAKEOFF);
+      setGenerated(false);
+      setAnnotatedImage(null);
+      setTakeoffError(null);
+      setRunComparisonMessage(null);
+      setRunComparisonReason(null);
+      setMetricDeltas(null);
+    }
+  }, [takeoffCacheKey]);
 
   useEffect(() => {
     if (project?.file_mime !== 'application/pdf' || !fileUrl) return;
@@ -462,13 +501,24 @@ export default function ProjectViewerPage() {
 
       setTakeoff(parsed);
       setGenerated(true);
-      setWorkspaceMode('review');
       setRunComparisonMessage(comparison.message);
       setRunComparisonReason(comparison.reason);
       setMetricDeltas(comparison.deltas);
 
       // Store annotated image for overlay (no Supabase)
-      setAnnotatedImage(data.annotated_image ? `data:image/png;base64,${data.annotated_image}` : null);
+      const nextAnnotatedImage = data.annotated_image ? `data:image/png;base64,${data.annotated_image}` : null;
+      setAnnotatedImage(nextAnnotatedImage);
+      if (typeof window !== 'undefined') {
+        const cached: CachedPageTakeoff = {
+          takeoff: parsed,
+          generated: true,
+          annotatedImage: nextAnnotatedImage,
+          runComparisonMessage: comparison.message,
+          runComparisonReason: comparison.reason,
+          metricDeltas: comparison.deltas,
+        };
+        window.sessionStorage.setItem(takeoffCacheKey, JSON.stringify(cached));
+      }
     } catch (e: any) {
       setTakeoffError(e.message || 'Generation failed');
     } finally {

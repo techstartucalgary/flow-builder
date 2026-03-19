@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 import unittest
@@ -127,6 +128,24 @@ class RoomClosureTests(unittest.TestCase):
         self.assertGreaterEqual(int(result.debug.get("door_inferred_closure_count", 0)), 1)
         self.assertGreaterEqual(int(result.debug.get("split_wall_regions", 0)), 1)
         self.assertEqual(int(result.debug.get("split_watershed_regions", 0)), 0)
+
+    def test_extract_room_regions_uses_fallback_for_zero_candidate_saved_page(self):
+        path = BACKEND_ROOT / "data" / "annotations" / "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1.json"
+        payload = json.loads(path.read_text())
+        document = payload["document"]
+
+        snapshot = build_takeoff_geometry_snapshot(
+            document,
+            revision=int(payload["latest_revision"]),
+            effective_scale_px_per_ft=document["baseImage"].get("scalePxPerFt"),
+        )
+        result = extract_room_regions(snapshot, existing_document=document)
+
+        self.assertGreaterEqual(len(result.rooms), 1)
+        self.assertEqual(str(result.debug.get("extraction_pass")), "fallback")
+        self.assertTrue(bool(result.debug.get("fallback_attempted")))
+        self.assertTrue(bool(result.debug.get("fallback_used")))
+        self.assertEqual(int(result.debug.get("strict_candidate_label_count", -1)), 0)
 
 
 if __name__ == "__main__":

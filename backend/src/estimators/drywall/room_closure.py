@@ -409,6 +409,8 @@ def _endpoint_pair_allowed(
 def _seal_open_endpoint_gaps(
     snapshot: TakeoffGeometrySnapshot,
     mask: np.ndarray,
+    *,
+    max_topology_repair_ft: float = MAX_TOPOLOGY_REPAIR_FT,
 ) -> dict[str, float | int]:
     records = _endpoint_records(snapshot)
     if len(records) < 2:
@@ -419,7 +421,8 @@ def _seal_open_endpoint_gaps(
         }
 
     scale = _positive_scale(snapshot)
-    max_gap_px = min(scale * MAX_TOPOLOGY_REPAIR_FT if scale > 0 else 24.0, 28.0)
+    max_gap_px_cap = 60.0 if max_topology_repair_ft > MAX_TOPOLOGY_REPAIR_FT else 28.0
+    max_gap_px = min(scale * max_topology_repair_ft if scale > 0 else 24.0, max_gap_px_cap)
     axis_tol_px = max(2.0, min(6.0, scale * 0.2 if scale > 0 else 4.0))
     median_thickness = _median_wall_thickness(snapshot)
     line_thickness = max(1, int(round(median_thickness * UPSCALE_FACTOR)))
@@ -466,19 +469,19 @@ def _seal_open_endpoint_gaps(
     }
 
 
-def _healing_kernel_size(snapshot: TakeoffGeometrySnapshot) -> int:
+def _healing_kernel_size(snapshot: TakeoffGeometrySnapshot, *, multiplier: float = 1.0) -> int:
     scale = _positive_scale(snapshot)
     median_thickness = _median_wall_thickness(snapshot)
     raw = max(3.0, min(9.0, (median_thickness * UPSCALE_FACTOR * 0.4) + (scale * 0.06 if scale > 0 else 0.0)))
-    size = int(round(raw))
+    size = int(round(raw * max(1.0, multiplier)))
     if size % 2 == 0:
         size += 1
-    return max(3, min(9, size))
+    return max(3, min(17, size))
 
 
-def _heal_small_boundary_gaps(mask: np.ndarray, kernel_size: int = AREA_HEAL_KERNEL_SIZE) -> np.ndarray:
+def _heal_small_boundary_gaps(mask: np.ndarray, kernel_size: int = AREA_HEAL_KERNEL_SIZE, *, iterations: int = 1) -> np.ndarray:
     kernel = np.ones((kernel_size, kernel_size), dtype=np.uint8)
-    return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=max(1, iterations))
 
 
 def _distance_point_to_segment(
@@ -1224,10 +1227,15 @@ def _dedupe_rooms(rooms: list[ExtractedRoom]) -> list[ExtractedRoom]:
     return list(sorted(deduped, key=lambda room: room.id))
 
 
-def extract_room_regions(
+def _extract_room_regions_pass(
     snapshot: TakeoffGeometrySnapshot,
     *,
     existing_document: dict[str, Any] | None = None,
+    extraction_pass: Literal["strict", "fallback"] = "strict",
+    max_topology_repair_ft: float = MAX_TOPOLOGY_REPAIR_FT,
+    heal_kernel_multiplier: float = 1.0,
+    heal_iterations: int = 1,
+    use_alternate_closure: bool = False,
 ) -> RoomExtractionResult:
     if not snapshot.walls:
         return RoomExtractionResult(
@@ -1235,16 +1243,27 @@ def extract_room_regions(
             status="open",
             confidence="low",
             total_area_sqft=0.0,
-            debug={"reason": "no_walls"},
+            debug={"reason": "no_walls", "extraction_pass": extraction_pass},
         )
 
     width_px, height_px = _mask_dimensions(snapshot)
     scale_px_per_ft = _positive_scale(snapshot)
     base_mask = build_wall_mask_from_snapshot(snapshot)
     door_debug = seal_hosted_openings_for_area(snapshot, base_mask, door_only=True, wall_aware=True)
-    repair_debug = _seal_open_endpoint_gaps(snapshot, base_mask)
-    kernel_size = _healing_kernel_size(snapshot)
-    healed_mask = _heal_small_boundary_gaps(base_mask, kernel_size)
+    repair_debug = _seal_open_endpoint_gaps(snapshot, base_mask, max_topology_repair_ft=max_topology_repair_ft)
+    kernel_size = _healing_kernel_size(snapshot, multiplier=heal_kernel_multiplier)
+    if use_alternate_closure:
+        effective_scale = (scale_px_per_ft or 0.0) * UPSCALE_FACTOR
+        target_gap_px = max(kernel_size * 2, int(round(max(1.0, effective_scale * 1.6))))
+        dilate_kernel_size = max(kernel_size, min(41, int(round(max(kernel_size, effective_scale * 0.42))) | 1))
+        dilate_kernel = np.ones((dilate_kernel_size, dilate_kernel_size), dtype=np.uint8)
+        morph_iterations = max(2, int(round(target_gap_px / max(1, dilate_kernel_size))))
+        dilated = cv2.dilate(base_mask, dilate_kernel, iterations=morph_iterations)
+        healed_mask = cv2.erode(dilated, dilate_kernel, iterations=morph_iterations)
+        kernel_size = dilate_kernel_size
+        heal_iterations = morph_iterations
+    else:
+        healed_mask = _heal_small_boundary_gaps(base_mask, kernel_size, iterations=heal_iterations)
 
     padded = np.zeros((healed_mask.shape[0] + 2, healed_mask.shape[1] + 2), dtype=np.uint8)
     padded[1:-1, 1:-1] = healed_mask
@@ -1448,6 +1467,7 @@ def extract_room_regions(
         confidence=extraction_confidence,
         total_area_sqft=round(float(total_area_sqft), 4),
         debug={
+            "extraction_pass": extraction_pass,
             "room_count": len(rooms),
             "candidate_label_count": candidate_labels,
             "closure_status": closure.status,
@@ -1459,6 +1479,7 @@ def extract_room_regions(
             "endpoint_repair_total_gap_px": float(repair_debug["total_gap_px"]),
             "endpoint_repair_max_gap_px": float(repair_debug["max_gap_px"]),
             "morph_kernel_px": kernel_size,
+            "morph_iterations": heal_iterations,
             "split_wall_regions": split_wall_regions,
             "split_wall_barriers": split_wall_barriers,
             "split_door_barriers": split_door_barriers,
@@ -1474,6 +1495,46 @@ def extract_room_regions(
             "reject_spiky_count": rejection_counts["spiky_or_underfilled"],
         },
     )
+
+
+def extract_room_regions(
+    snapshot: TakeoffGeometrySnapshot,
+    *,
+    existing_document: dict[str, Any] | None = None,
+) -> RoomExtractionResult:
+    strict_result = _extract_room_regions_pass(
+        snapshot,
+        existing_document=existing_document,
+        extraction_pass="strict",
+    )
+    strict_result.debug["fallback_attempted"] = False
+    strict_result.debug["fallback_used"] = False
+
+    if strict_result.rooms:
+        return strict_result
+
+    fallback_result = _extract_room_regions_pass(
+        snapshot,
+        existing_document=existing_document,
+        extraction_pass="fallback",
+        max_topology_repair_ft=max(MAX_TOPOLOGY_REPAIR_FT * 1.6, 4.0),
+        heal_kernel_multiplier=1.25,
+        heal_iterations=2,
+        use_alternate_closure=True,
+    )
+
+    strict_result.debug["fallback_attempted"] = True
+    strict_result.debug["fallback_candidate_label_count"] = int(fallback_result.debug.get("candidate_label_count", 0))
+    strict_result.debug["fallback_room_count"] = len(fallback_result.rooms)
+
+    if fallback_result.rooms:
+        fallback_result.debug["fallback_attempted"] = True
+        fallback_result.debug["fallback_used"] = True
+        fallback_result.debug["strict_candidate_label_count"] = int(strict_result.debug.get("candidate_label_count", 0))
+        fallback_result.debug["strict_room_count"] = len(strict_result.rooms)
+        return fallback_result
+
+    return strict_result
 
 
 def _compute_mask_enclosed_area_sqft(mask: np.ndarray, scale_px_per_ft: Optional[float]) -> tuple[float, dict[str, float | int]]:
