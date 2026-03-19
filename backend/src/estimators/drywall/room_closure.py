@@ -13,6 +13,7 @@ from src.estimators.drywall.annotation_geometry import TakeoffGeometrySnapshot
 UPSCALE_FACTOR = 2
 AREA_HEAL_KERNEL_SIZE = 5
 MIN_INTERIOR_REGION_SQFT = 100.0
+MAX_SEAL_GAP_FT = 25.0
 
 
 @dataclass
@@ -65,8 +66,6 @@ def seal_hosted_openings_for_area(snapshot: TakeoffGeometrySnapshot, mask: np.nd
     max_y = mask.shape[0] - 1
 
     for opening in snapshot.openings:
-        if not opening.matched or not opening.wall_id:
-            continue
         x, y, width, height = opening.bbox
         x0 = max(0, min(max_x, int(round(x * UPSCALE_FACTOR))))
         y0 = max(0, min(max_y, int(round(y * UPSCALE_FACTOR))))
@@ -81,6 +80,49 @@ def summarize_boundary_gaps(snapshot: TakeoffGeometrySnapshot) -> dict[str, floa
         "unclosed_gap_count": len(gap_lengths),
         "largest_boundary_gap_px": max(gap_lengths, default=0.0),
     }
+
+
+def _seal_open_endpoint_gaps(
+    snapshot: TakeoffGeometrySnapshot,
+    mask: np.ndarray,
+) -> int:
+    """Connect nearby open wall endpoints on the mask to seal boundary leaks."""
+    endpoint_degree: dict[tuple[int, int], int] = {}
+    for wall in snapshot.walls:
+        endpoint_degree[wall.start] = endpoint_degree.get(wall.start, 0) + 1
+        endpoint_degree[wall.end] = endpoint_degree.get(wall.end, 0) + 1
+
+    open_points = [pt for pt, deg in endpoint_degree.items() if deg <= 1]
+    if len(open_points) < 2:
+        return 0
+
+    scale = snapshot.scale_px_per_ft or 0.0
+    max_gap_px = scale * MAX_SEAL_GAP_FT if scale > 0 else 300.0
+    thicknesses = [wall.visual_thickness or wall.thickness for wall in snapshot.walls]
+    median_thickness = float(np.median(thicknesses)) if thicknesses else 14.0
+    line_thickness = max(1, int(round(median_thickness * UPSCALE_FACTOR)))
+
+    sealed = 0
+    used: set[int] = set()
+    for i, pt in enumerate(open_points):
+        if i in used:
+            continue
+        best_j, best_dist = -1, float("inf")
+        for j, other in enumerate(open_points):
+            if j == i or j in used:
+                continue
+            d = ((pt[0] - other[0]) ** 2 + (pt[1] - other[1]) ** 2) ** 0.5
+            if d < best_dist:
+                best_dist, best_j = d, j
+        if best_j >= 0 and best_dist <= max_gap_px:
+            a = (int(round(pt[0] * UPSCALE_FACTOR)), int(round(pt[1] * UPSCALE_FACTOR)))
+            b_pt = open_points[best_j]
+            b = (int(round(b_pt[0] * UPSCALE_FACTOR)), int(round(b_pt[1] * UPSCALE_FACTOR)))
+            cv2.line(mask, a, b, 255, line_thickness, cv2.LINE_8)
+            used.add(i)
+            used.add(best_j)
+            sealed += 1
+    return sealed
 
 
 def _heal_small_boundary_gaps(mask: np.ndarray) -> np.ndarray:
@@ -166,13 +208,13 @@ def compute_enclosed_regions(snapshot: TakeoffGeometrySnapshot) -> RoomClosureRe
     largest_boundary_gap_px = float(gap_debug["largest_boundary_gap_px"])
     largest_boundary_gap_ft = largest_boundary_gap_px / snapshot.scale_px_per_ft if snapshot.scale_px_per_ft else 0.0
 
-    ambiguity_probe = int(round(max(4.0, min(10.0, (snapshot.scale_px_per_ft or 0.0) * 0.8))))
-    probe_kernel_size = max(AREA_HEAL_KERNEL_SIZE + 2, (ambiguity_probe * 2) + 1)
-    alternate_mask = cv2.morphologyEx(
-        base_mask,
-        cv2.MORPH_CLOSE,
-        np.ones((probe_kernel_size, probe_kernel_size), dtype=np.uint8),
-    )
+    effective_scale = (snapshot.scale_px_per_ft or 0.0) * UPSCALE_FACTOR
+    gap_close_target_px = int(round(1.0 * effective_scale))
+    iter_kernel_size = max(7, min(41, int(round(effective_scale * 0.4)) | 1))
+    morph_iterations = max(1, gap_close_target_px // iter_kernel_size)
+    iter_kernel = np.ones((iter_kernel_size, iter_kernel_size), dtype=np.uint8)
+    dilated = cv2.dilate(base_mask, iter_kernel, iterations=morph_iterations)
+    alternate_mask = cv2.erode(dilated, iter_kernel, iterations=morph_iterations)
     alternate_area_sqft, alternate_debug = _compute_mask_enclosed_area_sqft(alternate_mask, snapshot.scale_px_per_ft)
 
     status: Literal["closed", "open", "ambiguous"]
@@ -206,7 +248,8 @@ def compute_enclosed_regions(snapshot: TakeoffGeometrySnapshot) -> RoomClosureRe
         "largest_boundary_gap_px": round(float(largest_boundary_gap_px), 4),
         "largest_boundary_gap_ft": round(float(largest_boundary_gap_ft), 4),
         "closure_status": status,
-        "ambiguity_probe_kernel_px": int(probe_kernel_size),
+        "morph_close_kernel_px": int(iter_kernel_size),
+        "morph_close_iterations": int(morph_iterations),
     }
     debug.update({
         "alternate_region_count": int(alternate_debug.get("interior_region_count", 0)),

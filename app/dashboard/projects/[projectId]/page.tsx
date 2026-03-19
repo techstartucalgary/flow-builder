@@ -506,6 +506,9 @@ export default function ProjectViewerPage() {
       const data = await res.json();
       console.log('[takeoff] response:', {
         floor_area_sqft: data.floor_area_sqft,
+        floor_area_method: data.floor_area_method,
+        sealed_endpoint_gap_count: data.area_debug?.sealed_endpoint_gap_count,
+        room_closure_status: data.room_closure_status,
         net_wall_board_sqft: data.net_wall_board_sqft,
         sheets_required: data.sheets_required,
         scale,
