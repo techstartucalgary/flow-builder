@@ -5,6 +5,7 @@ import type {
   AnnotationStorePayload,
   RevisionBatchPayload,
   RevisionsResponse,
+  RoomExtractionResponse,
 } from '@/types/annotation';
 
 const BACKEND_URL = getBackendUrl();
@@ -132,4 +133,31 @@ export async function postAnnotationRevisionsWithConflictRetry({
 
     return response.json() as Promise<RevisionsResponse>;
   });
+}
+
+export async function extractRoomsFromDocument({
+  document,
+  revision,
+  effectiveScalePxPerFt,
+}: {
+  document: AnnotationDocument;
+  revision: number;
+  effectiveScalePxPerFt?: number;
+}): Promise<RoomExtractionResponse> {
+  const res = await fetch(`${BACKEND_URL}/api/annotations/extract-rooms`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      document,
+      revision,
+      effective_scale_px_per_ft: effectiveScalePxPerFt,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || `Failed to extract rooms (${res.status})`);
+  }
+
+  return res.json() as Promise<RoomExtractionResponse>;
 }

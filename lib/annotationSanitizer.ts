@@ -39,7 +39,10 @@ function sanitizeElements(elements: unknown): AnnotationElement[] {
     if (!raw || typeof raw !== 'object') continue;
     const element = raw as AnnotationElement & { type?: unknown; geometry?: { kind?: unknown } };
     if (!isSupportedType(element.type)) continue;
-    if (!element.geometry || (element.geometry.kind !== 'segment' && element.geometry.kind !== 'rect')) continue;
+    if (!element.geometry || (element.geometry.kind !== 'segment' && element.geometry.kind !== 'rect' && element.geometry.kind !== 'polygon')) continue;
+    if (element.type === 'wall' && element.geometry.kind !== 'segment') continue;
+    if ((element.type === 'door' || element.type === 'window') && element.geometry.kind !== 'rect') continue;
+    if (element.type === 'room' && element.geometry.kind !== 'rect' && element.geometry.kind !== 'polygon') continue;
     if (
       (element.type === 'door' || element.type === 'window')
       && element.relations

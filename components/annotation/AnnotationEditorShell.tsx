@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fromCVTakeoffResult } from '@/lib/annotationAdapters';
 import { getBackendUrl } from '@/lib/backendUrl';
 import {
+  extractRoomsFromDocument,
   fetchAnnotationStorePayload,
   postAnnotationRevisionsWithConflictRetry,
   saveAnnotationDocumentWithConflictRetry,
@@ -17,6 +18,7 @@ import IssueHighlighter from '@/components/annotation/IssueHighlighter';
 import LayerVisibilityPanel from '@/components/annotation/LayerVisibilityPanel';
 import PropertyPanel from '@/components/annotation/PropertyPanel';
 import RevisionStatusBar from '@/components/annotation/RevisionStatusBar';
+import RoomTakeoffPanel from '@/components/annotation/RoomTakeoffPanel';
 import ViewportStage from '@/components/annotation/ViewportStage';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import type {
@@ -26,6 +28,7 @@ import type {
   AnnotationRenderHints,
   CVTakeoffResultPayload,
   EditorTagOverlayState,
+  RoomElement,
 } from '@/types/annotation';
 
 const BACKEND_URL = getBackendUrl();
@@ -133,6 +136,28 @@ function hasCoordinateMismatch(existingDoc: AnnotationDocument, cvDoc: Annotatio
     existingDoc.baseImage.widthPx !== cvDoc.baseImage.widthPx ||
     existingDoc.baseImage.heightPx !== cvDoc.baseImage.heightPx
   );
+}
+
+function shouldExtractRooms(doc: AnnotationDocument): boolean {
+  const rooms = doc.elements.filter((element): element is RoomElement => element.type === 'room');
+  return rooms.length === 0 || rooms.some((room) => room.geometry.kind !== 'polygon');
+}
+
+function replaceRooms(document: AnnotationDocument, rooms: RoomElement[]): AnnotationDocument {
+  const existingRoomIds = new Set(document.elements.filter((element) => element.type === 'room').map((element) => element.id));
+  const preservedIssues = document.issues.filter((issue) => !existingRoomIds.has(issue.elementId));
+  return {
+    ...document,
+    elements: [
+      ...document.elements.filter((element) => element.type !== 'room'),
+      ...rooms,
+    ],
+    issues: preservedIssues,
+    meta: {
+      ...document.meta,
+      updatedAt: new Date().toISOString(),
+    },
+  };
 }
 
 function presetForIssue(issue: AnnotationIssue, element: AnnotationElement | null): AnnotationRenderHints['preset'] {
@@ -328,6 +353,47 @@ export default function AnnotationEditorShell({
     );
   }, [calibrationDraft.end, calibrationDraft.start]);
 
+  const roomElements = useMemo(
+    () => document?.elements.filter((element): element is RoomElement => element.type === 'room') ?? [],
+    [document],
+  );
+
+  const refreshRoomsFromDocument = useCallback(async (
+    baseDoc: AnnotationDocument,
+    baseRevision: number,
+    options?: { persist?: boolean; initialize?: boolean },
+  ) => {
+    const extracted = await extractRoomsFromDocument({
+      document: baseDoc,
+      revision: baseRevision,
+      effectiveScalePxPerFt: baseDoc.baseImage.scalePxPerFt,
+    });
+    const nextDoc = sanitizeAnnotationDocument(replaceRooms(baseDoc, extracted.rooms));
+
+    if (options?.initialize !== false) {
+      initializeDocument(nextDoc);
+    }
+
+    if (options?.persist === false) {
+      return nextDoc;
+    }
+
+    const saved = await saveAnnotationDocumentWithConflictRetry({
+      projectId,
+      pageNumber,
+      document: {
+        ...nextDoc,
+        meta: {
+          ...nextDoc.meta,
+          revision: baseRevision,
+        },
+      },
+      onConflictRevision: markRevision,
+    });
+    markRevision(saved.latest_revision);
+    return nextDoc;
+  }, [initializeDocument, markRevision, pageNumber, projectId]);
+
   const refreshOpeningsFromCV = useCallback(async (baseDoc: AnnotationDocument, baseRevision: number) => {
     const cvSnapshot = await fetchCvDocument(projectId, fileUrl, fileMime, pageNumber, scalePxPerFtRef.current);
     const cvDoc = sanitizeAnnotationDocument(cvSnapshot.document);
@@ -374,45 +440,17 @@ export default function AnnotationEditorShell({
     } else {
       setWarning(null);
     }
-    initializeDocument(upgradedDoc);
-
-    const saved = await saveAnnotationDocumentWithConflictRetry({
-      projectId,
-      pageNumber,
-      document: {
-        ...upgradedDoc,
-        meta: {
-          ...upgradedDoc.meta,
-          revision: baseRevision,
-        },
-      },
-      onConflictRevision: markRevision,
-    });
-    markRevision(saved.latest_revision);
+    await refreshRoomsFromDocument(upgradedDoc, baseRevision);
     return { blocked: false as const };
-  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId]);
+  }, [fileMime, fileUrl, markRevision, refreshRoomsFromDocument]);
 
   const rebuildGeometryFromCV = useCallback(async () => {
     if (!pendingRebuild || !document) return;
     const nextDoc = sanitizeAnnotationDocument(pendingRebuild.document);
-    initializeDocument(nextDoc);
-
-    const saved = await saveAnnotationDocumentWithConflictRetry({
-      projectId,
-      pageNumber,
-      document: {
-        ...nextDoc,
-        meta: {
-          ...nextDoc.meta,
-          revision: document.meta.revision,
-        },
-      },
-      onConflictRevision: markRevision,
-    });
-    markRevision(saved.latest_revision);
+    await refreshRoomsFromDocument(nextDoc, document.meta.revision);
     setWarning(null);
     setPendingRebuild(null);
-  }, [document, initializeDocument, markRevision, pageNumber, pendingRebuild, projectId]);
+  }, [document, pendingRebuild, refreshRoomsFromDocument]);
 
   const loadDocument = useCallback(async () => {
     setLoading(true);
@@ -434,6 +472,9 @@ export default function AnnotationEditorShell({
           }
         } else {
           initializeDocument(existingDoc);
+          if (shouldExtractRooms(existingDoc)) {
+            await refreshRoomsFromDocument(existingDoc, existing.latest_revision);
+          }
         }
 
         setLoading(false);
@@ -448,20 +489,13 @@ export default function AnnotationEditorShell({
         coordinateSpaceId: initialSnapshot.raw.metadata.coordinate_space_id,
       }));
       initializeDocument(sanitizedDoc);
-
-      const saved = await saveAnnotationDocumentWithConflictRetry({
-        projectId,
-        pageNumber,
-        document: sanitizedDoc,
-        onConflictRevision: markRevision,
-      });
-      markRevision(saved.latest_revision);
+      await refreshRoomsFromDocument(sanitizedDoc, sanitizedDoc.meta.revision);
     } catch (err: any) {
       setError(err?.message || 'Failed to load annotation editor');
     } finally {
       setLoading(false);
     }
-  }, [fileMime, fileUrl, initializeDocument, markRevision, pageNumber, projectId, refreshOpeningsFromCV]);
+  }, [fileMime, fileUrl, initializeDocument, refreshOpeningsFromCV, refreshRoomsFromDocument]);
 
   const saveSnapshot = useCallback(async () => {
     if (!document) return;
@@ -546,10 +580,29 @@ export default function AnnotationEditorShell({
       return;
     }
 
-    setBaseImageScale(calibrationDistancePx / knownDistanceFt, 'manual', true);
+    const nextScale = calibrationDistancePx / knownDistanceFt;
+    setBaseImageScale(nextScale, 'manual', true);
+    if (document) {
+      const nextDoc: AnnotationDocument = {
+        ...document,
+        baseImage: {
+          ...document.baseImage,
+          scalePxPerFt: nextScale,
+          scaleSource: 'manual',
+          scaleLocked: true,
+        },
+      };
+      setSaveStatus('syncing');
+      void refreshRoomsFromDocument(nextDoc, document.meta.revision)
+        .then(() => setSaveStatus('saved'))
+        .catch((err: any) => {
+          setSaveStatus('error');
+          setError(err?.message || 'Failed to refresh rooms after calibration');
+        });
+    }
     setToolMode('select');
     resetCalibration();
-  }, [calibrationDistancePx, calibrationDraft.end, calibrationDraft.knownDistanceFt, calibrationDraft.start, resetCalibration, setBaseImageScale, setToolMode]);
+  }, [calibrationDistancePx, calibrationDraft.end, calibrationDraft.knownDistanceFt, calibrationDraft.start, document, refreshRoomsFromDocument, resetCalibration, setBaseImageScale, setSaveStatus, setToolMode]);
 
   useEffect(() => {
     void loadDocument();
@@ -663,6 +716,16 @@ export default function AnnotationEditorShell({
             .catch((err: any) => {
               setSaveStatus('error');
               setError(err?.message || 'Failed to refresh openings');
+            });
+        }}
+        onRefreshRooms={() => {
+          if (!document) return;
+          setSaveStatus('syncing');
+          void refreshRoomsFromDocument(document, document.meta.revision)
+            .then(() => setSaveStatus('saved'))
+            .catch((err: any) => {
+              setSaveStatus('error');
+              setError(err?.message || 'Failed to refresh rooms');
             });
         }}
         showBaseImage={showBaseImage}
@@ -818,6 +881,11 @@ export default function AnnotationEditorShell({
             revision={document.meta.revision}
             onApply={updateElement}
             onFocusElement={focusElementById}
+          />
+          <RoomTakeoffPanel
+            rooms={roomElements}
+            selectedRoomId={selectedElement?.type === 'room' ? selectedElement.id : null}
+            onFocusRoom={focusElementById}
           />
           <LayerVisibilityPanel document={document} onToggle={toggleLayer} />
         </div>

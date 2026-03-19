@@ -218,6 +218,8 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
       next.geometry.x2 += dx;
       next.geometry.y1 += dy;
       next.geometry.y2 += dy;
+    } else if (next.geometry.kind === 'polygon') {
+      next.geometry.points = next.geometry.points.map(([x, y]) => [x + dx, y + dy]);
     } else {
       next.geometry.x += dx;
       next.geometry.y += dy;
@@ -287,6 +289,24 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
         ...common,
         type,
         geometry: { kind: 'segment', x1: px, y1: py, x2: px + 120, y2: py, thicknessPx: 14, rotationDeg: 0 },
+      };
+    } else if (type === 'room') {
+      element = {
+        ...common,
+        type,
+        geometry: {
+          kind: 'polygon',
+          points: [
+            [px, py],
+            [px + 120, py],
+            [px + 120, py + 90],
+            [px, py + 90],
+          ],
+        },
+        relations: {
+          extractionStatus: 'edited',
+          extractionConfidence: 1,
+        },
       };
     } else {
       element = {

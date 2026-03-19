@@ -10,7 +10,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from src.estimators.drywall.annotation_geometry import build_takeoff_geometry_snapshot  # noqa: E402
-from src.estimators.drywall.room_closure import compute_enclosed_regions  # noqa: E402
+from src.estimators.drywall.room_closure import compute_enclosed_regions, extract_room_regions  # noqa: E402
 
 
 def _document(elements: list[dict], scale_px_per_ft: float = 10.0) -> dict:
@@ -97,6 +97,33 @@ class RoomClosureTests(unittest.TestCase):
         self.assertEqual(result.status, "ambiguous")
         self.assertEqual(result.confidence, "low")
         self.assertEqual(result.floor_area_sqft, 0.0)
+
+    def test_extract_room_regions_returns_adjacent_rooms_with_material_area(self):
+        document = _document([
+            {"id": "top", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 20, "x2": 220, "y2": 20, "thicknessPx": 6}},
+            {"id": "right", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 20, "x2": 220, "y2": 140, "thicknessPx": 6}},
+            {"id": "bottom", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 140, "x2": 20, "y2": 140, "thicknessPx": 6}},
+            {"id": "left", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 140, "x2": 20, "y2": 20, "thicknessPx": 6}},
+            {"id": "partition_top", "type": "wall", "geometry": {"kind": "segment", "x1": 120, "y1": 20, "x2": 120, "y2": 66, "thicknessPx": 6}},
+            {"id": "partition_bottom", "type": "wall", "geometry": {"kind": "segment", "x1": 120, "y1": 98, "x2": 120, "y2": 140, "thicknessPx": 6}},
+            {"id": "door_1", "type": "door", "geometry": {"kind": "rect", "x": 108, "y": 66, "width": 24, "height": 32}},
+            {
+                "id": "room_auto_1",
+                "type": "room",
+                "geometry": {"kind": "polygon", "points": [[28, 28], [112, 28], [112, 132], [28, 132]]},
+                "attrs": {"status": "edited", "locked": False, "visible": True, "confidence": 1, "name": "Living Room"},
+                "relations": {"material": "hardwood", "areaSqFt": 100.0, "quantityRequired": 100.0, "quantityUnit": "sqft"},
+            },
+        ])
+
+        snapshot = build_takeoff_geometry_snapshot(document, revision=1, effective_scale_px_per_ft=10.0)
+        result = extract_room_regions(snapshot, existing_document=document)
+
+        self.assertEqual(result.status, "closed")
+        self.assertEqual(len(result.rooms), 2)
+        self.assertAlmostEqual(result.total_area_sqft, sum(room.area_sqft for room in result.rooms), places=3)
+        self.assertTrue(any(room.material == "hardwood" for room in result.rooms))
+        self.assertTrue(all(room.quantity_required > 0 for room in result.rooms))
 
 
 if __name__ == "__main__":

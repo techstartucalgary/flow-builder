@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 704,
+  "latest_revision": 709,
   "document": {
     "documentId": "0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1",
     "projectId": "0cf961ef-2a6c-47ff-a368-402e3060beaa",
@@ -17,8 +17,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-02-27T13:08:08.421Z",
-      "updatedAt": "2026-03-18T08:22:31.750Z",
-      "revision": 704
+      "updatedAt": "2026-03-19T07:35:50.244Z",
+      "revision": 709
     },
     "layers": {
       "wall": true,
@@ -591,6 +591,286 @@
           "y2": 1943.8892831106632,
           "thicknessPx": 14,
           "rotationDeg": 0
+        }
+      },
+      {
+        "id": "room_auto_1",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              2202,
+              1432
+            ],
+            [
+              2202,
+              2246
+            ],
+            [
+              2795,
+              2246
+            ],
+            [
+              2795,
+              1796
+            ],
+            [
+              3014,
+              1796
+            ],
+            [
+              3014,
+              2005
+            ],
+            [
+              3235,
+              1810
+            ],
+            [
+              3235,
+              1994
+            ],
+            [
+              3508,
+              1994
+            ],
+            [
+              3508,
+              1836
+            ],
+            [
+              3380,
+              1826
+            ],
+            [
+              3508,
+              1826
+            ],
+            [
+              3508,
+              1628
+            ],
+            [
+              3230,
+              1628
+            ],
+            [
+              3230,
+              1432
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.4333
+        },
+        "relations": {
+          "areaSqFt": 325.6021,
+          "quantityRequired": 325.6021,
+          "quantityUnit": "sqft",
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.4333,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 2202,
+            "minY": 1432,
+            "maxX": 3508,
+            "maxY": 2246
+          },
+          "centroid": [
+            2737.785,
+            1789.561
+          ],
+          "diagnostics": {
+            "component_label": 2,
+            "component_area_px": 3069134,
+            "boundary_support_ratio": 0.8333,
+            "sealed_gap_pairs": 25,
+            "closure_status": "open"
+          }
+        }
+      },
+      {
+        "id": "room_auto_2",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              3250,
+              1432
+            ],
+            [
+              3250,
+              1604
+            ],
+            [
+              3508,
+              1604
+            ],
+            [
+              3508,
+              1432
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.5333
+        },
+        "relations": {
+          "areaSqFt": 18.8677,
+          "quantityRequired": 18.8677,
+          "quantityUnit": "sqft",
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.5333,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 3250,
+            "minY": 1432,
+            "maxX": 3508,
+            "maxY": 1604
+          },
+          "centroid": [
+            3379,
+            1518
+          ],
+          "diagnostics": {
+            "component_label": 3,
+            "component_area_px": 177584,
+            "boundary_support_ratio": 0.9333,
+            "sealed_gap_pairs": 25,
+            "closure_status": "open"
+          }
+        }
+      },
+      {
+        "id": "room_auto_3",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              4179,
+              1432
+            ],
+            [
+              3526,
+              1432
+            ],
+            [
+              3526,
+              2053
+            ],
+            [
+              3194,
+              2053
+            ],
+            [
+              3194,
+              1851
+            ],
+            [
+              2980,
+              2018
+            ],
+            [
+              2980,
+              1840
+            ],
+            [
+              2812,
+              1840
+            ],
+            [
+              2812,
+              2266
+            ],
+            [
+              2202,
+              2266
+            ],
+            [
+              2202,
+              2636
+            ],
+            [
+              2725,
+              2636
+            ],
+            [
+              2568,
+              2443
+            ],
+            [
+              2936,
+              2443
+            ],
+            [
+              2936,
+              2629
+            ],
+            [
+              3534,
+              2206
+            ],
+            [
+              3534,
+              2624
+            ],
+            [
+              4152,
+              2624
+            ],
+            [
+              3720,
+              2282
+            ],
+            [
+              3720,
+              2085
+            ],
+            [
+              4179,
+              2085
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.3093
+        },
+        "relations": {
+          "areaSqFt": 476.8422,
+          "quantityRequired": 476.8422,
+          "quantityUnit": "sqft",
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.3093,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 2202,
+            "minY": 1432,
+            "maxX": 4179,
+            "maxY": 2636
+          },
+          "centroid": [
+            3373.857,
+            2107.598
+          ],
+          "diagnostics": {
+            "component_label": 4,
+            "component_area_px": 4510884,
+            "boundary_support_ratio": 0.7093,
+            "sealed_gap_pairs": 25,
+            "closure_status": "open"
+          }
         }
       }
     ],
@@ -27973,6 +28253,528 @@
               "y2": 1800,
               "thicknessPx": 14,
               "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773905716515_bb7xf",
+      "revisionId": 707,
+      "parentRevisionId": 706,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T07:35:16.515Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_3",
+          "before": {
+            "id": "room_auto_3",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  4179,
+                  1432
+                ],
+                [
+                  3526,
+                  1432
+                ],
+                [
+                  3526,
+                  2053
+                ],
+                [
+                  3194,
+                  2053
+                ],
+                [
+                  3194,
+                  1851
+                ],
+                [
+                  2980,
+                  2018
+                ],
+                [
+                  2980,
+                  1840
+                ],
+                [
+                  2812,
+                  1840
+                ],
+                [
+                  2812,
+                  2266
+                ],
+                [
+                  2202,
+                  2266
+                ],
+                [
+                  2202,
+                  2636
+                ],
+                [
+                  2725,
+                  2636
+                ],
+                [
+                  2568,
+                  2443
+                ],
+                [
+                  2936,
+                  2443
+                ],
+                [
+                  2936,
+                  2629
+                ],
+                [
+                  3534,
+                  2206
+                ],
+                [
+                  3534,
+                  2624
+                ],
+                [
+                  4152,
+                  2624
+                ],
+                [
+                  3720,
+                  2282
+                ],
+                [
+                  3720,
+                  2085
+                ],
+                [
+                  4179,
+                  2085
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.3093
+            },
+            "relations": {
+              "areaSqFt": 476.8422,
+              "quantityRequired": 476.8422,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.3093,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2202,
+                "minY": 1432,
+                "maxX": 4179,
+                "maxY": 2636
+              },
+              "centroid": [
+                3373.857,
+                2107.598
+              ],
+              "diagnostics": {
+                "component_label": 4,
+                "component_area_px": 4510884,
+                "boundary_support_ratio": 0.7093,
+                "sealed_gap_pairs": 25,
+                "closure_status": "open"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_3",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  4147,
+                  1216
+                ],
+                [
+                  3494,
+                  1216
+                ],
+                [
+                  3494,
+                  1837
+                ],
+                [
+                  3162,
+                  1837
+                ],
+                [
+                  3162,
+                  1635
+                ],
+                [
+                  2948,
+                  1802
+                ],
+                [
+                  2948,
+                  1624
+                ],
+                [
+                  2780,
+                  1624
+                ],
+                [
+                  2780,
+                  2050
+                ],
+                [
+                  2170,
+                  2050
+                ],
+                [
+                  2170,
+                  2420
+                ],
+                [
+                  2693,
+                  2420
+                ],
+                [
+                  2536,
+                  2227
+                ],
+                [
+                  2904,
+                  2227
+                ],
+                [
+                  2904,
+                  2413
+                ],
+                [
+                  3502,
+                  1990
+                ],
+                [
+                  3502,
+                  2408
+                ],
+                [
+                  4120,
+                  2408
+                ],
+                [
+                  3688,
+                  2066
+                ],
+                [
+                  3688,
+                  1869
+                ],
+                [
+                  4147,
+                  1869
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.3093
+            },
+            "relations": {
+              "areaSqFt": 476.8422,
+              "quantityRequired": 476.8422,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.3093,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2202,
+                "minY": 1432,
+                "maxX": 4179,
+                "maxY": 2636
+              },
+              "centroid": [
+                3373.857,
+                2107.598
+              ],
+              "diagnostics": {
+                "component_label": 4,
+                "component_area_px": 4510884,
+                "boundary_support_ratio": 0.7093,
+                "sealed_gap_pairs": 25,
+                "closure_status": "open"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1773905721399_we3v0",
+      "revisionId": 708,
+      "parentRevisionId": 707,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-19T07:35:21.399Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_3",
+          "before": {
+            "id": "room_auto_3",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  4147,
+                  1216
+                ],
+                [
+                  3494,
+                  1216
+                ],
+                [
+                  3494,
+                  1837
+                ],
+                [
+                  3162,
+                  1837
+                ],
+                [
+                  3162,
+                  1635
+                ],
+                [
+                  2948,
+                  1802
+                ],
+                [
+                  2948,
+                  1624
+                ],
+                [
+                  2780,
+                  1624
+                ],
+                [
+                  2780,
+                  2050
+                ],
+                [
+                  2170,
+                  2050
+                ],
+                [
+                  2170,
+                  2420
+                ],
+                [
+                  2693,
+                  2420
+                ],
+                [
+                  2536,
+                  2227
+                ],
+                [
+                  2904,
+                  2227
+                ],
+                [
+                  2904,
+                  2413
+                ],
+                [
+                  3502,
+                  1990
+                ],
+                [
+                  3502,
+                  2408
+                ],
+                [
+                  4120,
+                  2408
+                ],
+                [
+                  3688,
+                  2066
+                ],
+                [
+                  3688,
+                  1869
+                ],
+                [
+                  4147,
+                  1869
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.3093
+            },
+            "relations": {
+              "areaSqFt": 476.8422,
+              "quantityRequired": 476.8422,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.3093,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2202,
+                "minY": 1432,
+                "maxX": 4179,
+                "maxY": 2636
+              },
+              "centroid": [
+                3373.857,
+                2107.598
+              ],
+              "diagnostics": {
+                "component_label": 4,
+                "component_area_px": 4510884,
+                "boundary_support_ratio": 0.7093,
+                "sealed_gap_pairs": 25,
+                "closure_status": "open"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_3",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  4179,
+                  1432
+                ],
+                [
+                  3526,
+                  1432
+                ],
+                [
+                  3526,
+                  2053
+                ],
+                [
+                  3194,
+                  2053
+                ],
+                [
+                  3194,
+                  1851
+                ],
+                [
+                  2980,
+                  2018
+                ],
+                [
+                  2980,
+                  1840
+                ],
+                [
+                  2812,
+                  1840
+                ],
+                [
+                  2812,
+                  2266
+                ],
+                [
+                  2202,
+                  2266
+                ],
+                [
+                  2202,
+                  2636
+                ],
+                [
+                  2725,
+                  2636
+                ],
+                [
+                  2568,
+                  2443
+                ],
+                [
+                  2936,
+                  2443
+                ],
+                [
+                  2936,
+                  2629
+                ],
+                [
+                  3534,
+                  2206
+                ],
+                [
+                  3534,
+                  2624
+                ],
+                [
+                  4152,
+                  2624
+                ],
+                [
+                  3720,
+                  2282
+                ],
+                [
+                  3720,
+                  2085
+                ],
+                [
+                  4179,
+                  2085
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.3093
+            },
+            "relations": {
+              "areaSqFt": 476.8422,
+              "quantityRequired": 476.8422,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.3093,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2202,
+                "minY": 1432,
+                "maxX": 4179,
+                "maxY": 2636
+              },
+              "centroid": [
+                3373.857,
+                2107.598
+              ],
+              "diagnostics": {
+                "component_label": 4,
+                "component_area_px": 4510884,
+                "boundary_support_ratio": 0.7093,
+                "sealed_gap_pairs": 25,
+                "closure_status": "open"
+              }
             }
           }
         }

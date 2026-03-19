@@ -15,7 +15,7 @@ from src.vision.cv.opening_validation import opening_fits_host_wall
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "annotations"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 SUPPORTED_ELEMENT_TYPES = {"wall", "door", "window", "room"}
-SUPPORTED_GEOMETRY_KINDS = {"segment", "rect"}
+SUPPORTED_GEOMETRY_KINDS = {"segment", "rect", "polygon"}
 LAYER_DEFAULTS = {
     "wall": True,
     "door": True,
@@ -145,6 +145,15 @@ def _sanitize_document(document: Optional[dict[str, Any]]) -> tuple[Optional[dic
             changed = True
             continue
         if geometry_kind not in SUPPORTED_GEOMETRY_KINDS:
+            changed = True
+            continue
+        if element_type == "room" and geometry_kind not in {"rect", "polygon"}:
+            changed = True
+            continue
+        if element_type in {"door", "window"} and geometry_kind != "rect":
+            changed = True
+            continue
+        if element_type == "wall" and geometry_kind != "segment":
             changed = True
             continue
         relations = element.get("relations")

@@ -3,7 +3,7 @@
 import { Fragment } from 'react';
 import { Circle, Line, Rect } from 'react-konva';
 
-import type { AnnotationElement, EditorViewPreset, OpeningRelations } from '@/types/annotation';
+import type { AnnotationElement, EditorViewPreset, OpeningRelations, RoomRelations } from '@/types/annotation';
 
 interface AnnotationRenderLayerProps {
   elements: AnnotationElement[];
@@ -22,6 +22,29 @@ function styleForStatus(status: AnnotationElement['attrs']['status']) {
 }
 
 function styleForType(element: AnnotationElement, baseStroke: string) {
+  if (element.type === 'room') {
+    const relations = element.relations as RoomRelations | undefined;
+    const material = relations?.material;
+    if (material === 'hardwood') {
+      return { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.16)' };
+    }
+    if (material === 'carpet') {
+      return { stroke: '#22c55e', fill: 'rgba(34,197,94,0.16)' };
+    }
+    if (material === 'tile') {
+      return { stroke: '#38bdf8', fill: 'rgba(56,189,248,0.16)' };
+    }
+    if (material === 'vinyl') {
+      return { stroke: '#e879f9', fill: 'rgba(232,121,249,0.16)' };
+    }
+    if (material === 'laminate') {
+      return { stroke: '#f97316', fill: 'rgba(249,115,22,0.16)' };
+    }
+    return {
+      stroke: '#f8fafc',
+      fill: 'rgba(148,163,184,0.14)',
+    };
+  }
   if (element.type === 'door') {
     return {
       stroke: '#fb7185',
@@ -171,6 +194,40 @@ export default function AnnotationRenderLayer({
               onDragEnd={(e) => onDragEnd(element.id, e)}
               onTransformEnd={(e) => onTransformEnd(element.id, e)}
             />
+          );
+        }
+
+        if (element.geometry.kind === 'polygon') {
+          const points = element.geometry.points.flatMap(([x, y]) => [x, y]);
+          return (
+            <Fragment key={element.id}>
+              <Line
+                id={element.id}
+                points={points}
+                closed
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                opacity={opacity}
+                dash={dash}
+                shadowColor={shadowColor}
+                shadowBlur={shadowBlur}
+                fill={selected ? 'rgba(56,189,248,0.22)' : fill}
+                draggable={!element.attrs.locked}
+                onClick={(e) => onSelect(element.id, Boolean(e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey))}
+                onTap={() => onSelect(element.id)}
+                onDragEnd={(e) => onDragEnd(element.id, e)}
+                onTransformEnd={(e) => onTransformEnd(element.id, e)}
+              />
+              {selected ? (
+                <Circle
+                  x={element.geometry.points[0]?.[0] ?? 0}
+                  y={element.geometry.points[0]?.[1] ?? 0}
+                  radius={4}
+                  fill={stroke}
+                  listening={false}
+                />
+              ) : null}
+            </Fragment>
           );
         }
 

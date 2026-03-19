@@ -7,6 +7,7 @@ export type AnnotationElementType =
 export type AnnotationStatus = 'auto' | 'edited' | 'new';
 export type WallSurfaceClass = 'perimeter' | 'partition' | 'unknown';
 export type WallSurfaceClassSource = 'auto' | 'manual';
+export type FlooringMaterial = 'hardwood' | 'carpet' | 'tile' | 'vinyl' | 'laminate';
 
 export type ToolMode =
   | 'select'
@@ -51,7 +52,12 @@ export interface RectGeometry {
   rotationDeg: number;
 }
 
-export type ElementGeometry = SegmentGeometry | RectGeometry;
+export interface PolygonGeometry {
+  kind: 'polygon';
+  points: Array<[number, number]>;
+}
+
+export type ElementGeometry = SegmentGeometry | RectGeometry | PolygonGeometry;
 
 export type OpeningSource = 'gap_verified' | 'gap_verified_tag_classified' | 'opening_feature_verified' | 'tag_projected';
 
@@ -81,12 +87,30 @@ export interface WallRelations {
   excludeFromTakeoff?: boolean;
 }
 
+export interface RoomRelations {
+  material?: FlooringMaterial;
+  areaSqFt?: number;
+  quantityRequired?: number;
+  quantityUnit?: 'sqft';
+  extractionStatus?: 'auto' | 'edited' | 'ambiguous';
+  extractionConfidence?: number;
+  centroid?: [number, number];
+  bbox?: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  };
+  touchesBorder?: boolean;
+  diagnostics?: Record<string, unknown>;
+}
+
 export interface BaseAnnotationElement {
   id: string;
   type: AnnotationElementType;
   geometry: ElementGeometry;
   attrs: BaseElementAttrs;
-  relations?: OpeningRelations | WallRelations | Record<string, unknown>;
+  relations?: OpeningRelations | WallRelations | RoomRelations | Record<string, unknown>;
 }
 
 export interface WallElement extends BaseAnnotationElement {
@@ -109,7 +133,8 @@ export interface WindowElement extends BaseAnnotationElement {
 
 export interface RoomElement extends BaseAnnotationElement {
   type: 'room';
-  geometry: RectGeometry;
+  geometry: RectGeometry | PolygonGeometry;
+  relations?: RoomRelations;
 }
 
 export type AnnotationElement =
@@ -297,4 +322,18 @@ export interface EditorTagOverlayState {
   showTags: boolean;
   tags: CVTag[];
   coordinateSpaceId?: string;
+}
+
+export interface RoomExtractionSummary {
+  room_count: number;
+  total_area_sqft: number;
+  status: 'closed' | 'open' | 'ambiguous';
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface RoomExtractionResponse {
+  status: 'ok';
+  rooms: RoomElement[];
+  summary: RoomExtractionSummary;
+  debug: Record<string, string | number | boolean>;
 }

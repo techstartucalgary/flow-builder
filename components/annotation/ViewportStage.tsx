@@ -5,7 +5,7 @@ import { Circle, Layer, Line, Stage, Text } from 'react-konva';
 import type Konva from 'konva';
 
 import { safeClone } from '@/lib/clone';
-import { clamp, worldFromScreen } from '@/lib/geometry';
+import { clamp, polygonBounds, worldFromScreen } from '@/lib/geometry';
 import { isObjectUrl, normalizeBaseImageUrl } from '@/lib/imageUrl';
 import { snapPointToWalls, snapToGrid, snapWallEndpointAngle } from '@/lib/snapping';
 import type {
@@ -54,6 +54,10 @@ function elementBounds(element: AnnotationElement) {
     };
   }
 
+  if (element.geometry.kind === 'polygon') {
+    return polygonBounds(element.geometry.points);
+  }
+
   return {
     minX: element.geometry.x,
     minY: element.geometry.y,
@@ -96,6 +100,7 @@ export default function ViewportStage({
   const focusRequest = useAnnotationEditorStore((s) => s.focusRequest);
   const setCamera = useAnnotationEditorStore((s) => s.setCamera);
   const setSelection = useAnnotationEditorStore((s) => s.setSelection);
+  const requestFocusOnElements = useAnnotationEditorStore((s) => s.requestFocusOnElements);
   const clearFocusRequest = useAnnotationEditorStore((s) => s.clearFocusRequest);
   const createElementAt = useAnnotationEditorStore((s) => s.createElementAt);
   const moveElementBy = useAnnotationEditorStore((s) => s.moveElementBy);
@@ -110,6 +115,10 @@ export default function ViewportStage({
   const hasVisibleSelection = useMemo(
     () => selection.some((id) => displayedElementIds.has(id)),
     [displayedElementIds, selection],
+  );
+  const hasRoomSelection = useMemo(
+    () => selection.some((id) => entities.byId[id]?.type === 'room'),
+    [entities.byId, selection],
   );
 
   useEffect(() => {
@@ -197,6 +206,12 @@ export default function ViewportStage({
         minY = Math.min(minY, element.geometry.y1, element.geometry.y2) - halfThickness;
         maxX = Math.max(maxX, element.geometry.x1, element.geometry.x2) + halfThickness;
         maxY = Math.max(maxY, element.geometry.y1, element.geometry.y2) + halfThickness;
+      } else if (element.geometry.kind === 'polygon') {
+        const bounds = polygonBounds(element.geometry.points);
+        minX = Math.min(minX, bounds.minX);
+        minY = Math.min(minY, bounds.minY);
+        maxX = Math.max(maxX, bounds.maxX);
+        maxY = Math.max(maxY, bounds.maxY);
       } else {
         minX = Math.min(minX, element.geometry.x);
         minY = Math.min(minY, element.geometry.y);
@@ -358,8 +373,16 @@ export default function ViewportStage({
       return;
     }
 
+    if (el.geometry.kind === 'polygon') {
+      const dx = node.x();
+      const dy = node.y();
+      node.position({ x: 0, y: 0 });
+      moveElementBy(id, dx, dy);
+      return;
+    }
+
     const next = safeClone(el);
-    if (next.geometry.kind === 'segment') return;
+    if (next.geometry.kind === 'segment' || next.geometry.kind === 'polygon') return;
     next.geometry.x = node.x();
     next.geometry.y = node.y();
     next.attrs.status = 'edited';
@@ -368,14 +391,14 @@ export default function ViewportStage({
 
   function onTransformEnd(id: string, e: any) {
     const el = entities.byId[id];
-    if (!el || el.geometry.kind === 'segment') return;
+    if (!el || el.geometry.kind === 'segment' || el.geometry.kind === 'polygon') return;
 
     const node = e.target;
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
 
     const next = safeClone(el);
-    if (next.geometry.kind === 'segment') return;
+    if (next.geometry.kind === 'segment' || next.geometry.kind === 'polygon') return;
     next.geometry.x = node.x();
     next.geometry.y = node.y();
     next.geometry.rotationDeg = node.rotation();
@@ -548,6 +571,10 @@ export default function ViewportStage({
               onSelect={(id, additive) => {
                 if (!additive) {
                   setSelection([id]);
+                  const next = entities.byId[id];
+                  if (next?.type === 'room') {
+                    requestFocusOnElements([id], 96);
+                  }
                   return;
                 }
                 setSelection(
@@ -726,7 +753,7 @@ export default function ViewportStage({
             <SelectionTransformer
               stageRef={stageRef}
               selectedIds={selection}
-              enabled={hasVisibleSelection && (!selectedWall || toolMode !== 'wall')}
+              enabled={hasVisibleSelection && !hasRoomSelection && (!selectedWall || toolMode !== 'wall')}
             />
           </Layer>
         </Stage>

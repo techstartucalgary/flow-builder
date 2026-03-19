@@ -7,10 +7,14 @@ import { safeClone } from '@/lib/clone';
 import type {
   AnnotationElement,
   AnnotationIssue,
+  FlooringMaterial,
   OpeningRelations,
+  RoomRelations,
   WallRelations,
   WallSurfaceClass,
 } from '@/types/annotation';
+
+const FLOORING_MATERIALS: FlooringMaterial[] = ['hardwood', 'carpet', 'tile', 'vinyl', 'laminate'];
 
 interface PropertyPanelProps {
   element: AnnotationElement | null;
@@ -39,6 +43,9 @@ interface FormValues {
   surfaceClass: WallSurfaceClass;
   boardSides: 1 | 2;
   excludeFromTakeoff: boolean;
+  material: FlooringMaterial | '';
+  areaSqFt: number;
+  quantityRequired: number;
 }
 
 export default function PropertyPanel({ element, issues, revision, onApply, onFocusElement }: PropertyPanelProps) {
@@ -62,6 +69,9 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
       surfaceClass: 'unknown',
       boardSides: 1,
       excludeFromTakeoff: false,
+      material: '',
+      areaSqFt: 0,
+      quantityRequired: 0,
     },
   });
 
@@ -71,15 +81,19 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
       element.type === 'wall'
         ? (element.relations as WallRelations | undefined)
         : undefined;
+    const roomRelations =
+      element.type === 'room'
+        ? (element.relations as RoomRelations | undefined)
+        : undefined;
     const values: FormValues = {
       name: element.attrs.name || '',
       confidence: element.attrs.confidence ?? 1,
       locked: element.attrs.locked,
       visible: element.attrs.visible,
       notes: element.attrs.notes || '',
-      rotationDeg: element.geometry.rotationDeg,
-      x: element.geometry.kind === 'segment' ? 0 : element.geometry.x,
-      y: element.geometry.kind === 'segment' ? 0 : element.geometry.y,
+      rotationDeg: element.geometry.kind === 'polygon' ? 0 : element.geometry.rotationDeg,
+      x: element.geometry.kind === 'rect' ? element.geometry.x : 0,
+      y: element.geometry.kind === 'rect' ? element.geometry.y : 0,
       width: element.geometry.kind === 'rect' ? element.geometry.width : 0,
       height: element.geometry.kind === 'rect' ? element.geometry.height : 0,
       x1: element.geometry.kind === 'segment' ? element.geometry.x1 : 0,
@@ -90,6 +104,9 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
       surfaceClass: wallRelations?.surfaceClass ?? 'unknown',
       boardSides: wallRelations?.boardSides ?? ((wallRelations?.surfaceClass ?? 'unknown') === 'partition' ? 2 : 1),
       excludeFromTakeoff: wallRelations?.excludeFromTakeoff ?? false,
+      material: roomRelations?.material ?? '',
+      areaSqFt: Number(roomRelations?.areaSqFt ?? 0),
+      quantityRequired: Number(roomRelations?.quantityRequired ?? roomRelations?.areaSqFt ?? 0),
     };
     reset(values);
   }, [element, reset]);
@@ -109,6 +126,10 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
   const wallRelations =
     element.type === 'wall'
       ? (element.relations as WallRelations | undefined)
+      : undefined;
+  const roomRelations =
+    element.type === 'room'
+      ? (element.relations as RoomRelations | undefined)
       : undefined;
   const verification = openingRelations?.verification;
 
@@ -173,6 +194,23 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
     });
   }
 
+  function setRoomMaterial(nextMaterial: FlooringMaterial | null) {
+    applyImmediate((updated) => {
+      if (updated.type !== 'room') return;
+      const nextRelations = { ...((updated.relations as RoomRelations | undefined) ?? {}) };
+      if (nextMaterial) {
+        nextRelations.material = nextMaterial;
+      } else {
+        delete nextRelations.material;
+      }
+      const areaSqFt = Number(nextRelations.areaSqFt ?? 0);
+      nextRelations.quantityRequired = areaSqFt > 0 ? areaSqFt : Number(nextRelations.quantityRequired ?? 0);
+      nextRelations.quantityUnit = 'sqft';
+      updated.relations = nextRelations;
+      updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
+    });
+  }
+
   return (
     <form
       onSubmit={handleSubmit((values) => {
@@ -221,12 +259,27 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
               updated.relations = Object.keys(nextRelations).length ? nextRelations : undefined;
             }
           }
-        } else {
+        } else if (updated.geometry.kind === 'rect') {
           updated.geometry.x = Number(values.x);
           updated.geometry.y = Number(values.y);
           updated.geometry.width = Number(values.width);
           updated.geometry.height = Number(values.height);
           updated.geometry.rotationDeg = Number(values.rotationDeg);
+        }
+
+        if (updated.type === 'room') {
+          const nextRelations = (
+            updated.relations && typeof updated.relations === 'object'
+              ? { ...(updated.relations as RoomRelations) }
+              : {}
+          );
+          const computedAreaSqFt = Number(nextRelations.areaSqFt ?? roomRelations?.areaSqFt ?? 0);
+          if (values.material) nextRelations.material = values.material;
+          else delete nextRelations.material;
+          nextRelations.areaSqFt = computedAreaSqFt;
+          nextRelations.quantityRequired = computedAreaSqFt > 0 ? computedAreaSqFt : Number(nextRelations.quantityRequired ?? 0);
+          nextRelations.quantityUnit = 'sqft';
+          updated.relations = nextRelations;
         }
 
         onApply(updated);
@@ -272,6 +325,24 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
             <span className="uppercase tracking-wide text-gray-500">Host Wall</span>
             <span className="font-mono text-gray-200">{openingRelations.hostWallId}</span>
           </div>
+        )}
+        {element.type === 'room' && (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <span className="uppercase tracking-wide text-gray-500">Area</span>
+              <span className="text-gray-200">{(roomRelations?.areaSqFt ?? 0).toFixed(2)} sq ft</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="uppercase tracking-wide text-gray-500">Material</span>
+              <span className="text-gray-200 capitalize">{roomRelations?.material ?? 'Unassigned'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="uppercase tracking-wide text-gray-500">Quantity</span>
+              <span className="text-gray-200">
+                {(roomRelations?.quantityRequired ?? 0).toFixed(2)} {roomRelations?.quantityUnit ?? 'sqft'}
+              </span>
+            </div>
+          </>
         )}
       </div>
 
@@ -429,6 +500,34 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
             ) : null}
           </div>
         ) : null}
+
+        {element.type === 'room' ? (
+          <>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {FLOORING_MATERIALS.map((material) => (
+                <button
+                  key={material}
+                  type="button"
+                  onClick={() => setRoomMaterial(material)}
+                  className={`rounded-lg border px-3 py-2 text-left capitalize transition ${
+                    roomRelations?.material === material
+                      ? 'border-emerald-300/60 bg-emerald-500/15 text-emerald-100'
+                      : 'border-white/10 bg-black/10 text-white hover:bg-white/5'
+                  }`}
+                >
+                  {material}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setRoomMaterial(null)}
+              className="w-full rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-left text-white transition hover:bg-white/5"
+            >
+              Clear flooring assignment
+            </button>
+          </>
+        ) : null}
       </div>
 
       <details className="rounded-xl border border-white/10 bg-black/10 px-3 py-3 text-[11px] text-gray-300">
@@ -445,12 +544,24 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
             <label className="text-gray-400">Locked<input className="ml-2" type="checkbox" {...register('locked')} /></label>
           </div>
 
-          {element.geometry.kind !== 'segment' ? (
+          {element.geometry.kind === 'rect' ? (
             <div className="grid grid-cols-2 gap-2">
               <label className="text-gray-400">X<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('x', { valueAsNumber: true })} /></label>
               <label className="text-gray-400">Y<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('y', { valueAsNumber: true })} /></label>
               <label className="text-gray-400">Width<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('width', { valueAsNumber: true })} /></label>
               <label className="text-gray-400">Height<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('height', { valueAsNumber: true })} /></label>
+            </div>
+          ) : element.geometry.kind === 'polygon' ? (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] text-gray-300 space-y-2">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-300">Polygon Geometry</div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-400">Vertices</span>
+                <span>{element.geometry.points.length}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-400">Area</span>
+                <span>{(roomRelations?.areaSqFt ?? 0).toFixed(2)} sq ft</span>
+              </div>
             </div>
           ) : (
             <>
@@ -491,7 +602,24 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
             </>
           )}
 
-          <label className="text-gray-400">Rotation<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('rotationDeg', { valueAsNumber: true })} /></label>
+          {element.geometry.kind !== 'polygon' ? (
+            <label className="text-gray-400">Rotation<input className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" {...register('rotationDeg', { valueAsNumber: true })} /></label>
+          ) : null}
+          {element.type === 'room' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-gray-400">
+                Material
+                <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('material')}>
+                  <option value="">Unassigned</option>
+                  {FLOORING_MATERIALS.map((material) => (
+                    <option key={material} value={material}>{material}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-gray-400">Area (sq ft)<input readOnly className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('areaSqFt', { valueAsNumber: true })} /></label>
+              <label className="text-gray-400">Quantity (sq ft)<input readOnly className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" type="number" step="0.01" {...register('quantityRequired', { valueAsNumber: true })} /></label>
+            </div>
+          ) : null}
           <label className="text-gray-400">Notes<textarea className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" rows={3} {...register('notes')} /></label>
 
           <button type="submit" className="w-full rounded bg-indigo-500/20 border border-indigo-400/40 py-1.5 text-indigo-200 hover:bg-indigo-500/30">

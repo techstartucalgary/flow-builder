@@ -12,6 +12,7 @@ interface EditorToolbarProps {
   onDelete: () => void;
   onSave: () => void;
   onRefreshOpenings: () => void;
+  onRefreshRooms: () => void;
   showBaseImage: boolean;
   onToggleBaseImage: () => void;
   showTags: boolean;
@@ -45,6 +46,7 @@ export default function EditorToolbar({
   onDelete,
   onSave,
   onRefreshOpenings,
+  onRefreshRooms,
   showBaseImage,
   onToggleBaseImage,
   showTags,
@@ -160,6 +162,13 @@ export default function EditorToolbar({
             className="px-2 py-1.5 text-xs rounded-lg border border-amber-400/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
           >
             Refresh Openings
+          </button>
+          <button
+            type="button"
+            onClick={onRefreshRooms}
+            className="px-2 py-1.5 text-xs rounded-lg border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
+          >
+            Refresh Rooms
           </button>
           <button
             type="button"
