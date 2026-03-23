@@ -75,12 +75,6 @@ function toneForConfidence(confidence: TakeoffData['takeoffConfidence']): 'good'
   return 'danger';
 }
 
-function summaryTone(takeoff: TakeoffData): 'good' | 'warn' | 'accent' {
-  if (takeoff.roomClosureStatus !== 'closed') return 'warn';
-  if (!takeoff.estimateReady) return 'accent';
-  return 'good';
-}
-
 export default function WorkflowRail({
   mode,
   workflow,
@@ -107,43 +101,47 @@ export default function WorkflowRail({
   onReviewAction,
 }: WorkflowRailProps) {
   return (
-    <aside className={`flex min-h-0 shrink-0 flex-col gap-3 overflow-x-hidden overflow-y-auto pr-1 ${mode === 'annotate' ? 'w-[clamp(20rem,24vw,24rem)]' : 'w-[clamp(24rem,30vw,34rem)]'}`}>
-      <section className="ws-panel-elevated shrink-0 overflow-hidden">
-        <div className="border-b border-[var(--ws-border)] px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="ws-section-header">Workflow</div>
+    <aside className={`flex min-h-0 shrink-0 flex-col gap-3 overflow-x-hidden overflow-y-auto pr-1 ${mode === 'annotate' ? 'w-[clamp(21rem,24vw,25rem)]' : 'w-[clamp(25rem,31vw,34rem)]'}`}>
+      <section className="ws-panel-flat shrink-0 overflow-hidden">
+        <div className="border-b border-[var(--ws-divider)] px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="ws-section-header">Workflow</div>
+              <div className="mt-2 text-base font-semibold text-white">{workflow.currentStep}</div>
+              <div className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                {mode === 'annotate'
+                  ? 'Prepare the page, resolve blockers, and lock the geometry before running takeoff.'
+                  : 'Read the latest output, verify risk signals, and jump straight back into QA where it matters.'}
+              </div>
+            </div>
             <span className="ws-chip" data-tone={workflow.blockerCount > 0 ? 'warn' : 'good'}>
-              {workflow.currentStep}
+              {workflow.blockerCount > 0 ? `${workflow.blockerCount} blocker${workflow.blockerCount === 1 ? '' : 's'}` : 'On track'}
             </span>
-          </div>
-          <div className="mt-2 text-sm text-[var(--ws-text-secondary)]">
-            {mode === 'annotate'
-              ? 'Prepare the page, fix blockers, and keep geometry trustworthy before generating.'
-              : 'Review the latest results, inspect confidence, and jump back into QA only when needed.'}
           </div>
         </div>
 
-        <div className="space-y-3 px-4 py-4">
-          <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
-            <div className="flex items-center justify-between gap-3">
+        <div className="px-4 py-4">
+          <div className="ws-fade-lift rounded-3xl border border-cyan-400/20 bg-[linear-gradient(135deg,rgba(34,211,238,0.14),rgba(59,130,246,0.12),rgba(15,23,42,0.3))] p-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-medium text-white">Primary Action</div>
-                <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
-                  {workflow.primaryAction.disabledReason || 'Use the next clear step for this page.'}
+                <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/75">Next move</div>
+                <div className="mt-2 text-lg font-semibold text-white">{workflow.primaryAction.label}</div>
+                <div className="mt-1 text-sm text-cyan-50/80">
+                  {workflow.primaryAction.disabledReason || 'Use the current recommended step to keep this sheet moving.'}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={onPrimaryAction}
                 disabled={workflow.primaryAction.disabled}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {generating ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
                 {workflow.primaryAction.label}
               </button>
             </div>
             {generating ? (
-              <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/[0.08] px-3 py-3 text-sm text-cyan-100">
+              <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-black/15 px-3 py-3 text-sm text-cyan-50">
                 <div className="flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin" />
                   <span>{overlayStatus}</span>
@@ -153,60 +151,47 @@ export default function WorkflowRail({
           </div>
 
           {generated ? (
-            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium text-white">Pinned Summary</div>
-                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
-                    Keep the latest floor area and sheet count visible while you work through blockers.
-                  </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.08] px-4 py-3">
+                <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-200/70">Floor area</div>
+                <div className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white">{formatSqFt(takeoff.floorArea)}</div>
+                <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                  {takeoff.roomClosureStatus === 'closed' ? 'sq ft' : 'sq ft · provisional'}
                 </div>
-                <span className="ws-chip" data-tone={summaryTone(takeoff)}>
-                  {takeoff.roomClosureStatus === 'closed'
-                    ? takeoff.estimateReady ? 'stable' : 'draft'
-                    : 'provisional'}
-                </span>
               </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-cyan-400/20 bg-black/10 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Floor Area</div>
-                  <div className="mt-2 text-2xl font-semibold text-white">{formatSqFt(takeoff.floorArea)}</div>
-                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
-                    {takeoff.roomClosureStatus === 'closed' ? 'sq ft' : 'sq ft · provisional'}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-cyan-400/20 bg-black/10 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Sheets</div>
-                  <div className="mt-2 text-2xl font-semibold text-white">{takeoff.sheetsRequired}</div>
-                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
-                    {takeoff.estimateReady ? 'ready estimate' : 'draft estimate'}
-                  </div>
+              <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] px-4 py-3">
+                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--ws-text-muted)]">Sheets</div>
+                <div className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white">{takeoff.sheetsRequired}</div>
+                <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
+                  {takeoff.estimateReady ? 'ready estimate' : 'draft estimate'}
                 </div>
               </div>
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+          <div className="mt-4 border-t border-[var(--ws-divider)] pt-4">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-medium text-white">Readiness</div>
+              <div className="ws-section-header">Readiness</div>
               <span className="ws-chip" data-tone={workflow.blockerCount > 0 ? 'warn' : 'good'}>
-                {workflow.readiness.filter((item) => item.status === 'ready').length}/{workflow.readiness.length}
+                {workflow.readiness.filter((item) => item.status === 'ready').length}/{workflow.readiness.length} ready
               </span>
             </div>
             <div className="mt-3 space-y-2">
               {workflow.readiness.map((item) => (
-                <div key={item.id} className="rounded-xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
-                  <div className="flex items-center justify-between gap-2">
+                <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
+                  <div className="min-w-0">
                     <div className="text-sm font-medium text-white">{item.label}</div>
-                    <span className="ws-chip" data-tone={toneForReadiness(item.status)}>{item.value}</span>
+                    <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">{item.description}</div>
                   </div>
-                  <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">{item.description}</div>
+                  <span className="ws-chip shrink-0" data-tone={toneForReadiness(item.status)}>{item.value}</span>
                 </div>
               ))}
             </div>
+          </div>
 
-            <div className="mt-4 grid gap-3">
+          <div className="mt-4 border-t border-[var(--ws-divider)] pt-4">
+            <div className="ws-section-header">Inputs</div>
+            <div className="mt-3 grid gap-3">
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-3">
                   <label htmlFor="workflow-scale-px-per-ft" className="block text-xs text-[var(--ws-text-secondary)]">
@@ -230,7 +215,7 @@ export default function WorkflowRail({
                     placeholder="e.g. 50"
                     value={scalePxPerFt}
                     onChange={(event) => onSetScalePxPerFt(event.target.value)}
-                    className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    className="w-full rounded-2xl border border-[var(--ws-border)] bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   />
                 </div>
               </div>
@@ -248,7 +233,7 @@ export default function WorkflowRail({
                     placeholder="e.g. 9"
                     value={ceilingHeightFt}
                     onChange={(event) => onSetCeilingHeightFt(event.target.value)}
-                    className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 px-3 py-2.5 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    className="w-full rounded-2xl border border-[var(--ws-border)] bg-white/[0.04] px-3 py-2.5 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   />
                 </div>
                 <div>
@@ -263,42 +248,42 @@ export default function WorkflowRail({
                     placeholder="Optional"
                     value={referenceFloorAreaSqFt}
                     onChange={(event) => onSetReferenceFloorAreaSqFt(event.target.value)}
-                    className="w-full rounded-xl border border-[var(--ws-border)] bg-white/5 px-3 py-2.5 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                    className="w-full rounded-2xl border border-[var(--ws-border)] bg-white/[0.04] px-3 py-2.5 text-sm text-white placeholder-[var(--ws-text-muted)] focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+          <div className="mt-4 border-t border-[var(--ws-divider)] pt-4">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-medium text-white">Blocking Issues</div>
+              <div className="ws-section-header">Blocking Issues</div>
               <span className="ws-chip" data-tone={workflow.blockerCount > 0 ? 'warn' : 'good'}>
                 {workflow.blockerCount > 0 ? `${workflow.blockerCount} open` : 'Clear'}
               </span>
             </div>
             <div className="mt-3 space-y-2">
               {workflow.blockers.length ? workflow.blockers.map((blocker) => (
-                <div key={blocker.id} className="rounded-xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
+                <div key={blocker.id} className="rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <div className="text-sm font-medium text-white">{blocker.title}</div>
                       <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">{blocker.description}</div>
                     </div>
-                    <span className="ws-chip" data-tone={blocker.tone}>{blocker.tone}</span>
+                    <span className="ws-chip shrink-0" data-tone={blocker.tone}>{blocker.tone}</span>
                   </div>
                   {blocker.actionLabel ? (
                     <button
                       type="button"
                       onClick={() => onBlockerAction(blocker)}
-                      className="mt-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 transition hover:bg-cyan-500/20"
+                      className="mt-3 rounded-xl border border-cyan-400/25 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 transition hover:bg-cyan-500/20"
                     >
                       {blocker.actionLabel}
                     </button>
                   ) : null}
                 </div>
               )) : (
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3 text-sm text-emerald-100">
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3 text-sm text-emerald-100">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-300" />
                     <span>This page is ready for a clean run and focused review.</span>
@@ -310,11 +295,18 @@ export default function WorkflowRail({
         </div>
       </section>
 
-      <section className="ws-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="border-b border-[var(--ws-border)] px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="ws-section-header">{mode === 'annotate' ? 'Latest Results' : 'Review Summary'}</div>
-            <div className="flex items-center gap-2">
+      <section className="ws-panel-flat flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="border-b border-[var(--ws-divider)] px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="ws-section-header">{mode === 'annotate' ? 'Latest Results' : 'Review Summary'}</div>
+              <div className="mt-2 text-sm text-[var(--ws-text-secondary)]">
+                {generated
+                  ? 'Latest takeoff output, confidence, and review queues for this page.'
+                  : 'No takeoff has been generated for this page yet.'}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <span className="ws-chip" data-tone={generated && takeoff.geometrySource === 'annotation_document' ? 'good' : 'accent'}>
                 {takeoffSourceDisplay}
               </span>
@@ -329,23 +321,23 @@ export default function WorkflowRail({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {!generated ? (
-            <div className="rounded-2xl border border-dashed border-[var(--ws-border-strong)] bg-white/[0.02] px-4 py-5">
+            <div className="rounded-3xl border border-dashed border-[var(--ws-border-strong)] bg-white/[0.02] px-4 py-5">
               <div className="text-sm font-medium text-white">Ready to analyze</div>
               <p className="mt-1 text-sm text-[var(--ws-text-secondary)]">
                 Run takeoff to calculate floor area, board quantities, and room-level review signals for this page.
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-4">
                   <div className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/70">Floor Area</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">{formatSqFt(takeoff.floorArea)}</div>
+                  <div className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white">{formatSqFt(takeoff.floorArea)}</div>
                   <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">sq ft</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
                   <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--ws-text-muted)]">Sheets</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">{takeoff.sheetsRequired}</div>
+                  <div className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white">{takeoff.sheetsRequired}</div>
                   <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
                     {takeoff.estimateReady ? 'ready estimate' : 'draft estimate'}
                   </div>
@@ -365,12 +357,12 @@ export default function WorkflowRail({
               </div>
 
               {reviewActions.length ? (
-                <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.08] p-4">
+                <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/[0.06] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-medium text-white">Continue QA</div>
                       <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">
-                        Jump to the highest-impact geometry that still needs review.
+                        Jump directly to the highest-impact geometry that still needs attention.
                       </div>
                     </div>
                     <span className="ws-chip" data-tone="accent">{reviewActions.length} queued</span>
@@ -381,7 +373,7 @@ export default function WorkflowRail({
                         key={action.key}
                         type="button"
                         onClick={() => onReviewAction(action)}
-                        className="rounded-xl border border-cyan-400/20 bg-black/10 px-3 py-2.5 text-left transition hover:border-cyan-300/40 hover:bg-cyan-500/[0.08]"
+                        className="rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3 text-left transition hover:border-cyan-300/40 hover:bg-cyan-500/[0.08]"
                       >
                         <div className="text-sm font-medium text-white">{action.label}</div>
                         <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">{action.description}</div>
@@ -400,20 +392,20 @@ export default function WorkflowRail({
                 </div>
               ) : null}
 
-              <details className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4" open={mode === 'review'}>
+              <details className="rounded-3xl border border-[var(--ws-border)] bg-white/[0.03] p-4" open={mode === 'review'}>
                 <summary className="cursor-pointer list-none text-sm font-medium text-white">
                   Warnings and guidance
                 </summary>
                 <div className="mt-3 space-y-2">
                   {reviewWarnings.length ? reviewWarnings.map((warning) => (
-                    <div key={warning} className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-3 text-sm text-amber-100">
+                    <div key={warning} className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-3 text-sm text-amber-100">
                       <div className="flex items-start gap-2">
                         <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-300" />
                         <span>{warning}</span>
                       </div>
                     </div>
                   )) : (
-                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3 text-sm text-emerald-100">
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3 text-sm text-emerald-100">
                       <div className="flex items-start gap-2">
                         <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-300" />
                         <span>The current result is aligned with the saved page state and has no outstanding review warnings.</span>
@@ -423,12 +415,12 @@ export default function WorkflowRail({
                 </div>
               </details>
 
-              <details className="rounded-2xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
+              <details className="rounded-3xl border border-[var(--ws-border)] bg-white/[0.03] p-4">
                 <summary className="cursor-pointer list-none text-sm font-medium text-white">
                   Run summary
                 </summary>
                 <div className="mt-3 space-y-3 text-sm text-[var(--ws-text-secondary)]">
-                  <div className="rounded-xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
+                  <div className="rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
                     <div className="font-medium text-white">{runComparisonMessage || 'Current run diagnostics'}</div>
                     <p className="mt-1">{runComparisonReason || 'This run used the latest pinned geometry revision for the current page.'}</p>
                     {metricDeltas ? (
@@ -443,19 +435,19 @@ export default function WorkflowRail({
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
                       <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--ws-text-muted)]">Source</div>
                       <div className="mt-2 font-medium text-white">{takeoffSourceDisplay}</div>
                     </div>
-                    <div className="rounded-xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
                       <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--ws-text-muted)]">Estimate</div>
                       <div className="mt-2 font-medium text-white">{takeoff.estimateReady ? 'Ready' : 'Draft'}</div>
                     </div>
-                    <div className="rounded-xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
                       <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--ws-text-muted)]">Openings</div>
                       <div className="mt-2 font-medium text-white">{takeoff.doors} doors / {takeoff.windows} windows</div>
                     </div>
-                    <div className="rounded-xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-[var(--ws-border)] bg-black/10 px-3 py-3">
                       <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--ws-text-muted)]">Unmatched</div>
                       <div className="mt-2 font-medium text-white">{takeoff.unmatchedOpeningCount}</div>
                     </div>

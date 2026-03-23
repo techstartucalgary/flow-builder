@@ -38,6 +38,10 @@ PASS_COVERAGE_TARGET_RATIO = 0.72
 LOW_COVERAGE_AMBIGUOUS_RATIO = 0.45
 DOMINANT_ROOM_AREA_RATIO = 0.58
 ORTHOGONAL_CELL_MIN_SPAN_PX = 3
+ORTHOGONAL_SOFT_SEAM_MIN_CONTACT_RATIO = 0.55
+ORTHOGONAL_SOFT_SEAM_MIN_CONTACT_RATIO_FRAGMENTED = 0.66
+ORTHOGONAL_SOFT_SEAM_MIN_CONTACT_RATIO_NO_DOORS = 0.72
+ORTHOGONAL_SOFT_SEAM_FRAGMENTED_GAP_COUNT = 12
 FlooringMaterial = Literal["hardwood", "carpet", "tile", "vinyl", "laminate"]
 RoomSpaceKind = Literal["counted_room", "open_common", "service", "storage", "mechanical", "circulation"]
 ANGLED_WALL_NOISE_MAX_FT = 0.75
@@ -1583,7 +1587,20 @@ def _merge_orthogonal_fragments(
     median_thickness = max(2.0, _median_wall_thickness(snapshot) * UPSCALE_FACTOR)
     max_gap_px = max(4, int(round(median_thickness * 1.75)))
     min_shared_span_px = max(8, int(round(median_thickness * 1.25)))
+    door_opening_count = sum(1 for opening in snapshot.openings if opening.tag_class == "door")
+    topology_gap_count = len(snapshot.open_boundary_gaps)
+    topology_fragmented = topology_gap_count >= ORTHOGONAL_SOFT_SEAM_FRAGMENTED_GAP_COUNT
+    soft_seam_contact_min_ratio = ORTHOGONAL_SOFT_SEAM_MIN_CONTACT_RATIO
+    soft_gap_guard_px = max_gap_px
+    strict_no_door_contact_override = 0.94
+    if topology_fragmented and door_opening_count == 0:
+        soft_seam_contact_min_ratio = ORTHOGONAL_SOFT_SEAM_MIN_CONTACT_RATIO_NO_DOORS
+        soft_gap_guard_px = max(3, int(round(median_thickness * 0.7)))
+    elif topology_fragmented and door_opening_count <= 1:
+        soft_seam_contact_min_ratio = ORTHOGONAL_SOFT_SEAM_MIN_CONTACT_RATIO_FRAGMENTED
+        soft_gap_guard_px = max(3, int(round(median_thickness * 0.9)))
     soft_seam_count = 0
+    suppressed_soft_seam_count = 0
     hard_separator_count = 0
     seams: list[_FragmentSeam] = []
     parent = list(range(len(fragments)))
@@ -1610,7 +1627,17 @@ def _merge_orthogonal_fragments(
                 max_gap_px=max_gap_px,
                 min_shared_span_px=min_shared_span_px,
             )
-            if seam is None or seam.contact_ratio < 0.55:
+            if seam is None or seam.contact_ratio < soft_seam_contact_min_ratio:
+                continue
+            if (
+                seam.gap_px > soft_gap_guard_px
+                and not (
+                    topology_fragmented
+                    and door_opening_count == 0
+                    and seam.contact_ratio >= strict_no_door_contact_override
+                )
+            ):
+                suppressed_soft_seam_count += 1
                 continue
             if seam.wall_support_ratio >= 0.2 or seam.door_support_ratio >= 0.12:
                 hard_separator_count += 1
@@ -1647,7 +1674,12 @@ def _merge_orthogonal_fragments(
         "merged_room_count": len(merged_masks),
         "merge_count": max(0, len(candidate_masks) - len(merged_masks)),
         "soft_seam_count": soft_seam_count,
+        "suppressed_soft_seam_count": suppressed_soft_seam_count,
         "hard_separator_count": hard_separator_count,
+        "soft_seam_contact_min_ratio": round(float(soft_seam_contact_min_ratio), 4),
+        "soft_gap_guard_px": soft_gap_guard_px,
+        "topology_gap_count": topology_gap_count,
+        "door_opening_count": door_opening_count,
     }
 
 
@@ -2451,8 +2483,9 @@ def _rooms_overlap_penalty(rooms: list[ExtractedRoom]) -> float:
     return penalty
 
 
-def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, int, float, float, float, float]:
+def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, int, int, float, float, float, float, float]:
     coverage_ratio = float(result.debug.get("coverage_ratio", 0.0))
+    coverage_bucket = 2 if coverage_ratio >= PASS_COVERAGE_TARGET_RATIO else 1 if coverage_ratio >= LOW_COVERAGE_AMBIGUOUS_RATIO else 0
     overlap_penalty = _rooms_overlap_penalty(result.rooms)
     dominant_ratio = 0.0
     countable_rooms = _countable_rooms(result.rooms)
@@ -2462,6 +2495,12 @@ def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, int, fl
     fragment_count_before_merge = int(result.debug.get("fragment_count_before_merge", len(result.rooms)))
     merged_room_count = int(result.debug.get("merged_room_count", len(result.rooms)))
     fragmentation_penalty = max(0.0, float(fragment_count_before_merge - merged_room_count))
+    closure_status = str(result.debug.get("closure_status", "open"))
+    endpoint_repairs = int(result.debug.get("endpoint_repair_count", 0))
+    topology_repairs = int(result.debug.get("repair_rect_count", 0))
+    topology_unstable = closure_status != "closed" or endpoint_repairs > 0 or topology_repairs > 0
+    multi_room_priority = 1 if topology_unstable and len(countable_rooms) > 1 else 0
+    unstable_single_room_penalty = 1 if topology_unstable and len(countable_rooms) <= 1 else 0
     hard_failures = sum(
         int(result.debug.get(key, 0))
         for key in (
@@ -2473,12 +2512,14 @@ def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, int, fl
         )
     )
     return (
-        1 if coverage_ratio >= PASS_COVERAGE_TARGET_RATIO else 0,
+        multi_room_priority,
+        coverage_bucket,
         1 if len(countable_rooms) > 1 else 0,
         len(countable_rooms),
+        -unstable_single_room_penalty,
         coverage_ratio,
         -fragmentation_penalty,
-        -overlap_penalty - max(0.0, dominant_ratio - DOMINANT_ROOM_AREA_RATIO),
+        -overlap_penalty - max(0.0, dominant_ratio - DOMINANT_ROOM_AREA_RATIO) - min(0.35, endpoint_repairs * 0.015),
         -float(hard_failures),
     )
 

@@ -14,9 +14,12 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from src.estimators.drywall.annotation_geometry import build_takeoff_geometry_snapshot  # noqa: E402
 from src.estimators.drywall.room_closure import (  # noqa: E402
+    ExtractedRoom,
+    RoomExtractionResult,
     _all_walls_orthogonal,
     _classify_room_space,
     _merge_orthogonal_fragments,
+    _pass_selection_key,
     compute_enclosed_regions,
     extract_room_regions,
 )
@@ -65,7 +68,7 @@ class RoomClosureTests(unittest.TestCase):
         left_mask = np.zeros(shape, dtype=np.uint8)
         right_mask = np.zeros(shape, dtype=np.uint8)
         cv2.rectangle(left_mask, (60, 60), (200, 280), 255, -1)
-        cv2.rectangle(right_mask, (208, 60), (340, 280), 255, -1)
+        cv2.rectangle(right_mask, (214, 60), (346, 280), 255, -1)
 
         merged_masks, debug = _merge_orthogonal_fragments(snapshot, [left_mask, right_mask])
 
@@ -93,6 +96,33 @@ class RoomClosureTests(unittest.TestCase):
 
         self.assertEqual(len(merged_masks), 2)
         self.assertGreaterEqual(int(debug.get("hard_separator_count", 0)), 1)
+
+    def test_merge_orthogonal_fragments_suppresses_soft_seams_when_topology_is_fragmented_and_doors_missing(self):
+        document = _document([
+            {"id": "s1", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 20, "x2": 70, "y2": 20, "thicknessPx": 6}},
+            {"id": "s2", "type": "wall", "geometry": {"kind": "segment", "x1": 95, "y1": 20, "x2": 145, "y2": 20, "thicknessPx": 6}},
+            {"id": "s3", "type": "wall", "geometry": {"kind": "segment", "x1": 170, "y1": 20, "x2": 220, "y2": 20, "thicknessPx": 6}},
+            {"id": "s4", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 80, "x2": 20, "y2": 130, "thicknessPx": 6}},
+            {"id": "s5", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 160, "x2": 20, "y2": 210, "thicknessPx": 6}},
+            {"id": "s6", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 80, "x2": 220, "y2": 130, "thicknessPx": 6}},
+            {"id": "s7", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 160, "x2": 220, "y2": 210, "thicknessPx": 6}},
+        ])
+        snapshot = build_takeoff_geometry_snapshot(document, revision=1, effective_scale_px_per_ft=10.0)
+
+        shape = (document["baseImage"]["heightPx"] * 2, document["baseImage"]["widthPx"] * 2)
+        left_mask = np.zeros(shape, dtype=np.uint8)
+        right_mask = np.zeros(shape, dtype=np.uint8)
+        cv2.rectangle(left_mask, (60, 60), (200, 280), 255, -1)
+        cv2.rectangle(right_mask, (228, 60), (360, 280), 255, -1)
+        cv2.rectangle(right_mask, (228, 150), (256, 215), 0, -1)
+
+        merged_masks, debug = _merge_orthogonal_fragments(snapshot, [left_mask, right_mask])
+
+        self.assertEqual(len(merged_masks), 2)
+        self.assertEqual(int(debug.get("soft_seam_count", 0)), 0)
+        self.assertGreaterEqual(int(debug.get("topology_gap_count", 0)), 12)
+        self.assertGreaterEqual(float(debug.get("soft_seam_contact_min_ratio", 0.0)), 0.72)
+        self.assertEqual(int(debug.get("door_opening_count", -1)), 0)
 
     def test_hosted_window_does_not_break_closed_shell(self):
         snapshot = build_takeoff_geometry_snapshot(
@@ -215,6 +245,53 @@ class RoomClosureTests(unittest.TestCase):
         self.assertGreaterEqual(int(result.debug.get("merge_count", 0)), 1)
         dominant_ratio = max((room.area_sqft for room in result.rooms), default=0.0) / max(result.total_area_sqft, 1.0)
         self.assertLessEqual(dominant_ratio, 0.58)
+
+    def test_pass_selection_prefers_multi_room_result_when_topology_is_open(self):
+        def room(room_id: str, area_sqft: float, bbox_x: int) -> ExtractedRoom:
+            return ExtractedRoom(
+                id=room_id,
+                polygon=[(bbox_x, 0), (bbox_x + 10, 0), (bbox_x + 10, 10), (bbox_x, 10)],
+                bbox=(bbox_x, 0, bbox_x + 10, 10),
+                centroid=(bbox_x + 5.0, 5.0),
+                area_sqft=area_sqft,
+                area_px=area_sqft * 100.0,
+                quantity_required=area_sqft,
+                quantity_unit="sqft",
+                extraction_status="ambiguous",
+                extraction_confidence=0.7,
+                touches_border=False,
+            )
+
+        repaired_single_room = RoomExtractionResult(
+            rooms=[room("strict_room", 320.0, 0)],
+            status="ambiguous",
+            confidence="low",
+            total_area_sqft=320.0,
+            debug={
+                "coverage_ratio": 1.0,
+                "closure_status": "open",
+                "endpoint_repair_count": 18,
+            },
+        )
+        orthogonal_multi_room = RoomExtractionResult(
+            rooms=[
+                room("orth_1", 95.0, 0),
+                room("orth_2", 90.0, 20),
+                room("orth_3", 82.0, 40),
+                room("orth_4", 78.0, 60),
+            ],
+            status="ambiguous",
+            confidence="medium",
+            total_area_sqft=345.0,
+            debug={
+                "coverage_ratio": 0.67,
+                "closure_status": "open",
+                "fragment_count_before_merge": 6,
+                "merged_room_count": 4,
+            },
+        )
+
+        self.assertGreater(_pass_selection_key(orthogonal_multi_room), _pass_selection_key(repaired_single_room))
 
     def test_extract_room_regions_preserves_l_shaped_room_polygon(self):
         document = _document([

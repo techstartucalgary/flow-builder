@@ -15,8 +15,10 @@
   --ws-bg: #030712;
   --ws-surface: rgba(10, 15, 26, 0.92);
   --ws-surface-elevated: rgba(14, 23, 39, 0.98);
+  --ws-surface-muted: rgba(255, 255, 255, 0.035);
   --ws-border: rgba(148, 163, 184, 0.12);
   --ws-border-strong: rgba(96, 165, 250, 0.18);
+  --ws-divider: rgba(148, 163, 184, 0.08);
   --ws-text: #f8fafc;
   --ws-text-secondary: #cbd5e1;
   --ws-text-muted: #64748b;
@@ -75,7 +77,17 @@ body {
   .ws-section {
     border: 1px solid var(--ws-border);
     border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--ws-surface-muted);
+  }
+
+  .ws-panel-flat {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+    border: 1px solid var(--ws-border);
+    border-radius: 1rem;
+  }
+
+  .ws-divider {
+    border-color: var(--ws-divider);
   }
 
   .ws-section-header {
@@ -98,6 +110,12 @@ body {
     font-size: 0.72rem;
     line-height: 1;
     white-space: nowrap;
+  }
+
+  .ws-chip[data-active='true'] {
+    border-color: rgba(34, 211, 238, 0.35);
+    background: rgba(34, 211, 238, 0.12);
+    color: #cffafe;
   }
 
   .ws-chip[data-tone='accent'] {
@@ -138,6 +156,21 @@ body {
     min-width: 0;
     flex: 1 1 10rem;
   }
+}
+
+@keyframes wsFadeLift {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ws-fade-lift {
+  animation: wsFadeLift 0.28s ease-out both;
 }
 
 /* ── Takeoff Analyzing Overlay ── */

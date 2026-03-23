@@ -60,15 +60,16 @@ export default function EditorToolbar({
   onToggleWallSnap,
 }: EditorToolbarProps) {
   return (
-    <div className="ws-panel-elevated flex flex-wrap items-center gap-3 p-2.5">
+    <div className="ws-panel-flat flex flex-wrap items-center gap-3 px-3 py-3">
       <div className="flex items-center gap-2">
-        <span className="ws-section-header">Filters</span>
-        <div className="inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
+        <span className="ws-section-header">View</span>
+        <div className="inline-flex rounded-2xl border border-white/10 bg-black/20 p-1">
           {PRESETS.map((preset) => (
             <button
               key={preset.value}
               type="button"
               onClick={() => onViewPresetChange(preset.value)}
+              aria-pressed={viewPreset === preset.value}
               className={`rounded-lg px-2.5 py-1.5 text-xs transition ${
                 viewPreset === preset.value
                   ? 'border border-cyan-400/60 bg-cyan-500/15 text-cyan-200'
@@ -83,12 +84,13 @@ export default function EditorToolbar({
 
       <div className="flex items-center gap-2">
         <span className="ws-section-header">Tools</span>
-        <div className="inline-flex flex-wrap rounded-xl border border-white/10 bg-white/[0.02] p-1">
+        <div className="inline-flex flex-wrap rounded-2xl border border-white/10 bg-white/[0.02] p-1">
           {PRIMARY_TOOLS.map((tool) => (
             <button
               key={tool.value}
               type="button"
               onClick={() => onToolChange(tool.value)}
+              aria-pressed={toolMode === tool.value}
               className={`rounded-lg border px-2.5 py-1.5 text-xs transition ${
                 toolMode === tool.value
                   ? 'border-cyan-400/80 bg-cyan-500/10 text-cyan-200'
@@ -103,7 +105,7 @@ export default function EditorToolbar({
 
       <div className="flex items-center gap-2">
         <span className="ws-section-header">Actions</span>
-        <div className="inline-flex flex-wrap rounded-xl border border-white/10 bg-white/[0.02] p-1">
+        <div className="inline-flex flex-wrap rounded-2xl border border-white/10 bg-white/[0.02] p-1">
           <button type="button" onClick={onUndo} className="rounded-lg px-2 py-1.5 text-xs text-gray-300 hover:text-white">
             Undo
           </button>
@@ -125,10 +127,11 @@ export default function EditorToolbar({
 
       <div className="flex items-center gap-2">
         <span className="ws-section-header">Canvas</span>
-        <div className="inline-flex flex-wrap rounded-xl border border-white/10 bg-white/[0.02] p-1">
+        <div className="inline-flex flex-wrap rounded-2xl border border-white/10 bg-white/[0.02] p-1">
           <button
             type="button"
             onClick={onToggleBaseImage}
+            aria-pressed={showBaseImage}
             className={`rounded-lg px-2 py-1.5 text-xs ${
               showBaseImage ? 'border border-cyan-400/60 bg-cyan-500/10 text-cyan-200' : 'text-gray-300'
             }`}
@@ -138,6 +141,7 @@ export default function EditorToolbar({
           <button
             type="button"
             onClick={onToggleShowTags}
+            aria-pressed={showTags}
             className={`rounded-lg px-2 py-1.5 text-xs ${
               showTags ? 'border border-fuchsia-400/60 bg-fuchsia-500/10 text-fuchsia-200' : 'text-gray-300'
             }`}
@@ -147,6 +151,7 @@ export default function EditorToolbar({
           <button
             type="button"
             onClick={onToggleGrid}
+            aria-pressed={gridEnabled}
             className={`rounded-lg px-2 py-1.5 text-xs ${gridEnabled ? 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-200' : 'text-gray-300'}`}
           >
             Grid
@@ -154,6 +159,7 @@ export default function EditorToolbar({
           <button
             type="button"
             onClick={onToggleWallSnap}
+            aria-pressed={wallSnapEnabled}
             className={`rounded-lg px-2 py-1.5 text-xs ${wallSnapEnabled ? 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-200' : 'text-gray-300'}`}
           >
             Wall Snap
@@ -163,7 +169,7 @@ export default function EditorToolbar({
 
       <div className="ml-auto flex items-center gap-2">
         <span className="ws-section-header">Refresh</span>
-        <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.02] p-1">
+        <div className="inline-flex rounded-2xl border border-white/10 bg-white/[0.02] p-1">
           <button
             type="button"
             onClick={onRefreshOpenings}

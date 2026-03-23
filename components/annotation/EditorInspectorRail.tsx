@@ -60,13 +60,20 @@ export default function EditorInspectorRail({
     <div className="min-h-0 overflow-y-auto space-y-2 pr-1">
       <RevisionStatusBar revision={document.meta.revision} status={saveStatus} />
 
-      <div className="ws-panel p-2">
+      <div className="ws-panel-flat p-2">
+        <div className="flex items-center justify-between gap-3 px-1 pb-2">
+          <div className="ws-section-header">Inspector</div>
+          <span className="text-[11px] text-[var(--ws-text-muted)]">
+            {activeTab === 'selection' ? 'Properties' : activeTab}
+          </span>
+        </div>
         <div className="flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
+              aria-pressed={activeTab === tab.id}
               className={`rounded-xl px-3 py-2 text-xs font-medium transition ${
                 activeTab === tab.id
                   ? 'bg-cyan-500/15 text-cyan-100'

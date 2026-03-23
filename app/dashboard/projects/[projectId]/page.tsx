@@ -821,45 +821,62 @@ export default function ProjectViewerPage() {
             />
           ) : null}
           <section className="flex min-w-0 flex-1 flex-col">
-            <div className="ws-panel-elevated flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--ws-border)] px-4 py-3">
-                <div>
+            <div className="ws-panel-flat flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ws-divider)] px-4 py-3">
+                <div className="min-w-0">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--ws-text-muted)]">Plan Workspace</div>
                   <div className="mt-1 text-sm text-[var(--ws-text-secondary)]">
                     {editorMode
                       ? 'Inspect geometry, resolve blockers, and prepare the page for a trustworthy run.'
                       : 'Review the latest result, compare it to the plan, and jump back into QA only when needed.'}
                   </div>
-                </div>
-                {!editorMode ? (
-                  <div className="flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-white/5 px-2 py-1.5 text-[var(--ws-text-secondary)]">
-                    <button
-                      onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
-                      aria-label="Zoom out"
-                    >
-                      <ZoomOut size={16} />
-                    </button>
-                    <button
-                      onClick={() => setZoom(1)}
-                      className="min-w-[3.5rem] rounded-lg px-2 py-1 text-center text-xs transition hover:bg-white/10 hover:text-white"
-                      aria-label="Reset zoom"
-                      title="Reset to 100%"
-                    >
-                      {Math.round(zoom * 100)}%
-                    </button>
-                    <button
-                      onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
-                      aria-label="Zoom in"
-                    >
-                      <ZoomIn size={16} />
-                    </button>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="ws-chip" data-active="true">
+                      {editorMode ? 'Geometry editing live' : 'Reviewing latest output'}
+                    </span>
+                    {generated ? (
+                      <span className="ws-chip" data-tone={takeoff.roomClosureStatus === 'closed' ? 'good' : 'warn'}>
+                        Closure {roomClosureLabel(takeoff.roomClosureStatus)}
+                      </span>
+                    ) : null}
+                    {hasScale ? (
+                      <span className="ws-chip" data-tone="good">Scale set</span>
+                    ) : (
+                      <span className="ws-chip" data-tone="warn">Scale needed</span>
+                    )}
                   </div>
-                ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!editorMode ? (
+                    <div className="flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-black/20 px-2 py-1.5 text-[var(--ws-text-secondary)]">
+                      <button
+                        onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                        aria-label="Zoom out"
+                      >
+                        <ZoomOut size={16} />
+                      </button>
+                      <button
+                        onClick={() => setZoom(1)}
+                        className="min-w-[3.5rem] rounded-lg px-2 py-1 text-center text-xs transition hover:bg-white/10 hover:text-white"
+                        aria-label="Reset zoom"
+                        title="Reset to 100%"
+                      >
+                        {Math.round(zoom * 100)}%
+                      </button>
+                      <button
+                        onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                        aria-label="Zoom in"
+                      >
+                        <ZoomIn size={16} />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="relative min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(39,212,255,0.09),_transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))]">
+              <div className="relative min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(39,212,255,0.08),_transparent_24%),radial-gradient(circle_at_bottom,_rgba(59,130,246,0.08),_transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))]">
                 {editorMode ? (
                   <div className="h-full min-h-0 p-2">
                     <AnnotationEditorBoundary
@@ -877,9 +894,9 @@ export default function ProjectViewerPage() {
                     </AnnotationEditorBoundary>
                   </div>
                 ) : (
-                  <div className="relative h-full overflow-auto">
+                  <div className="relative h-full overflow-auto px-2 py-2">
                     {annotatedImage && generated ? (
-                      <div className="flex h-full w-full items-center justify-center p-4">
+                      <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] border border-[var(--ws-border)] bg-black/10 p-4">
                         <img
                           src={annotatedImage}
                           alt="Annotated floor plan"
@@ -898,7 +915,7 @@ export default function ProjectViewerPage() {
                         }}
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center p-4">
+                      <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] border border-[var(--ws-border)] bg-black/10 p-4">
                         <img
                           src={fileUrl}
                           alt={project.name}

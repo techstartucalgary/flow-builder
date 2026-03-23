@@ -985,7 +985,7 @@ export default function AnnotationEditorShell({
   }
 
   return (
-    <div className="w-full h-full min-h-0 flex flex-col gap-2">
+    <div className="flex h-full min-h-0 w-full flex-col gap-3">
       <EditorToolbar
         toolMode={toolMode}
         onToolChange={setToolMode}
@@ -1137,7 +1137,7 @@ export default function AnnotationEditorShell({
         ) : null}
       </EditorStatusBanner>
 
-      <div className="flex-1 min-h-0 grid grid-cols-[1fr_320px] gap-2">
+      <div className="grid min-h-0 flex-1 grid-cols-[1fr_332px] gap-3">
         <ViewportStage
           baseImageUrl={document.baseImage.sourceUrl}
           widthPx={document.baseImage.widthPx}
