@@ -274,6 +274,7 @@ interface RoomRefreshOutcome {
   replacedRooms: boolean;
   summary: {
     roomCount: number;
+    spaceCount?: number;
     status: 'closed' | 'open' | 'ambiguous';
     confidence: 'high' | 'medium' | 'low';
   };
@@ -446,7 +447,9 @@ export default function AnnotationEditorShell({
     }
 
     if (shouldPreserveExistingRooms) {
-      const nextRoomLabel = extracted.rooms.length === 1 ? '1 room' : `${extracted.rooms.length} rooms`;
+      const countedRoomCount = extracted.summary.room_count;
+      const spaceCount = extracted.summary.space_count ?? extracted.rooms.length;
+      const nextRoomLabel = `${countedRoomCount} counted room${countedRoomCount === 1 ? '' : 's'} across ${spaceCount} space${spaceCount === 1 ? '' : 's'}`;
       setWarning(
         `${ROOM_REFRESH_WARNING_PREFIX}: extractor returned ${nextRoomLabel} with ${extracted.summary.status} status and ${extracted.summary.confidence} confidence.`,
       );
@@ -461,6 +464,7 @@ export default function AnnotationEditorShell({
         replacedRooms: !shouldPreserveExistingRooms,
         summary: {
           roomCount: extracted.summary.room_count,
+          spaceCount: extracted.summary.space_count,
           status: extracted.summary.status,
           confidence: extracted.summary.confidence,
         },
@@ -505,6 +509,7 @@ export default function AnnotationEditorShell({
       replacedRooms: !shouldPreserveExistingRooms,
       summary: {
         roomCount: extracted.summary.room_count,
+        spaceCount: extracted.summary.space_count,
         status: extracted.summary.status,
         confidence: extracted.summary.confidence,
       },

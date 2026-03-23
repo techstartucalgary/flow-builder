@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from math import hypot
+import re
 from typing import Any, Literal, Optional
 
 import cv2
@@ -38,6 +39,10 @@ LOW_COVERAGE_AMBIGUOUS_RATIO = 0.45
 DOMINANT_ROOM_AREA_RATIO = 0.58
 ORTHOGONAL_CELL_MIN_SPAN_PX = 3
 FlooringMaterial = Literal["hardwood", "carpet", "tile", "vinyl", "laminate"]
+RoomSpaceKind = Literal["counted_room", "open_common", "service", "storage", "mechanical", "circulation"]
+ANGLED_WALL_NOISE_MAX_FT = 0.75
+ANGLED_WALL_NOISE_MAX_THICKNESS_RATIO = 0.85
+OPEN_COMMON_MIN_AREA_SQFT = 250.0
 
 
 @dataclass
@@ -63,6 +68,8 @@ class ExtractedRoom:
     extraction_status: Literal["auto", "edited", "ambiguous"]
     extraction_confidence: float
     touches_border: bool
+    space_kind: RoomSpaceKind = "counted_room"
+    countable: bool = True
     material: FlooringMaterial | None = None
     name: str | None = None
     attrs: dict[str, Any] = field(default_factory=dict)
@@ -1059,7 +1066,83 @@ def _mask_bbox(mask: np.ndarray) -> tuple[int, int, int, int]:
 
 
 def _all_walls_orthogonal(snapshot: TakeoffGeometrySnapshot) -> bool:
-    return bool(snapshot.walls) and all(wall.orientation in {"horizontal", "vertical"} for wall in snapshot.walls)
+    if not snapshot.walls:
+        return False
+
+    median_thickness = _median_wall_thickness(snapshot)
+    scale_px_per_ft = _positive_scale(snapshot)
+    max_noise_length_px = max(6.0, median_thickness * ANGLED_WALL_NOISE_MAX_THICKNESS_RATIO)
+    if scale_px_per_ft > 0:
+        max_noise_length_px = max(max_noise_length_px, scale_px_per_ft * ANGLED_WALL_NOISE_MAX_FT)
+
+    return all(
+        wall.orientation in {"horizontal", "vertical"}
+        or float(wall.length_px) <= max_noise_length_px
+        for wall in snapshot.walls
+    )
+
+
+def _normalize_space_label(value: str | None) -> str:
+    if not value:
+        return ""
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def _space_kind_from_name(name: str | None) -> RoomSpaceKind | None:
+    normalized = _normalize_space_label(name)
+    if not normalized:
+        return None
+
+    keyword_groups: tuple[tuple[RoomSpaceKind, tuple[str, ...]], ...] = (
+        ("mechanical", ("mech", "mechanical", "electrical", "furnace", "boiler", "hvac", "utility")),
+        ("storage", ("storage", "closet", "linen", "pantry")),
+        ("service", ("bath", "toilet", "washroom", "laundry", "mudroom", "janitor")),
+        ("circulation", ("hall", "hallway", "corridor", "vestibule", "entry", "stairs", "stair")),
+        ("open_common", ("common area", "open area", "main area", "common")),
+    )
+    for kind, keywords in keyword_groups:
+        if any(keyword in normalized for keyword in keywords):
+            return kind
+    return None
+
+
+def _classify_room_space(
+    *,
+    name: str | None,
+    area_sqft: float,
+    total_interior_area_sqft: float,
+    accepted_reason: str,
+    closure_status: Literal["closed", "open", "ambiguous"],
+    internal_barrier_count: int,
+    repair_count: int,
+) -> tuple[RoomSpaceKind, bool, str]:
+    named_kind = _space_kind_from_name(name)
+    if named_kind is not None:
+        return named_kind, named_kind == "counted_room", f"name:{named_kind}"
+
+    dominant_ratio = float(area_sqft / max(total_interior_area_sqft, area_sqft, 1.0))
+    if accepted_reason == "oversized_unsplit":
+        return "open_common", False, "oversized_unsplit"
+
+    if (
+        closure_status == "open"
+        and area_sqft >= OPEN_COMMON_MIN_AREA_SQFT
+        and dominant_ratio >= max(0.35, DOMINANT_ROOM_AREA_RATIO * 0.75)
+    ):
+        return "open_common", False, "open_topology_large_component"
+
+    if (
+        area_sqft >= OPEN_COMMON_MIN_AREA_SQFT
+        and dominant_ratio >= DOMINANT_ROOM_AREA_RATIO
+        and (closure_status != "closed" or internal_barrier_count >= MIN_INTERNAL_BARRIER_COUNT or repair_count > 0)
+    ):
+        return "open_common", False, "dominant_common_area"
+
+    return "counted_room", True, "default_room"
+
+
+def _countable_rooms(rooms: list[ExtractedRoom]) -> list[ExtractedRoom]:
+    return [room for room in rooms if room.countable]
 
 
 def _wall_barrier_rect(wall: NormalizedWall, snapshot: TakeoffGeometrySnapshot) -> tuple[int, int, int, int]:
@@ -2048,6 +2131,16 @@ def _extract_room_regions_pass(
                 attrs["notes"] = matched_attrs.get("notes")
             if matched_attrs.get("name"):
                 attrs["name"] = matched_attrs.get("name")
+            room_name = str(attrs.get("name")) if attrs.get("name") else None
+            space_kind, countable, space_reason = _classify_room_space(
+                name=room_name,
+                area_sqft=area_sqft,
+                total_interior_area_sqft=total_interior_area_sqft,
+                accepted_reason=accepted_reason,
+                closure_status=closure.status,
+                internal_barrier_count=internal_barrier_count,
+                repair_count=int(repair_debug["count"]),
+            )
 
             rooms.append(
                 ExtractedRoom(
@@ -2057,13 +2150,15 @@ def _extract_room_regions_pass(
                     centroid=centroid,
                     area_sqft=round(area_sqft, 4),
                     area_px=round(area_px, 4),
-                    quantity_required=round(max(area_sqft, 0.0), 4),
+                    quantity_required=round(max(area_sqft, 0.0) if countable else 0.0, 4),
                     quantity_unit="sqft",
                     extraction_status=extraction_status,
                     extraction_confidence=extraction_confidence,
                     touches_border=touches_border,
+                    space_kind=space_kind,
+                    countable=countable,
                     material=material,
-                    name=str(attrs.get("name")) if attrs.get("name") else None,
+                    name=room_name,
                     attrs=attrs,
                     diagnostics={
                         "component_label": label,
@@ -2075,12 +2170,18 @@ def _extract_room_regions_pass(
                         "touches_border": touches_border,
                         "internal_barrier_count": internal_barrier_count,
                         "accepted_reason": accepted_reason,
+                        "space_kind": space_kind,
+                        "countable": countable,
+                        "space_classification_reason": space_reason,
                     },
                 )
             )
 
     rooms = _dedupe_rooms(rooms)
     total_area_sqft = sum(room.area_sqft for room in rooms)
+    countable_room_count = len(_countable_rooms(rooms))
+    non_countable_space_count = max(0, len(rooms) - countable_room_count)
+    countable_area_sqft = sum(room.quantity_required for room in rooms)
     coverage_ratio = float(total_area_sqft / max(total_interior_area_sqft, total_area_sqft, 1.0))
     ambiguous_room_count = sum(1 for room in rooms if room.extraction_status == "ambiguous")
     if rooms:
@@ -2107,9 +2208,12 @@ def _extract_room_regions_pass(
         debug={
             "extraction_pass": extraction_pass,
             "room_count": len(rooms),
+            "countable_room_count": countable_room_count,
+            "non_countable_space_count": non_countable_space_count,
             "accepted_ambiguous_count": ambiguous_room_count,
             "candidate_label_count": candidate_labels,
             "accepted_area_sqft": round(float(total_area_sqft), 4),
+            "countable_area_sqft": round(float(countable_area_sqft), 4),
             "total_interior_area_sqft": round(float(total_interior_area_sqft), 4),
             "coverage_ratio": round(coverage_ratio, 4),
             "closure_status": closure.status,
@@ -2163,6 +2267,7 @@ def _extract_room_regions_orthogonal_pass(
     scale_px_per_ft = _positive_scale(snapshot)
     min_region_area_px = int(round(max(1.0, MIN_ROOM_REGION_SQFT) * ((scale_px_per_ft or 1.0) * UPSCALE_FACTOR) ** 2))
     candidate_masks, total_component_area_px, cell_debug = _orthogonal_cell_candidate_masks(snapshot, min_region_area_px)
+    total_component_area_sqft = _region_area_sqft(total_component_area_px, scale_px_per_ft * UPSCALE_FACTOR)
     candidate_masks, merge_debug = _merge_orthogonal_fragments(snapshot, candidate_masks)
     existing_rooms = _extract_existing_room_metadata(existing_document or {})
     used_existing_ids: set[str] = set()
@@ -2243,6 +2348,16 @@ def _extract_room_regions_orthogonal_pass(
             attrs["notes"] = matched_attrs.get("notes")
         if matched_attrs.get("name"):
             attrs["name"] = matched_attrs.get("name")
+        room_name = str(attrs.get("name")) if attrs.get("name") else None
+        space_kind, countable, space_reason = _classify_room_space(
+            name=room_name,
+            area_sqft=area_sqft,
+            total_interior_area_sqft=total_component_area_sqft,
+            accepted_reason=accepted_reason,
+            closure_status=closure.status,
+            internal_barrier_count=0,
+            repair_count=0,
+        )
 
         rooms.append(
             ExtractedRoom(
@@ -2252,13 +2367,15 @@ def _extract_room_regions_orthogonal_pass(
                 centroid=centroid,
                 area_sqft=round(area_sqft, 4),
                 area_px=round(area_px, 4),
-                quantity_required=round(max(area_sqft, 0.0), 4),
+                quantity_required=round(max(area_sqft, 0.0) if countable else 0.0, 4),
                 quantity_unit="sqft",
                 extraction_status=extraction_status,
                 extraction_confidence=extraction_confidence,
                 touches_border=touches_border,
+                space_kind=space_kind,
+                countable=countable,
                 material=material,
-                name=str(attrs.get("name")) if attrs.get("name") else None,
+                name=room_name,
                 attrs=attrs,
                 diagnostics={
                     "component_label": index,
@@ -2268,13 +2385,18 @@ def _extract_room_regions_orthogonal_pass(
                     "closure_status": closure.status,
                     "touches_border": touches_border,
                     "accepted_reason": accepted_reason,
+                    "space_kind": space_kind,
+                    "countable": countable,
+                    "space_classification_reason": space_reason,
                 },
             )
         )
 
     rooms = _dedupe_rooms(rooms)
     total_area_sqft = sum(room.area_sqft for room in rooms)
-    total_component_area_sqft = _region_area_sqft(total_component_area_px, scale_px_per_ft * UPSCALE_FACTOR)
+    countable_room_count = len(_countable_rooms(rooms))
+    non_countable_space_count = max(0, len(rooms) - countable_room_count)
+    countable_area_sqft = sum(room.quantity_required for room in rooms)
     coverage_ratio = float(total_area_sqft / max(total_component_area_sqft, total_area_sqft, 1.0))
     ambiguous_room_count = sum(1 for room in rooms if room.extraction_status == "ambiguous")
 
@@ -2301,9 +2423,12 @@ def _extract_room_regions_orthogonal_pass(
         debug={
             "extraction_pass": "orthogonal",
             "room_count": len(rooms),
+            "countable_room_count": countable_room_count,
+            "non_countable_space_count": non_countable_space_count,
             "accepted_ambiguous_count": ambiguous_room_count,
             "candidate_label_count": len(candidate_masks),
             "accepted_area_sqft": round(float(total_area_sqft), 4),
+            "countable_area_sqft": round(float(countable_area_sqft), 4),
             "total_interior_area_sqft": round(float(total_component_area_sqft), 4),
             "coverage_ratio": round(coverage_ratio, 4),
             "closure_status": closure.status,
@@ -2330,8 +2455,10 @@ def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, int, fl
     coverage_ratio = float(result.debug.get("coverage_ratio", 0.0))
     overlap_penalty = _rooms_overlap_penalty(result.rooms)
     dominant_ratio = 0.0
-    if result.total_area_sqft > 0 and result.rooms:
-        dominant_ratio = max(room.area_sqft for room in result.rooms) / max(result.total_area_sqft, 1e-6)
+    countable_rooms = _countable_rooms(result.rooms)
+    countable_total_area = sum(room.area_sqft for room in countable_rooms)
+    if countable_total_area > 0 and countable_rooms:
+        dominant_ratio = max(room.area_sqft for room in countable_rooms) / max(countable_total_area, 1e-6)
     fragment_count_before_merge = int(result.debug.get("fragment_count_before_merge", len(result.rooms)))
     merged_room_count = int(result.debug.get("merged_room_count", len(result.rooms)))
     fragmentation_penalty = max(0.0, float(fragment_count_before_merge - merged_room_count))
@@ -2347,8 +2474,8 @@ def _pass_selection_key(result: RoomExtractionResult) -> tuple[int, int, int, fl
     )
     return (
         1 if coverage_ratio >= PASS_COVERAGE_TARGET_RATIO else 0,
-        1 if len(result.rooms) > 1 else 0,
-        len(result.rooms),
+        1 if len(countable_rooms) > 1 else 0,
+        len(countable_rooms),
         coverage_ratio,
         -fragmentation_penalty,
         -overlap_penalty - max(0.0, dominant_ratio - DOMINANT_ROOM_AREA_RATIO),

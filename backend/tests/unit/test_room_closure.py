@@ -14,6 +14,8 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from src.estimators.drywall.annotation_geometry import build_takeoff_geometry_snapshot  # noqa: E402
 from src.estimators.drywall.room_closure import (  # noqa: E402
+    _all_walls_orthogonal,
+    _classify_room_space,
     _merge_orthogonal_fragments,
     compute_enclosed_regions,
     extract_room_regions,
@@ -230,6 +232,41 @@ class RoomClosureTests(unittest.TestCase):
         self.assertEqual(len(result.rooms), 1)
         self.assertGreater(len(result.rooms[0].polygon), 4)
         self.assertGreater(result.rooms[0].area_sqft, 200.0)
+
+    def test_tiny_angled_fragments_do_not_disable_orthogonal_pass(self):
+        document = _document([
+            {"id": "top", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 20, "x2": 220, "y2": 20, "thicknessPx": 6}},
+            {"id": "right", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 20, "x2": 220, "y2": 180, "thicknessPx": 6}},
+            {"id": "bottom", "type": "wall", "geometry": {"kind": "segment", "x1": 220, "y1": 180, "x2": 20, "y2": 180, "thicknessPx": 6}},
+            {"id": "left", "type": "wall", "geometry": {"kind": "segment", "x1": 20, "y1": 180, "x2": 20, "y2": 20, "thicknessPx": 6}},
+            {"id": "noise", "type": "wall", "geometry": {"kind": "segment", "x1": 140, "y1": 140, "x2": 145, "y2": 145, "thicknessPx": 6}},
+        ])
+
+        snapshot = build_takeoff_geometry_snapshot(
+            document,
+            revision=1,
+            effective_scale_px_per_ft=document["baseImage"].get("scalePxPerFt"),
+        )
+
+        angled_lengths = [wall.length_px for wall in snapshot.walls if wall.orientation == "angled"]
+        self.assertTrue(angled_lengths)
+        self.assertLessEqual(max(angled_lengths), 7.5)
+        self.assertTrue(_all_walls_orthogonal(snapshot))
+
+    def test_open_dominant_space_is_non_countable(self):
+        space_kind, countable, reason = _classify_room_space(
+            name=None,
+            area_sqft=420.0,
+            total_interior_area_sqft=700.0,
+            accepted_reason="auto",
+            closure_status="open",
+            internal_barrier_count=2,
+            repair_count=1,
+        )
+
+        self.assertEqual(space_kind, "open_common")
+        self.assertFalse(countable)
+        self.assertEqual(reason, "open_topology_large_component")
 
 
 if __name__ == "__main__":

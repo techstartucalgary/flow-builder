@@ -10,11 +10,25 @@ import type {
   FlooringMaterial,
   OpeningRelations,
   RoomRelations,
+  RoomSpaceType,
   WallRelations,
   WallSurfaceClass,
 } from '@/types/annotation';
 
 const FLOORING_MATERIALS: FlooringMaterial[] = ['hardwood', 'carpet', 'tile', 'vinyl', 'laminate'];
+const ROOM_SPACE_TYPES: Array<{ value: RoomSpaceType; label: string }> = [
+  { value: 'counted_room', label: 'Counted Room' },
+  { value: 'open_common', label: 'Open/Common' },
+  { value: 'service', label: 'Service' },
+  { value: 'storage', label: 'Storage' },
+  { value: 'mechanical', label: 'Mechanical' },
+  { value: 'circulation', label: 'Circulation' },
+];
+
+function roomCountsInSchedule(relations: RoomRelations | undefined): boolean {
+  if (typeof relations?.countInRoomSchedule === 'boolean') return relations.countInRoomSchedule;
+  return (relations?.spaceType ?? 'counted_room') === 'counted_room';
+}
 
 interface PropertyPanelProps {
   element: AnnotationElement | null;
@@ -187,7 +201,45 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
       if (nextMaterial) nextRelations.material = nextMaterial;
       else delete nextRelations.material;
       const areaSqFt = Number(nextRelations.areaSqFt ?? 0);
-      nextRelations.quantityRequired = areaSqFt > 0 ? areaSqFt : Number(nextRelations.quantityRequired ?? 0);
+      nextRelations.quantityRequired = roomCountsInSchedule(nextRelations)
+        ? (areaSqFt > 0 ? areaSqFt : Number(nextRelations.quantityRequired ?? 0))
+        : 0;
+      nextRelations.quantityUnit = 'sqft';
+      updated.relations = nextRelations;
+      updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
+    });
+  }
+
+  function setRoomSpaceType(nextSpaceType: RoomSpaceType) {
+    applyImmediate((updated) => {
+      if (updated.type !== 'room') return;
+      const nextRelations = { ...((updated.relations as RoomRelations | undefined) ?? {}) };
+      nextRelations.spaceType = nextSpaceType;
+      if (typeof nextRelations.countInRoomSchedule !== 'boolean') {
+        nextRelations.countInRoomSchedule = nextSpaceType === 'counted_room';
+      }
+      const areaSqFt = Number(nextRelations.areaSqFt ?? roomRelations?.areaSqFt ?? 0);
+      nextRelations.quantityRequired = roomCountsInSchedule(nextRelations) ? areaSqFt : 0;
+      nextRelations.quantityUnit = 'sqft';
+      updated.relations = nextRelations;
+      updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
+    });
+  }
+
+  function toggleRoomScheduleCounting() {
+    applyImmediate((updated) => {
+      if (updated.type !== 'room') return;
+      const nextRelations = { ...((updated.relations as RoomRelations | undefined) ?? {}) };
+      const nextValue = !roomCountsInSchedule(nextRelations);
+      nextRelations.countInRoomSchedule = nextValue;
+      if (!nextValue && !nextRelations.spaceType) {
+        nextRelations.spaceType = 'open_common';
+      }
+      if (nextValue && nextRelations.spaceType && nextRelations.spaceType !== 'counted_room') {
+        nextRelations.spaceType = 'counted_room';
+      }
+      const areaSqFt = Number(nextRelations.areaSqFt ?? roomRelations?.areaSqFt ?? 0);
+      nextRelations.quantityRequired = nextValue ? areaSqFt : 0;
       nextRelations.quantityUnit = 'sqft';
       updated.relations = nextRelations;
       updated.attrs.status = updated.attrs.status === 'auto' ? 'edited' : updated.attrs.status;
@@ -243,7 +295,9 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
           if (values.material) nextRelations.material = values.material;
           else delete nextRelations.material;
           nextRelations.areaSqFt = areaSqFt;
-          nextRelations.quantityRequired = areaSqFt > 0 ? areaSqFt : Number(nextRelations.quantityRequired ?? 0);
+          nextRelations.quantityRequired = roomCountsInSchedule(nextRelations)
+            ? (areaSqFt > 0 ? areaSqFt : Number(nextRelations.quantityRequired ?? 0))
+            : 0;
           nextRelations.quantityUnit = 'sqft';
           updated.relations = nextRelations;
         }
@@ -348,6 +402,33 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
         {element.type === 'room' ? (
           <>
             <div className="grid gap-2 sm:grid-cols-2">
+              {ROOM_SPACE_TYPES.map((spaceType) => (
+                <button
+                  key={spaceType.value}
+                  type="button"
+                  onClick={() => setRoomSpaceType(spaceType.value)}
+                  className={`rounded-lg border px-3 py-2 text-left transition ${
+                    (roomRelations?.spaceType ?? 'counted_room') === spaceType.value
+                      ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100'
+                      : 'border-white/10 bg-black/10 text-white hover:bg-white/5'
+                  }`}
+                >
+                  {spaceType.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={toggleRoomScheduleCounting}
+              className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                roomCountsInSchedule(roomRelations)
+                  ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20'
+                  : 'border-slate-300/20 bg-slate-500/10 text-slate-100 hover:bg-slate-500/20'
+              }`}
+            >
+              {roomCountsInSchedule(roomRelations) ? 'Count in room schedule' : 'Display only, exclude from room schedule'}
+            </button>
+            <div className="grid gap-2 sm:grid-cols-2">
               {FLOORING_MATERIALS.map((material) => (
                 <button
                   key={material}
@@ -408,6 +489,11 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
 
         {element.type === 'room' ? (
           <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-gray-200">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Space Type</div>
+              <div className="mt-1">{(roomRelations?.spaceType ?? 'counted_room').replaceAll('_', ' ')}</div>
+              <div className="text-gray-400">{roomCountsInSchedule(roomRelations) ? 'Counted in schedule' : 'Display only'}</div>
+            </div>
             <label className="text-gray-400">
               Material
               <select className="mt-1 w-full rounded bg-white/5 px-2 py-1 text-gray-100" {...register('material')}>

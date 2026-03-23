@@ -26,6 +26,25 @@ function styleForStatus(status: AnnotationElement['attrs']['status']) {
 function styleForType(element: AnnotationElement, baseStroke: string) {
   if (element.type === 'room') {
     const relations = element.relations as RoomRelations | undefined;
+    const spaceType = relations?.spaceType ?? 'counted_room';
+    const countInRoomSchedule = typeof relations?.countInRoomSchedule === 'boolean'
+      ? relations.countInRoomSchedule
+      : spaceType === 'counted_room';
+    if (!countInRoomSchedule) {
+      if (spaceType === 'mechanical') {
+        return { stroke: '#fca5a5', fill: 'rgba(252,165,165,0.10)' };
+      }
+      if (spaceType === 'storage') {
+        return { stroke: '#fdba74', fill: 'rgba(253,186,116,0.10)' };
+      }
+      if (spaceType === 'service') {
+        return { stroke: '#c4b5fd', fill: 'rgba(196,181,253,0.10)' };
+      }
+      if (spaceType === 'circulation') {
+        return { stroke: '#93c5fd', fill: 'rgba(147,197,253,0.10)' };
+      }
+      return { stroke: '#cbd5e1', fill: 'rgba(148,163,184,0.09)' };
+    }
     const material = relations?.material;
     if (material === 'hardwood') {
       return { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.16)' };
@@ -151,7 +170,14 @@ function styleForPreset(
     ...base,
     strokeWidth: selected ? 3 : 2,
     opacity: element.type === 'wall' ? 0.65 : 0.45,
-    dash: undefined as number[] | undefined,
+    dash: element.type === 'room' ? (() => {
+      const relations = element.relations as RoomRelations | undefined;
+      const spaceType = relations?.spaceType ?? 'counted_room';
+      const countInRoomSchedule = typeof relations?.countInRoomSchedule === 'boolean'
+        ? relations.countInRoomSchedule
+        : spaceType === 'counted_room';
+      return countInRoomSchedule ? undefined : [10, 6];
+    })() : undefined as number[] | undefined,
     shadowColor: hasIssue ? '#f59e0b' : undefined,
     shadowBlur: hasIssue ? 8 : 0,
   };

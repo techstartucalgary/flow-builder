@@ -8,6 +8,7 @@ export type AnnotationStatus = 'auto' | 'edited' | 'new';
 export type WallSurfaceClass = 'perimeter' | 'partition' | 'unknown';
 export type WallSurfaceClassSource = 'auto' | 'manual';
 export type FlooringMaterial = 'hardwood' | 'carpet' | 'tile' | 'vinyl' | 'laminate';
+export type RoomSpaceType = 'counted_room' | 'open_common' | 'service' | 'storage' | 'mechanical' | 'circulation';
 
 export type ToolMode =
   | 'select'
@@ -100,6 +101,8 @@ export interface RoomRelations {
   areaSqFt?: number;
   quantityRequired?: number;
   quantityUnit?: 'sqft';
+  spaceType?: RoomSpaceType;
+  countInRoomSchedule?: boolean;
   extractionStatus?: 'auto' | 'edited' | 'ambiguous';
   extractionConfidence?: number;
   centroid?: [number, number];
@@ -347,6 +350,8 @@ export interface EditorTagOverlayState {
 
 export interface RoomExtractionSummary {
   room_count: number;
+  space_count?: number;
+  non_countable_space_count?: number;
   total_area_sqft: number;
   status: 'closed' | 'open' | 'ambiguous';
   confidence: 'high' | 'medium' | 'low';
