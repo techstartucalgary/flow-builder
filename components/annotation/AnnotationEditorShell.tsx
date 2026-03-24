@@ -1137,7 +1137,7 @@ export default function AnnotationEditorShell({
         ) : null}
       </EditorStatusBanner>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_332px] gap-3">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_304px] gap-3">
         <ViewportStage
           baseImageUrl={document.baseImage.sourceUrl}
           widthPx={document.baseImage.widthPx}

@@ -22,10 +22,7 @@ export default function RevisionStatusBar({ revision, status }: RevisionStatusBa
 
   return (
     <div className="ws-panel-flat flex items-center justify-between gap-3 px-3 py-3">
-      <div>
-        <div className="ws-section-header">Document Status</div>
-        <div className="mt-1 text-sm text-white font-semibold">Revision {revision}</div>
-      </div>
+      <div className="text-sm font-semibold text-white">Revision {revision}</div>
       <span className="ws-chip" data-tone={tone}>
         {STATUS_LABEL[status]}
       </span>

@@ -1,34 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 
-/*
- * ── Sign In Page ─────────────────────────────────────────────────────
- *
- * Tweak points:
- *   - Input height      → h-12  (48 px)
- *   - Input radius      → rounded-xl  (12 px)
- *   - Card radius       → rounded-2xl (16 px)
- *   - Card shadow       → shadow-sm
- *   - Button gradient   → from-blue-600 to-indigo-600 (matches landing CTA)
- *   - Focus ring color  → var(--auth-ring)  /  border-[#0099FC]
- */
+import { useAuth } from '@/contexts';
+
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState('');
-  const [forgotMsg, setForgotMsg] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { signIn } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignIn = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLocalError('');
     setIsLoading(true);
 
@@ -42,81 +31,85 @@ export default function SignIn() {
     }
   };
 
-  /* ── shared input classes ── */
   const inputBase =
-    'w-full h-12 rounded-xl border border-[var(--auth-border)] bg-white text-sm text-gray-900 ' +
-    'placeholder:text-gray-400 ' +
-    'focus:outline-none focus:border-[#0099FC] focus:ring-2 focus:ring-[var(--auth-ring)] ' +
+    'h-14 w-full rounded-2xl border border-slate-200 bg-white/90 text-sm text-slate-900 ' +
+    'placeholder:text-slate-400 focus:outline-none focus:border-[#0099FC] focus:ring-2 focus:ring-[var(--auth-ring)] ' +
     'transition-all duration-150';
 
   return (
-    <>
-      {/* ── Header ──────────────────────────────────────────────── */}
+    <div>
       <div className="mb-8">
-        <h2 className="text-[1.65rem] font-bold text-gray-900 tracking-tight leading-tight">
-          Welcome back
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          Sign in
+        </div>
+        <h2 className="mt-4 font-[family:var(--font-display)] text-[clamp(2.6rem,5vw,4rem)] font-semibold leading-[0.94] tracking-[-0.05em] text-slate-950">
+          Welcome back.
         </h2>
-        <p className="mt-1.5 text-sm text-gray-500">
-          Sign in to your FlowBuildr account
+        <p className="mt-3 max-w-[30rem] text-base leading-7 text-slate-600">
+          Sign in to continue reviewing plans, fixing geometry, and generating takeoffs from the latest saved revision.
         </p>
       </div>
 
-      {/* ── Card ────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-[var(--auth-border)] shadow-sm p-7 sm:p-8">
-        {/* Error banner */}
-        {localError && (
-          <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm text-center auth-fade-in">
+      <div className="rounded-[2rem] border border-white/70 bg-white/72 p-6 shadow-[0_32px_80px_-52px_rgba(15,23,42,0.4)] backdrop-blur-md sm:p-8">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 pb-5">
+          <div>
+            <div className="text-sm font-semibold text-slate-900">Workspace access</div>
+            <div className="mt-1 text-sm text-slate-500">Use the email tied to your FlowBuildr workspace.</div>
+          </div>
+          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+            Secure
+          </span>
+        </div>
+
+        {localError ? (
+          <div className="auth-fade-in mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
             {localError}
           </div>
-        )}
+        ) : null}
 
-        <form onSubmit={handleSignIn} className="space-y-5">
-          {/* ── Email ── */}
+        <form onSubmit={handleSignIn} className="mt-6 space-y-5">
           <div>
-            <label
-              htmlFor="signin-email"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
-            >
+            <label htmlFor="signin-email" className="mb-2 block text-sm font-medium text-slate-700">
               Email address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-gray-400 pointer-events-none" />
+              <Mail className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
               <input
                 id="signin-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@company.com"
-                className={`${inputBase} pl-11 pr-4`}
+                className={`${inputBase} pl-12 pr-4`}
                 required
               />
             </div>
           </div>
 
-          {/* ── Password ── */}
           <div>
-            <label
-              htmlFor="signin-password"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
-            >
-              Password
-            </label>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <label htmlFor="signin-password" className="block text-sm font-medium text-slate-700">
+                Password
+              </label>
+              <span className="text-xs text-slate-400">Minimum 6 characters</span>
+            </div>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-gray-400 pointer-events-none" />
+              <Lock className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
               <input
                 id="signin-password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
-                className={`${inputBase} pl-11 pr-12`}
+                className={`${inputBase} pl-12 pr-14`}
                 required
               />
               <button
                 type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
               >
                 {showPassword ? (
                   <EyeOff className="h-[18px] w-[18px]" />
@@ -125,42 +118,20 @@ export default function SignIn() {
                 )}
               </button>
             </div>
-
-            {/* Forgot password stub */}
-            <div className="mt-2 flex items-center justify-end min-h-[20px]">
-              {forgotMsg ? (
-                <span className="text-xs text-gray-500 auth-fade-in">
-                  Password reset coming soon.
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setForgotMsg(true)}
-                  className="text-xs font-medium text-[#0099FC] hover:text-[#0077cc] transition-colors"
-                >
-                  Forgot password?
-                </button>
-              )}
-            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              Need password help? Reach out to your workspace admin or support until self-serve reset is enabled.
+            </p>
           </div>
 
-          {/* ── Submit ── */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 rounded-xl font-semibold text-sm text-white
-                       bg-gradient-to-r from-blue-600 to-indigo-600
-                       hover:from-blue-500 hover:to-indigo-500
-                       shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30
-                       disabled:opacity-60 disabled:cursor-not-allowed
-                       active:scale-[0.98]
-                       transition-all duration-150
-                       flex items-center justify-center gap-2"
+            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#0099FC] text-sm font-semibold text-white shadow-[0_20px_48px_-24px_rgba(0,153,252,0.95)] transition hover:bg-[#1aa4ff] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? (
               <>
                 <svg
-                  className="animate-spin h-4 w-4 text-white"
+                  className="h-4 w-4 animate-spin text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -179,11 +150,11 @@ export default function SignIn() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Signing in…
+                Signing in...
               </>
             ) : (
               <>
-                Sign In
+                Enter workspace
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
@@ -191,16 +162,12 @@ export default function SignIn() {
         </form>
       </div>
 
-      {/* ── Footer link ─────────────────────────────────────────── */}
-      <p className="mt-7 text-center text-sm text-gray-500">
+      <p className="mt-7 text-sm text-slate-500">
         Don&apos;t have an account?{' '}
-        <Link
-          href="/auth/signup"
-          className="text-[#0099FC] hover:text-[#0077cc] font-semibold transition-colors"
-        >
-          Sign Up
+        <Link href="/auth/signup" className="font-semibold text-[#008ae6] transition-colors hover:text-[#0073c2]">
+          Create one
         </Link>
       </p>
-    </>
+    </div>
   );
 }

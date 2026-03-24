@@ -5,6 +5,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-sans: inherit;
+  --font-display: inherit;
 
   /* ── Auth surface tokens (derived from existing palette) ── */
   --auth-surface: #f8f9fb;       /* right-panel bg — 2% tint of white       */
@@ -48,7 +50,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: inherit;
+  font-family: var(--font-sans), sans-serif;
 }
 
 * {

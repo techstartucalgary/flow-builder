@@ -37,17 +37,20 @@ export default function EditorStatusBanner({
   onDismissWarning,
   children,
 }: EditorStatusBannerProps) {
+  const shouldShowStatus = saveStatus !== 'saved' || Boolean(statusMessage);
+  const hasMessages = shouldShowStatus || Boolean(error) || Boolean(warning) || pendingRebuild || Boolean(children);
+  if (!hasMessages) return null;
+
   return (
     <div className="space-y-2">
-      <div className="ws-panel-elevated flex flex-wrap items-center justify-between gap-3 px-3 py-3">
-        <div>
-          <div className="ws-section-header">Editor Status</div>
-          <div className="mt-1 text-sm text-white">{statusMessage || 'Editing saved geometry for this page.'}</div>
+      {shouldShowStatus ? (
+        <div className="ws-panel-flat flex flex-wrap items-center justify-between gap-3 px-3 py-3">
+          <div className="text-sm text-white">{statusMessage || 'Editor status changed.'}</div>
+          <span className="ws-chip" data-tone={saveTone(saveStatus)}>
+            {saveLabel(saveStatus)}
+          </span>
         </div>
-        <span className="ws-chip" data-tone={saveTone(saveStatus)}>
-          {saveLabel(saveStatus)}
-        </span>
-      </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-3 text-sm text-rose-100">

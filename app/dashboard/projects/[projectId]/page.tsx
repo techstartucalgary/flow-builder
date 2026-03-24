@@ -824,29 +824,16 @@ export default function ProjectViewerPage() {
             <div className="ws-panel-flat flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ws-divider)] px-4 py-3">
                 <div className="min-w-0">
-                  <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--ws-text-muted)]">Plan Workspace</div>
-                  <div className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                  <div className="text-sm text-[var(--ws-text-secondary)]">
                     {editorMode
-                      ? 'Inspect geometry, resolve blockers, and prepare the page for a trustworthy run.'
-                      : 'Review the latest result, compare it to the plan, and jump back into QA only when needed.'}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="ws-chip" data-active="true">
-                      {editorMode ? 'Geometry editing live' : 'Reviewing latest output'}
-                    </span>
-                    {generated ? (
-                      <span className="ws-chip" data-tone={takeoff.roomClosureStatus === 'closed' ? 'good' : 'warn'}>
-                        Closure {roomClosureLabel(takeoff.roomClosureStatus)}
-                      </span>
-                    ) : null}
-                    {hasScale ? (
-                      <span className="ws-chip" data-tone="good">Scale set</span>
-                    ) : (
-                      <span className="ws-chip" data-tone="warn">Scale needed</span>
-                    )}
+                      ? 'Edit the plan directly and keep only the geometry needed for a clean run.'
+                      : 'Compare the latest result against the plan and step back into annotate only where needed.'}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span className="ws-chip" data-tone={hasScale ? 'good' : 'warn'}>
+                    {hasScale ? 'Scale set' : 'Scale needed'}
+                  </span>
                   {!editorMode ? (
                     <div className="flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-black/20 px-2 py-1.5 text-[var(--ws-text-secondary)]">
                       <button

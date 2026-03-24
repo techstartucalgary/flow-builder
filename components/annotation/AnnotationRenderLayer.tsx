@@ -13,6 +13,7 @@ interface AnnotationRenderLayerProps {
   preset: EditorViewPreset;
   issuesByElementId?: Set<string>;
   onSelect: (id: string, additive?: boolean) => void;
+  onHoverChange?: (id: string | null) => void;
   onDragEnd: (id: string, event: any) => void;
   onTransformEnd: (id: string, event: any) => void;
 }
@@ -190,6 +191,7 @@ export default function AnnotationRenderLayer({
   preset,
   issuesByElementId,
   onSelect,
+  onHoverChange,
   onDragEnd,
   onTransformEnd,
 }: AnnotationRenderLayerProps) {
@@ -216,6 +218,14 @@ export default function AnnotationRenderLayer({
 
         if (!element.attrs.visible) return null;
 
+        const trustHoverable = element.type === 'wall' || element.type === 'door' || element.type === 'window';
+        const hoverProps = trustHoverable && onHoverChange
+          ? {
+              onMouseEnter: () => onHoverChange(element.id),
+              onMouseLeave: () => onHoverChange(null),
+            }
+          : {};
+
         if (element.geometry.kind === 'segment') {
           return (
             <Line
@@ -233,6 +243,7 @@ export default function AnnotationRenderLayer({
               onTap={() => onSelect(element.id)}
               onDragEnd={(e) => onDragEnd(element.id, e)}
               onTransformEnd={(e) => onTransformEnd(element.id, e)}
+              {...hoverProps}
             />
           );
         }
@@ -257,6 +268,7 @@ export default function AnnotationRenderLayer({
                 onTap={() => onSelect(element.id)}
                 onDragEnd={(e) => onDragEnd(element.id, e)}
                 onTransformEnd={(e) => onTransformEnd(element.id, e)}
+                {...hoverProps}
               />
               {selected ? (
                 <Circle
@@ -299,6 +311,7 @@ export default function AnnotationRenderLayer({
               onTap={() => onSelect(element.id)}
               onDragEnd={(e) => onDragEnd(element.id, e)}
               onTransformEnd={(e) => onTransformEnd(element.id, e)}
+              {...hoverProps}
             />
             {selected && (
               <Circle

@@ -5,6 +5,7 @@ import { Circle, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type Konva from 'konva';
 
 import { safeClone } from '@/lib/clone';
+import { buildTrustCardModel, isTrustElement } from '@/lib/annotationTrust';
 import { clamp, polygonBounds, worldFromScreen } from '@/lib/geometry';
 import { isObjectUrl, normalizeBaseImageUrl } from '@/lib/imageUrl';
 import { computeOpeningOverlayGeometry, createHostedOpeningGeometry } from '@/lib/openingGeometry';
@@ -19,6 +20,7 @@ import type {
 } from '@/types/annotation';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import AnnotationRenderLayer from '@/components/annotation/AnnotationRenderLayer';
+import AnnotationTrustCard from '@/components/annotation/AnnotationTrustCard';
 import InteractionLayer from '@/components/annotation/InteractionLayer';
 import SelectionTransformer from '@/components/annotation/SelectionTransformer';
 import SnapGuideOverlay from '@/components/annotation/SnapGuideOverlay';
@@ -67,6 +69,14 @@ function elementBounds(element: AnnotationElement) {
   };
 }
 
+function trustAnchor(element: AnnotationElement) {
+  const bounds = elementBounds(element);
+  return {
+    x: bounds.maxX,
+    y: bounds.minY,
+  };
+}
+
 export default function ViewportStage({
   baseImageUrl,
   widthPx,
@@ -79,6 +89,7 @@ export default function ViewportStage({
   viewPreset,
   renderHints,
   issuesByElementId,
+  issues,
   calibrationDraft,
   onCalibrationPoint,
 }: ViewportStageProps) {
@@ -107,6 +118,8 @@ export default function ViewportStage({
   const moveElementBy = useAnnotationEditorStore((s) => s.moveElementBy);
   const updateElement = useAnnotationEditorStore((s) => s.updateElement);
   const [pointerWorld, setPointerWorld] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredTrustElementId, setHoveredTrustElementId] = useState<string | null>(null);
+  const [pinnedTrustElementId, setPinnedTrustElementId] = useState<string | null>(null);
   const [endpointSnapGuide, setEndpointSnapGuide] = useState<Array<{ id: string; points: number[] }>>([]);
   const [marqueeDraft, setMarqueeDraft] = useState<{
     start: { x: number; y: number };
@@ -131,6 +144,20 @@ export default function ViewportStage({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (toolMode === 'select') return;
+    setHoveredTrustElementId(null);
+  }, [toolMode]);
+
+  useEffect(() => {
+    if (hoveredTrustElementId && !displayedElementIds.has(hoveredTrustElementId)) {
+      setHoveredTrustElementId(null);
+    }
+    if (pinnedTrustElementId && !displayedElementIds.has(pinnedTrustElementId)) {
+      setPinnedTrustElementId(null);
+    }
+  }, [displayedElementIds, hoveredTrustElementId, pinnedTrustElementId]);
 
   useEffect(() => {
     readinessLoggedRef.current = false;
@@ -324,6 +351,36 @@ export default function ViewportStage({
     [entities.byId, entities.byType.wall],
   );
 
+  const activeTrustElementId = pinnedTrustElementId ?? hoveredTrustElementId;
+  const activeTrustElement = useMemo(() => {
+    if (!activeTrustElementId) return null;
+    const element = entities.byId[activeTrustElementId];
+    return isTrustElement(element) && displayedElementIds.has(element.id) ? element : null;
+  }, [activeTrustElementId, displayedElementIds, entities.byId]);
+
+  const activeTrustIssues = useMemo(
+    () => activeTrustElement ? issues.filter((issue) => issue.elementId === activeTrustElement.id) : [],
+    [activeTrustElement, issues],
+  );
+
+  const activeTrustCard = useMemo(() => buildTrustCardModel({
+    element: activeTrustElement,
+    wallsById,
+    issues: activeTrustIssues,
+    scalePxPerFt: document?.baseImage.scalePxPerFt,
+  }), [activeTrustElement, activeTrustIssues, document?.baseImage.scalePxPerFt, wallsById]);
+
+  const activeTrustCardPosition = useMemo(() => {
+    if (!activeTrustElement || !container.width || !container.height) return null;
+    const anchor = trustAnchor(activeTrustElement);
+    const width = 304;
+    const height = 252;
+    return {
+      left: clamp(anchor.x * camera.zoom + camera.panX + 16, 12, Math.max(12, container.width - width - 12)),
+      top: clamp(anchor.y * camera.zoom + camera.panY - 12, 12, Math.max(12, container.height - height - 12)),
+    };
+  }, [activeTrustElement, camera.panX, camera.panY, camera.zoom, container.height, container.width]);
+
   const openingPlacementPreview = useMemo(() => {
     if (!placementFeedback || !previewHostWall || (toolMode !== 'door' && toolMode !== 'window')) return null;
     const draftGeometry = createHostedOpeningGeometry(toolMode, placementFeedback.point.x, placementFeedback.point.y, previewHostWall);
@@ -463,6 +520,7 @@ export default function ViewportStage({
 
     if (clickedOnEmpty && toolMode === 'select') {
       setSelection([]);
+      setPinnedTrustElementId(null);
       return;
     }
 
@@ -585,7 +643,10 @@ export default function ViewportStage({
           onMouseDown={onStageMouseDown}
           onMouseMove={onStageMouseMove}
           onMouseUp={onStageMouseUp}
-          onMouseLeave={() => setPointerWorld(null)}
+          onMouseLeave={() => {
+            setPointerWorld(null);
+            setHoveredTrustElementId(null);
+          }}
           onWheel={onWheel}
           draggable={toolMode === 'select' && !marqueeDraft}
           onDragMove={(e) => {
@@ -605,13 +666,18 @@ export default function ViewportStage({
               preset={viewPreset}
               issuesByElementId={renderHints.highlightIssues ? issuesByElementId : undefined}
               onSelect={(id, additive) => {
+                const nextElement = entities.byId[id];
+                const trustSelected = isTrustElement(nextElement);
                 if (!additive) {
                   setSelection([id]);
-                  const next = entities.byId[id];
-                  if (next?.type === 'room') {
+                  setPinnedTrustElementId(trustSelected ? id : null);
+                  if (nextElement?.type === 'room') {
                     requestFocusOnElements([id], 96);
                   }
                   return;
+                }
+                if (trustSelected) {
+                  setPinnedTrustElementId(id);
                 }
                 setSelection(
                   selection.includes(id)
@@ -619,6 +685,7 @@ export default function ViewportStage({
                     : [...selection, id],
                 );
               }}
+              onHoverChange={toolMode === 'select' ? setHoveredTrustElementId : undefined}
               onDragEnd={onDragEnd}
               onTransformEnd={onTransformEnd}
             />
@@ -828,6 +895,22 @@ export default function ViewportStage({
           </Layer>
         </Stage>
       )}
+      {activeTrustCard && activeTrustCardPosition ? (
+        <div
+          className={`absolute z-10 ${pinnedTrustElementId ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          style={{
+            left: activeTrustCardPosition.left,
+            top: activeTrustCardPosition.top,
+          }}
+        >
+          <AnnotationTrustCard
+            model={activeTrustCard}
+            variant="overlay"
+            pinned={Boolean(pinnedTrustElementId)}
+            onClear={pinnedTrustElementId ? () => setPinnedTrustElementId(null) : undefined}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
