@@ -161,12 +161,17 @@ def estimate_board_requirements(
     gross_wall_board_sqft = perimeter_board_sqft + partition_board_sqft + unknown_board_sqft
     net_wall_board_sqft = max(0.0, gross_wall_board_sqft - opening_deduction_sqft)
 
+    included_wall_count = sum(1 for wall in walls if not wall.exclude_from_takeoff)
+    unknown_wall_count = sum(1 for wall in walls if wall.surface_class == "unknown" and not wall.exclude_from_takeoff)
+    unknown_wall_pct = unknown_wall_count / included_wall_count if included_wall_count > 0 else 0.0
+
     blocked_reasons: list[str] = []
     if not scale_px_per_ft or scale_px_per_ft <= 0:
         blocked_reasons.append("Scale is missing.")
-    unknown_wall_count = sum(1 for wall in walls if wall.surface_class == "unknown" and not wall.exclude_from_takeoff)
     if unknown_wall_count > 0:
         blocked_reasons.append(f"{unknown_wall_count} wall(s) still require perimeter/partition classification.")
+    if unknown_wall_pct > 0.30:
+        blocked_reasons.append(f"{unknown_wall_pct:.0%} of walls unclassified — board count uncertain.")
     if fallback_opening_count > 0:
         blocked_reasons.append("Opening deductions still rely on fallback constants.")
     if room_closure_status != "closed":
@@ -206,7 +211,8 @@ def estimate_board_requirements(
         opening_deduction_mode=deduction_mode,
         diagnostics={
             "unknown_wall_count": unknown_wall_count,
-            "included_wall_count": sum(1 for wall in walls if not wall.exclude_from_takeoff),
+            "unknown_wall_pct": round(unknown_wall_pct, 4),
+            "included_wall_count": included_wall_count,
             "excluded_wall_count": sum(1 for wall in walls if wall.exclude_from_takeoff),
             "unknown_wall_treatment": "provisional_1_side_draft" if unknown_wall_count > 0 else "not_applicable",
         },

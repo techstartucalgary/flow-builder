@@ -1,7 +1,20 @@
-/**
- * Parse raw takeoff analysis text into structured metrics.
- * Structured backend fields are preferred; text parsing is fallback only.
- */
+import type { AssumptionsSnapshot } from '@/types/assumptions';
+
+export type { AssumptionsSnapshot };
+
+export interface TakeoffLineItem {
+  material_key: string;
+  display_name: string;
+  quantity: number;
+  unit: string;
+  unit_cost_usd: number | null;
+  line_total_usd: number | null;
+}
+
+export interface FlooringMaterialSummary {
+  area_sqft: number;
+  quantity_required: number;
+}
 
 export type FloorAreaMethod =
   | 'enclosed_regions'
@@ -77,6 +90,13 @@ export interface TakeoffData {
   normalizedOpeningCount: number;
   waste: number;
   summary: string;
+  materialCostUsd: number | null;
+  markupUsd: number | null;
+  taxUsd: number | null;
+  totalCostUsd: number | null;
+  lineItems: TakeoffLineItem[];
+  flooringByMaterial: Record<string, FlooringMaterialSummary>;
+  assumptionsApplied: AssumptionsSnapshot | null;
 }
 
 export const EMPTY_TAKEOFF: TakeoffData = {
@@ -124,6 +144,13 @@ export const EMPTY_TAKEOFF: TakeoffData = {
   normalizedOpeningCount: 0,
   waste: Math.round(WASTE_FACTOR * 100),
   summary: '',
+  materialCostUsd: null,
+  markupUsd: null,
+  taxUsd: null,
+  totalCostUsd: null,
+  lineItems: [],
+  flooringByMaterial: {},
+  assumptionsApplied: null,
 };
 
 type TakeoffResponse = Record<string, unknown>;
@@ -247,6 +274,17 @@ export function mapStructuredTakeoff(data: TakeoffResponse): TakeoffData | null 
     normalizedOpeningCount: asNumber(data.normalized_opening_count) ?? 0,
     waste: Math.round(wasteFactor * 100),
     summary: asString(data.analysis) ?? '',
+    materialCostUsd: typeof data.material_cost_usd === 'number' ? data.material_cost_usd : null,
+    markupUsd: typeof data.markup_usd === 'number' ? data.markup_usd : null,
+    taxUsd: typeof data.tax_usd === 'number' ? data.tax_usd : null,
+    totalCostUsd: typeof data.total_cost_usd === 'number' ? data.total_cost_usd : null,
+    lineItems: Array.isArray(data.line_items) ? data.line_items as TakeoffLineItem[] : [],
+    flooringByMaterial: (data.flooring_by_material && typeof data.flooring_by_material === 'object')
+      ? data.flooring_by_material as Record<string, FlooringMaterialSummary>
+      : {},
+    assumptionsApplied: (data.assumptions_applied && typeof data.assumptions_applied === 'object')
+      ? data.assumptions_applied as AssumptionsSnapshot
+      : null,
   };
 }
 
@@ -410,5 +448,12 @@ export function parseTakeoff(raw: string): TakeoffData {
     normalizedOpeningCount: 0,
     waste: Math.round(WASTE_FACTOR * 100),
     summary: raw,
+    materialCostUsd: null,
+    markupUsd: null,
+    taxUsd: null,
+    totalCostUsd: null,
+    lineItems: [],
+    flooringByMaterial: {},
+    assumptionsApplied: null,
   };
 }

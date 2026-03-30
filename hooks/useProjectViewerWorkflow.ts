@@ -228,6 +228,15 @@ export function useProjectViewerWorkflow({
       });
     }
 
+    if (generated && takeoff.totalCostUsd === null && takeoff.sheetsRequired > 0) {
+      blockers.push({
+        id: 'missing-pricing',
+        title: 'Set material pricing',
+        description: 'Unit cost not configured — cost estimate unavailable. Set drywall price to unlock the total.',
+        tone: 'accent',
+      });
+    }
+
     if (takeoffError) {
       blockers.unshift({
         id: 'takeoff-error',
