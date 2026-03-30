@@ -23,6 +23,9 @@ from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
 
 from src.api.annotation_store import _apply_sanitization_if_needed, _load_state
+from src.api.assumptions_store import load_assumptions, load_locked_keys, apply_locked_assumptions
+from src.api.pricing_store import load_catalog
+from src.schemas.estimate import AssumptionsSnapshot, LineItem, FlooringMaterialSummary
 from src.estimators.drywall.annotation_geometry import (
     TakeoffGeometrySnapshot,
     build_takeoff_geometry_snapshot,
@@ -165,6 +168,13 @@ class TakeoffResult(BaseModel):
     floor_area_guardrail_applied: bool = False
     area_debug: dict[str, float | int | str] = Field(default_factory=dict)
     annotated_image: Optional[str] = None
+    assumptions_applied: Optional[AssumptionsSnapshot] = None
+    material_cost_usd: Optional[float] = None
+    markup_usd: Optional[float] = None
+    tax_usd: Optional[float] = None
+    total_cost_usd: Optional[float] = None
+    line_items: list[LineItem] = Field(default_factory=list)
+    flooring_by_material: dict[str, FlooringMaterialSummary] = Field(default_factory=dict)
 
 
 WALL_COLOR = (0, 180, 0)
@@ -1120,6 +1130,25 @@ async def analyze_takeoff(req: TakeoffRequest):
     floor_area_guardrail_applied = False
     area_debug: dict[str, float | int | str] = {}
 
+    # Load saved assumptions; locked keys override request params.
+    saved_assumptions = load_assumptions(req.project_id, req.page_number) if req.project_id else None
+    if req.project_id and saved_assumptions:
+        locked_keys = load_locked_keys(req.project_id, req.page_number)
+        if locked_keys:
+            req_dict = apply_locked_assumptions(
+                {
+                    "ceiling_height_ft": req.ceiling_height_ft,
+                    "waste_factor": req.waste_factor,
+                    "sheet_width_ft": req.sheet_width_ft,
+                    "sheet_length_ft": req.sheet_length_ft,
+                },
+                saved_assumptions,
+                locked_keys,
+            )
+            req = req.model_copy(update=req_dict)
+
+    flooring_by_material: dict[str, FlooringMaterialSummary] = {}
+
     try:
         cv_page = max(0, req.page_number - 1)
         _validate_crop_bounds(req.crop_left, req.crop_top, req.crop_right, req.crop_bottom)
@@ -1139,6 +1168,22 @@ async def analyze_takeoff(req: TakeoffRequest):
                     f"[takeoff/annotations] file size={len(file_bytes)} bytes, mime={req.file_mime}, "
                     f"page={cv_page}, revision={geometry_revision_used}"
                 )
+
+        # Flooring rollup from room elements in the saved annotation document.
+        if saved_annotation is not None:
+            flooring_areas: dict[str, float] = {}
+            for element in (saved_annotation.document.get("elements") or []):
+                if not isinstance(element, dict) or element.get("type") != "room":
+                    continue
+                relations = element.get("relations") or {}
+                material = relations.get("material")
+                area = relations.get("areaSqFt")
+                if material and isinstance(area, (int, float)) and area > 0:
+                    flooring_areas[material] = flooring_areas.get(material, 0.0) + float(area)
+            flooring_by_material = {
+                mat: FlooringMaterialSummary(area_sqft=round(area, 2), quantity_required=round(area, 2))
+                for mat, area in flooring_areas.items()
+            }
 
         if geometry_result is None:
             print(f"[takeoff/cv] file size={len(file_bytes)} bytes, mime={req.file_mime}, page={cv_page}")
@@ -1299,6 +1344,75 @@ async def analyze_takeoff(req: TakeoffRequest):
         print(f"[takeoff] CV pipeline error: {exc}")
         traceback.print_exc()
 
+    # --- Cost computation (Phases 3 & 4) ---
+    line_items: list[LineItem] = []
+    material_cost_usd: Optional[float] = None
+    markup_usd: Optional[float] = None
+    tax_usd: Optional[float] = None
+    total_cost_usd: Optional[float] = None
+
+    effective_assumptions = saved_assumptions or AssumptionsSnapshot(
+        ceiling_height_ft=req.ceiling_height_ft,
+        waste_factor=req.waste_factor,
+        sheet_width_ft=req.sheet_width_ft,
+        sheet_length_ft=req.sheet_length_ft,
+    )
+
+    drywall_unit_cost = effective_assumptions.drywall_unit_cost_usd
+    pricing_catalog = {item.material_key: item for item in load_catalog()}
+
+    if sheets_required > 0:
+        drywall_item = pricing_catalog.get("drywall_board")
+        unit_cost = drywall_unit_cost if drywall_unit_cost is not None else (
+            drywall_item.unit_cost_usd if drywall_item else None
+        )
+        line_total = round(sheets_required * unit_cost, 2) if unit_cost is not None else None
+        line_items.append(LineItem(
+            material_key="drywall_board",
+            display_name=drywall_item.display_name if drywall_item else "Drywall Board",
+            quantity=float(sheets_required),
+            unit="board",
+            unit_cost_usd=unit_cost,
+            line_total_usd=line_total,
+        ))
+
+    for mat_key, summary in flooring_by_material.items():
+        catalog_item = pricing_catalog.get(mat_key)
+        unit_cost = catalog_item.unit_cost_usd if catalog_item else None
+        line_total = round(summary.area_sqft * unit_cost, 2) if unit_cost is not None else None
+        line_items.append(LineItem(
+            material_key=mat_key,
+            display_name=catalog_item.display_name if catalog_item else mat_key.replace("_", " ").title(),
+            quantity=summary.area_sqft,
+            unit="sqft",
+            unit_cost_usd=unit_cost,
+            line_total_usd=line_total,
+        ))
+
+    priced_items = [item for item in line_items if item.line_total_usd is not None]
+    if priced_items:
+        subtotal = sum(item.line_total_usd for item in priced_items)  # type: ignore[misc]
+        material_cost_usd = round(subtotal, 2)
+        markup_pct = effective_assumptions.markup_pct
+        tax_pct = effective_assumptions.tax_rate_pct
+        if markup_pct is not None:
+            markup_usd = round(subtotal * markup_pct, 2)
+            taxable_base = subtotal + markup_usd
+        else:
+            taxable_base = subtotal
+        if tax_pct is not None:
+            tax_usd = round(taxable_base * tax_pct, 2)
+            total_cost_usd = round(taxable_base + tax_usd, 2)
+        elif markup_usd is not None:
+            total_cost_usd = round(taxable_base, 2)
+        else:
+            total_cost_usd = material_cost_usd
+
+    # Pricing blocker — append to backend blocked_reasons if no unit cost set.
+    if effective_assumptions.drywall_unit_cost_usd is None and pricing_catalog.get("drywall_board") and pricing_catalog["drywall_board"].unit_cost_usd is None:
+        blocked_reasons = list(blocked_reasons) + ["No drywall unit cost set — cost estimate unavailable."]
+    # estimate_ready only reflects quantity/geometry readiness (not cost), so don't flip it here.
+
     source_label = "Saved annotation document" if geometry_source == "annotation_document" else "CV pipeline"
     scale_warning = "Scale missing. Floor area, wall lengths, and deductions are provisional." if floor_area_method == "missing_scale" else ""
     effective_scale_text = f"{effective_scale_px_per_ft:.3f}" if effective_scale_px_per_ft else "missing"
@@ -1405,4 +1519,19 @@ async def analyze_takeoff(req: TakeoffRequest):
         floor_area_guardrail_applied=floor_area_guardrail_applied,
         area_debug=area_debug,
         annotated_image=annotated_b64,
+        assumptions_applied=AssumptionsSnapshot(
+            ceiling_height_ft=req.ceiling_height_ft,
+            waste_factor=req.waste_factor,
+            sheet_width_ft=req.sheet_width_ft,
+            sheet_length_ft=req.sheet_length_ft,
+            drywall_unit_cost_usd=saved_assumptions.drywall_unit_cost_usd if saved_assumptions else None,
+            markup_pct=saved_assumptions.markup_pct if saved_assumptions else None,
+            tax_rate_pct=saved_assumptions.tax_rate_pct if saved_assumptions else None,
+        ),
+        flooring_by_material=flooring_by_material,
+        line_items=line_items,
+        material_cost_usd=material_cost_usd,
+        markup_usd=markup_usd,
+        tax_usd=tax_usd,
+        total_cost_usd=total_cost_usd,
     )
