@@ -35,6 +35,25 @@ const completedStartupRoomRefreshes = new Set<string>();
 const completedStartupOpeningRefreshes = new Set<string>();
 const completedStartupGeometryRefreshes = new Set<string>();
 
+function describeBackendConnectivityError(error: unknown, fallback: string): string {
+  const rawMessage = error instanceof Error ? error.message : '';
+  const message = rawMessage.toLowerCase();
+  const isConnectivityFailure = (
+    message.includes('failed to fetch')
+    || message.includes('networkerror')
+    || message.includes('load failed')
+    || message.includes('network request failed')
+    || message.includes('timed out')
+    || message.includes('aborterror')
+  );
+
+  if (!isConnectivityFailure) {
+    return rawMessage || fallback;
+  }
+
+  return `${fallback}. Backend API is unreachable at ${BACKEND_URL}. Start backend (backend/: uvicorn src.main:app --reload) or update NEXT_PUBLIC_BACKEND_URL.`;
+}
+
 function isLegacyTagMarkerOpenings(doc: AnnotationDocument): boolean {
   const openingElements = doc.elements.filter((e) => e.type === 'door' || e.type === 'window');
   if (!openingElements.length) return false;
@@ -760,8 +779,8 @@ export default function AnnotationEditorShell({
       } else {
         setStatusMessage(null);
       }
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load annotation editor');
+    } catch (err: unknown) {
+      setError(describeBackendConnectivityError(err, 'Failed to load annotation editor'));
     } finally {
       setLoading(false);
     }

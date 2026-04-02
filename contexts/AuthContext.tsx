@@ -58,17 +58,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null);
       setLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const normalizedEmail = email.trim().toLowerCase();
 
-      if (error) throw error;
-      setUser(data.user);
+      const passwordCandidates = [password];
+      const trimmedPassword = password.trim();
+      if (trimmedPassword !== password) {
+        passwordCandidates.push(trimmedPassword);
+      }
+
+      let lastError: any = null;
+      for (const passwordCandidate of passwordCandidates) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password: passwordCandidate,
+        });
+
+        if (!error) {
+          setUser(data.user);
+          return;
+        }
+
+        lastError = error;
+      }
+
+      throw lastError;
     } catch (error: any) {
-      setError(error.message || 'An error occurred during sign in');
-      throw error;
+      const message = error?.message || 'An error occurred during sign in';
+      const normalizedMessage =
+        /invalid login credentials/i.test(message)
+          ? 'Invalid email or password. If this continues, use Forgot password to reset it.'
+          : message;
+      setError(normalizedMessage);
+      throw new Error(normalizedMessage);
     } finally {
       setLoading(false);
     }
@@ -78,14 +99,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null);
       setLoading(true);
+      const normalizedEmail = email.trim().toLowerCase();
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
       });
 
       if (error) throw error;
-      setUser(data.user);
+      // Only treat the user as signed in when Supabase returns a session.
+      // If email confirmation is required, session is null.
+      setUser(data.session?.user ?? null);
+
+      const identities = (data.user as any)?.identities;
+      const userAlreadyExists = Array.isArray(identities) && identities.length === 0;
+
+      return {
+        requiresEmailConfirmation: !data.session,
+        userAlreadyExists,
+      };
     } catch (error: any) {
       setError(error.message || 'An error occurred during sign up');
       throw error;

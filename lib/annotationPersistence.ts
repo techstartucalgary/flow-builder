@@ -10,8 +10,25 @@ import type {
 
 const BACKEND_URL = getBackendUrl();
 const MAX_CONFLICT_RETRIES = 6;
+const ANNOTATION_API_TIMEOUT_MS = 15000;
 
 let annotationWriteQueue: Promise<void> = Promise.resolve();
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = ANNOTATION_API_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function runSerializedAnnotationWrite<T>(operation: () => Promise<T>): Promise<T> {
   const run = annotationWriteQueue.then(operation, operation);
@@ -30,7 +47,7 @@ export async function fetchAnnotationStorePayload(
   projectId: string,
   pageNumber: number,
 ): Promise<AnnotationStorePayload> {
-  const res = await fetch(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`);
+  const res = await fetchWithTimeout(`${BACKEND_URL}/api/annotations/${projectId}?page=${pageNumber}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `Failed to load annotation doc (${res.status})`);

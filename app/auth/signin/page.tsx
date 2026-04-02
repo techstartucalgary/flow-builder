@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -22,10 +23,12 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState('');
-  const [forgotMsg, setForgotMsg] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState<string>('');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const resetSuccess = searchParams.get('reset') === 'success';
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +42,27 @@ export default function SignIn() {
       setLocalError(error.message || 'An error occurred during sign in');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setLocalError('');
+    setForgotMsg('');
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setLocalError('Enter your email first, then click Forgot password.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
+      setForgotMsg('Password reset email sent. Check your inbox.');
+    } catch (error: any) {
+      setLocalError(error?.message || 'Failed to send password reset email.');
     }
   };
 
@@ -63,6 +87,12 @@ export default function SignIn() {
 
       {/* ── Card ────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-[var(--auth-border)] shadow-sm p-7 sm:p-8">
+        {resetSuccess && (
+          <div className="mb-5 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm text-center auth-fade-in">
+            Password updated successfully. Please sign in.
+          </div>
+        )}
+
         {/* Error banner */}
         {localError && (
           <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm text-center auth-fade-in">
@@ -130,12 +160,12 @@ export default function SignIn() {
             <div className="mt-2 flex items-center justify-end min-h-[20px]">
               {forgotMsg ? (
                 <span className="text-xs text-gray-500 auth-fade-in">
-                  Password reset coming soon.
+                  {forgotMsg}
                 </span>
               ) : (
                 <button
                   type="button"
-                  onClick={() => setForgotMsg(true)}
+                  onClick={handleForgotPassword}
                   className="text-xs font-medium text-[#0099FC] hover:text-[#0077cc] transition-colors"
                 >
                   Forgot password?

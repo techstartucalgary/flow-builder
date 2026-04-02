@@ -43,7 +43,21 @@ export default function SignUp() {
     }
 
     try {
-      await signUp(email, password);
+      const result = await signUp(email, password);
+
+      if (result.userAlreadyExists) {
+        setLocalError('An account with this email already exists. Please sign in.');
+        return;
+      }
+
+      if (result.requiresEmailConfirmation) {
+        setSuccess(true);
+        setTimeout(() => {
+          router.push('/auth/signin');
+        }, 2000);
+        return;
+      }
+
       setSuccess(true);
       setTimeout(() => {
         router.push('/dashboard');
