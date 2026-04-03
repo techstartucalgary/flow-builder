@@ -66,15 +66,15 @@ export default function Navbar() {
           <div className="hidden md:flex items-center ml-auto mr-5 gap-3">
             <Link
               href="/auth/signin"
-              className="inline-flex rounded-full bg-gradient-to-r from-[#4DD0FF] to-[#118CD9] p-[1px]"
+              className="inline-flex rounded-lg bg-[#297FD6] p-[1px]"
             >
-              <span className="flex h-8 w-[100px] items-center justify-center rounded-full bg-[#0B1220] text-sm font-semibold text-white">
+              <span className="flex h-8 w-[100px] items-center justify-center rounded-lg bg-[#0B1220] text-sm font-semibold text-white">
                 Login
               </span>
             </Link>
             <Link
               href="/auth/signup"
-              className="flex h-8 w-[100px] items-center justify-center rounded-full bg-[#0099FC] text-sm font-semibold text-white"
+              className="flex h-8 w-[100px] items-center justify-center rounded-lg bg-[#297FD6] text-sm font-semibold text-white transition-colors hover:bg-[#2473C2]"
             >
               Sign Up
             </Link>

@@ -71,32 +71,24 @@ export default function Home() {
               with Ease
             </h1>
 
-            <div className="mt-8 flex items-center gap-2.5 hero-fade-up-delay-1">
-              <Image
-                src="/images/AI Icon.png"
-                alt=""
-                width={18}
-                height={18}
-                className="h-[18px] w-[18px] flex-shrink-0"
-                aria-hidden
-              />
+            <div className="mt-4 flex items-center hero-fade-up-delay-1">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0099FC]">
                 AI Integrated Takeoff for Builders
               </p>
             </div>
 
-            <p className="mt-5 text-lg leading-relaxed text-white/50 max-w-md hero-fade-up-delay-2">
+            <p className="mt-3 text-lg leading-relaxed text-white/50 max-w-md hero-fade-up-delay-2">
               Upload your blueprints, get accurate material quantities,
               and streamline your construction workflow all powered by AI.
             </p>
 
             <Link
               href="/auth/signup"
-              className="mt-10 inline-flex items-center gap-2.5 px-10 py-4 rounded-full
+              className="mt-5 inline-flex items-center gap-2.5 px-10 py-4 rounded-full
                          font-bold text-base text-white
-                         bg-[#0099FC] hover:bg-[#0088e0]
-                         shadow-[0_0_32px_-4px_rgba(0,153,252,0.4)]
-                         hover:shadow-[0_0_40px_-2px_rgba(0,153,252,0.5)]
+                         bg-[#297FD6] hover:bg-[#2473C2]
+                         shadow-[0_0_32px_-4px_rgba(41,127,214,0.4)]
+                         hover:shadow-[0_0_40px_-2px_rgba(41,127,214,0.5)]
                          transition-all duration-200 transform hover:-translate-y-0.5
                          hero-fade-up-delay-3"
             >

@@ -197,7 +197,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
+    <div className="w-full space-y-6">
       <header className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-6 sm:px-7">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
