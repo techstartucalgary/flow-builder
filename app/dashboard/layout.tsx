@@ -32,31 +32,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="h-[100dvh] w-full bg-[#030712] text-white font-sans selection:bg-blue-500/30 overflow-hidden">
-      {/* Top Nav */}
-      <nav className="fixed top-0 left-0 w-full z-50 bg-[#030712]/90 backdrop-blur-xl border-b border-white/10 h-16 flex items-center justify-end px-8">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 border border-white/10 flex items-center justify-center text-xs font-bold">
-              {user.email?.substring(0, 2).toUpperCase()}
+      {/* Top Nav — hidden on project viewer */}
+      {!isProjectViewer && (
+        <nav className="fixed top-0 left-0 w-full z-50 bg-[#030712]/90 backdrop-blur-xl border-b border-white/10 h-16 flex items-center justify-end px-8">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 border border-white/10 flex items-center justify-center text-xs font-bold">
+                {user.email?.substring(0, 2).toUpperCase()}
+              </div>
+              <span className="text-sm font-medium text-gray-300 hidden sm:block">
+                {user.email}
+              </span>
             </div>
-            <span className="text-sm font-medium text-gray-300 hidden sm:block">
-              {user.email}
-            </span>
+
+            <button
+              onClick={() => signOut()}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <LogOut size={16} />
+              <span>Sign Out</span>
+            </button>
           </div>
+        </nav>
+      )}
 
-          <button
-            onClick={() => signOut()}
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <LogOut size={16} />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* ✅ Content below fixed nav.
-          No calc height. Padding accounts for the 64px nav INSIDE the 100dvh box. */}
-      <div className="pt-16 h-full min-h-0">
+      <div className={`${isProjectViewer ? '' : 'pt-16'} h-full min-h-0`}>
         <div className="flex h-full min-h-0 overflow-hidden">
           {/* Sidebar (hidden on viewer) */}
           {!isProjectViewer && (

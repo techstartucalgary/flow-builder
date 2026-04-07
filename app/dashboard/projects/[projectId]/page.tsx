@@ -1,19 +1,49 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts';
+import {
+  useProjectViewerWorkflow,
+  type ProjectWorkflowReviewAction,
+  type WorkflowBlocker,
+  type WorkspaceMode,
+} from '@/hooks/useProjectViewerWorkflow';
 import { supabase } from '@/lib/supabase';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { ChevronLeft, ChevronRight, Minus, Plus, Loader2, FileText, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
+import {
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
+import { getBackendUrl } from '@/lib/backendUrl';
+import { hasManualGeometryEdits } from '@/lib/annotationGeometryRefresh';
+import {
+  saveAnnotationDocumentWithConflictRetry,
+  waitForAnnotationWritesToDrain,
+} from '@/lib/annotationPersistence';
+import { parseTakeoff, mapStructuredTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
+import type { TakeoffData } from '@/lib/parseTakeoff';
+import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
+import PdfViewerClient from '@/components/pdf/PdfViewer';
+import AnnotationEditorShell from '@/components/annotation/AnnotationEditorShell';
+import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBoundary';
+import ProjectViewerHeader from '@/components/project-viewer/ProjectViewerHeader';
+import SheetRail from '@/components/project-viewer/SheetRail';
+import WorkflowRail from '@/components/project-viewer/WorkflowRail';
+import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
+import type { OpeningRelations, WallRelations } from '@/types/annotation';
+import { Document, pdfjs } from 'react-pdf';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
 
-const PdfViewerClient = dynamic(() => import('@/components/pdf/PdfViewer'), {
-  ssr: false,
-  loading: () => <div className="text-gray-400">Loading PDF viewer...</div>,
-});
+const BACKEND_URL = getBackendUrl();
+const DEFAULT_CEILING_HEIGHT_FT = '9';
+const DEFAULT_WASTE_FACTOR = 0.15;
+const DEFAULT_SHEET_WIDTH_FT = 4;
+const DEFAULT_SHEET_LENGTH_FT = 12;
 
 type ProjectRow = {
   id: string;
@@ -23,6 +53,156 @@ type ProjectRow = {
   file_mime: string;
   created_at: string;
 };
+
+function saveTone(status: 'saved' | 'unsaved' | 'syncing' | 'error'): 'good' | 'warn' | 'accent' | 'danger' {
+  switch (status) {
+    case 'saved':
+      return 'good';
+    case 'unsaved':
+      return 'warn';
+    case 'syncing':
+      return 'accent';
+    default:
+      return 'danger';
+  }
+}
+
+function saveLabel(status: 'saved' | 'unsaved' | 'syncing' | 'error'): string {
+  switch (status) {
+    case 'saved':
+      return 'Saved';
+    case 'unsaved':
+      return 'Unsaved';
+    case 'syncing':
+      return 'Syncing';
+    default:
+      return 'Attention';
+  }
+}
+
+function geometrySourceLabel(source: TakeoffData['geometrySource']): string {
+  switch (source) {
+    case 'annotation_document':
+      return 'Saved Geometry';
+    default:
+      return 'CV Geometry';
+  }
+}
+
+function roomClosureLabel(status: TakeoffData['roomClosureStatus']): string {
+  switch (status) {
+    case 'closed':
+      return 'Closed';
+    case 'ambiguous':
+      return 'Ambiguous';
+    default:
+      return 'Open';
+  }
+}
+
+function sheetStatusLabel(status: PageWorkflowStatus | undefined): string {
+  if (!status?.visited) return 'Unopened';
+  if (status.generated && status.estimateReady) return 'Ready';
+  if (status.generated) return 'Draft';
+  if (!status.hasScale) return 'Needs scale';
+  if (status.hasAnnotationDoc) return 'Editing';
+  return 'Started';
+}
+
+function sheetStatusTone(status: PageWorkflowStatus | undefined): 'good' | 'warn' | 'accent' | 'danger' {
+  if (!status?.visited) return 'accent';
+  if (status.saveStatus === 'error') return 'danger';
+  if (status.generated && status.estimateReady) return 'good';
+  if (status.generated || !status.hasScale || status.saveStatus !== 'saved') return 'warn';
+  return 'accent';
+}
+
+type TakeoffDeltaSummary = {
+  floorArea: number;
+  totalLinearFt: number;
+  openingDeduction: number;
+  netWallBoard: number;
+  sheetsRequired: number;
+};
+
+type CachedPageTakeoff = {
+  takeoff: TakeoffData;
+  generated: boolean;
+  annotatedImage: string | null;
+  runComparisonMessage: string | null;
+  runComparisonReason: string | null;
+  metricDeltas: TakeoffDeltaSummary | null;
+};
+
+type PageWorkflowStatus = {
+  visited: boolean;
+  hasScale: boolean;
+  hasAnnotationDoc: boolean;
+  generated: boolean;
+  estimateReady: boolean;
+  saveStatus: 'saved' | 'unsaved' | 'syncing' | 'error';
+};
+
+function compareTakeoffRuns(previous: TakeoffData | null, next: TakeoffData): {
+  message: string;
+  reason: string | null;
+  deltas: TakeoffDeltaSummary;
+} {
+  const deltas: TakeoffDeltaSummary = {
+    floorArea: next.floorArea - (previous?.floorArea ?? 0),
+    totalLinearFt: next.totalLinearFt - (previous?.totalLinearFt ?? 0),
+    openingDeduction: next.openingDeduction - (previous?.openingDeduction ?? 0),
+    netWallBoard: next.netWallBoard - (previous?.netWallBoard ?? 0),
+    sheetsRequired: next.sheetsRequired - (previous?.sheetsRequired ?? 0),
+  };
+
+  if (!previous || !previous.geometryHash) {
+    return {
+      message: 'Geometry changed, metrics changed',
+      reason: 'This is the first generated baseline for the current page.',
+      deltas,
+    };
+  }
+
+  if (previous.geometryHash === next.geometryHash) {
+    return {
+      message: 'No geometry change since last run',
+      reason: null,
+      deltas,
+    };
+  }
+
+  const metricsChanged = (
+    Math.abs(deltas.floorArea) >= 0.1
+    || Math.abs(deltas.totalLinearFt) >= 0.1
+    || Math.abs(deltas.openingDeduction) >= 0.1
+    || Math.abs(deltas.netWallBoard) >= 0.1
+    || deltas.sheetsRequired !== 0
+  );
+
+  if (metricsChanged) {
+    return {
+      message: 'Geometry changed, metrics changed',
+      reason: null,
+      deltas,
+    };
+  }
+
+  let reason = 'Edit was absorbed by geometry normalization.';
+  if (next.roomClosureStatus !== 'closed') {
+    reason = 'Boundary still open or ambiguous, so floor area stayed provisional.';
+  } else if (next.unmatchedOpeningCount > 0) {
+    reason = 'Edit affected unmatched opening geometry that was excluded from deductions.';
+  } else if (Math.abs(deltas.totalLinearFt) < 0.1) {
+    reason = 'Wall moved without changing normalized wall length.';
+  }
+
+  return {
+    message: 'Geometry changed, but not enough to materially affect current totals',
+    reason,
+    deltas,
+  };
+}
 
 export default function ProjectViewerPage() {
   const { user } = useAuth();
@@ -36,17 +216,139 @@ export default function ProjectViewerPage() {
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
+  const [zoom, setZoom] = useState(1);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('annotate');
 
-  // Analysis state
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  // Takeoff state
+  const [generating, setGenerating] = useState(false);
+  const [takeoff, setTakeoff] = useState<TakeoffData>(EMPTY_TAKEOFF);
+  const [generated, setGenerated] = useState(false);
+  const [takeoffError, setTakeoffError] = useState<string | null>(null);
+  const [runComparisonMessage, setRunComparisonMessage] = useState<string | null>(null);
+  const [runComparisonReason, setRunComparisonReason] = useState<string | null>(null);
+  const [metricDeltas, setMetricDeltas] = useState<TakeoffDeltaSummary | null>(null);
+  // CV pipeline annotated image (base64 PNG, displayed over PDF)
+  const [annotatedImage, setAnnotatedImage] = useState<string | null>(null);
+  // Optional scale (px/ft) for drywall calculation — e.g. 50 for 1/4"=1' at 200 DPI
+  const [scalePxPerFt, setScalePxPerFt] = useState<string>('');
+  const [ceilingHeightFt, setCeilingHeightFt] = useState<string>(DEFAULT_CEILING_HEIGHT_FT);
+  const [referenceFloorAreaSqFt, setReferenceFloorAreaSqFt] = useState<string>('');
+  const [pendingReviewAction, setPendingReviewAction] = useState<ProjectWorkflowReviewAction | null>(null);
+  const [pageStatuses, setPageStatuses] = useState<Record<number, PageWorkflowStatus>>({});
+  const takeoffCacheKey = useMemo(
+    () => `flowbuildr:takeoff:${projectId}:page:${pageNumber}`,
+    [pageNumber, projectId],
+  );
+
+  // Overlay stepper
+  const ANALYSIS_STEPS = [
+    'Uploading plan\u2026',
+    'Reading legend\u2026',
+    'Detecting doors/windows\u2026',
+    'Estimating drywall\u2026',
+  ];
+  const [overlayStatus, setOverlayStatus] = useState(ANALYSIS_STEPS[0]);
+  const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const editorDocument = useAnnotationEditorStore((s) => s.document);
+  const editorSaveStatus = useAnnotationEditorStore((s) => s.saveStatus);
+  const editorPendingOpsCount = useAnnotationEditorStore((s) => s.history.pendingOps.length);
+  const editorViewPreset = useAnnotationEditorStore((s) => s.viewPreset);
+  const markEditorRevision = useAnnotationEditorStore((s) => s.markRevision);
+  const setEditorSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
+  const setEditorBaseImageScale = useAnnotationEditorStore((s) => s.setBaseImageScale);
+  const setEditorSelection = useAnnotationEditorStore((s) => s.setSelection);
+  const setEditorViewPreset = useAnnotationEditorStore((s) => s.setViewPreset);
+  const requestFocusOnElements = useAnnotationEditorStore((s) => s.requestFocusOnElements);
+  const setEditorToolMode = useAnnotationEditorStore((s) => s.setToolMode);
 
   useEffect(() => {
     if (!user?.id) return;
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, projectId]);
+
+  useEffect(() => {
+    if (!editorDocument) return;
+    const documentScale = editorDocument.baseImage.scalePxPerFt;
+    const nextScale = typeof documentScale === 'number' && Number.isFinite(documentScale) && documentScale > 0
+      ? String(documentScale)
+      : '';
+    if (scalePxPerFt !== nextScale) {
+      setScalePxPerFt(nextScale);
+    }
+  }, [editorDocument, scalePxPerFt]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const raw = window.sessionStorage.getItem(takeoffCacheKey);
+    if (!raw) {
+      setTakeoff(EMPTY_TAKEOFF);
+      setGenerated(false);
+      setAnnotatedImage(null);
+      setTakeoffError(null);
+      setRunComparisonMessage(null);
+      setRunComparisonReason(null);
+      setMetricDeltas(null);
+      return;
+    }
+
+    try {
+      const cached = JSON.parse(raw) as CachedPageTakeoff;
+      setTakeoff(cached.takeoff ?? EMPTY_TAKEOFF);
+      setGenerated(Boolean(cached.generated));
+      setAnnotatedImage(cached.annotatedImage ?? null);
+      setTakeoffError(null);
+      setRunComparisonMessage(cached.runComparisonMessage ?? null);
+      setRunComparisonReason(cached.runComparisonReason ?? null);
+      setMetricDeltas(cached.metricDeltas ?? null);
+    } catch {
+      window.sessionStorage.removeItem(takeoffCacheKey);
+      setTakeoff(EMPTY_TAKEOFF);
+      setGenerated(false);
+      setAnnotatedImage(null);
+      setTakeoffError(null);
+      setRunComparisonMessage(null);
+      setRunComparisonReason(null);
+      setMetricDeltas(null);
+    }
+  }, [takeoffCacheKey]);
+
+  useEffect(() => {
+    if (project?.file_mime !== 'application/pdf' || !fileUrl) return;
+    if (!numPages || pageStatuses[pageNumber]?.visited) return;
+
+    setPageStatuses((current) => ({
+      ...current,
+      [pageNumber]: {
+        visited: true,
+        hasScale: false,
+        hasAnnotationDoc: false,
+        generated: false,
+        estimateReady: false,
+        saveStatus: 'saved',
+      },
+    }));
+  }, [fileUrl, numPages, pageNumber, pageStatuses, project?.file_mime]);
+
+  useEffect(() => {
+    if (workspaceMode !== 'annotate' || !editorDocument || !pendingReviewAction) return;
+
+    const availableIds = pendingReviewAction.elementIds.filter((id) => editorDocument.elements.some((element) => element.id === id));
+    setEditorViewPreset(pendingReviewAction.preset);
+    setEditorSelection(availableIds);
+    if (availableIds.length > 0) {
+      requestFocusOnElements(availableIds);
+    }
+    setPendingReviewAction(null);
+  }, [
+    editorDocument,
+    pendingReviewAction,
+    requestFocusOnElements,
+    setEditorSelection,
+    setEditorViewPreset,
+    workspaceMode,
+  ]);
 
   async function load() {
     try {
@@ -82,38 +384,384 @@ export default function ProjectViewerPage() {
     }
   }
 
-  async function handleAnalyze() {
+  const startStepper = useCallback(() => {
+    let idx = 0;
+    setOverlayStatus(ANALYSIS_STEPS[0]);
+    stepTimerRef.current = setInterval(() => {
+      idx++;
+      if (idx < ANALYSIS_STEPS.length) {
+        setOverlayStatus(ANALYSIS_STEPS[idx]);
+      } else {
+        // Stay on last step; don't loop too fast
+        setOverlayStatus(ANALYSIS_STEPS[ANALYSIS_STEPS.length - 1]);
+      }
+    }, 1200);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const stopStepper = useCallback(() => {
+    if (stepTimerRef.current) {
+      clearInterval(stepTimerRef.current);
+      stepTimerRef.current = null;
+    }
+  }, []);
+
+  async function handleGenerate() {
     if (!fileUrl || !project) return;
-    setAnalyzing(true);
-    setAnalysisError(null);
-    setAnalysisResult(null);
+    setGenerating(true);
+    setTakeoffError(null);
+    startStepper();
 
     try {
+      let geometryRevision = 0;
+      const body: Record<string, unknown> = {
+        file_url: fileUrl,
+        file_mime: project.file_mime,
+        page_number: pageNumber,
+        include_ceiling: true,
+        waste_factor: DEFAULT_WASTE_FACTOR,
+        sheet_width_ft: DEFAULT_SHEET_WIDTH_FT,
+        sheet_length_ft: DEFAULT_SHEET_LENGTH_FT,
+      };
+      const scale = scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined;
+      if (typeof scale === 'number' && !Number.isNaN(scale) && scale > 0) {
+        body.scale_px_per_ft = scale;
+      }
+      const ceilingHeight = ceilingHeightFt.trim() ? parseFloat(ceilingHeightFt) : undefined;
+      if (typeof ceilingHeight === 'number' && !Number.isNaN(ceilingHeight) && ceilingHeight > 0) {
+        body.ceiling_height_ft = ceilingHeight;
+      }
+      const referenceFloorArea = referenceFloorAreaSqFt.trim() ? parseFloat(referenceFloorAreaSqFt) : undefined;
+      if (typeof referenceFloorArea === 'number' && !Number.isNaN(referenceFloorArea) && referenceFloorArea > 0) {
+        body.reference_floor_area_sqft = referenceFloorArea;
+      }
+
+      await waitForAnnotationWritesToDrain();
+
+      const currentEditorState = useAnnotationEditorStore.getState();
+      const currentEditorDocument = currentEditorState.document;
+      const currentPendingOpsCount = currentEditorState.history.pendingOps.length;
+      const currentEditorSaveStatus = currentEditorState.saveStatus;
+
+      if (currentEditorDocument) {
+        geometryRevision = currentEditorDocument.meta.revision;
+        const useSavedGeometry = hasManualGeometryEdits(currentEditorDocument);
+
+        if (currentEditorSaveStatus !== 'saved' || currentPendingOpsCount > 0) {
+          setEditorSaveStatus('syncing');
+          try {
+            const saved = await saveAnnotationDocumentWithConflictRetry({
+              projectId: project.id,
+              pageNumber,
+              document: currentEditorDocument,
+              onConflictRevision: markEditorRevision,
+            });
+            geometryRevision = saved.latest_revision;
+            markEditorRevision(saved.latest_revision);
+            setEditorSaveStatus('saved');
+          } catch {
+            setEditorSaveStatus('error');
+            throw new Error("Couldn't save editor changes before generate. Resolve the editor save issue and try again.");
+          }
+        }
+
+        await waitForAnnotationWritesToDrain();
+
+        if (useSavedGeometry) {
+          body.project_id = project.id;
+          body.use_saved_annotations = true;
+          body.annotation_revision = geometryRevision;
+        }
+      }
+
+      console.log('[takeoff] request:', { ...body, file_url: '(hidden)' });
       const res = await fetch(`${BACKEND_URL}/api/takeoff/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_url: fileUrl,
-          file_mime: project.file_mime,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
+        if (res.status === 409 && body.use_saved_annotations) {
+          throw new Error('The saved annotation revision changed before takeoff ran. Save again and regenerate.');
+        }
         throw new Error(err.detail || `Server error ${res.status}`);
       }
 
       const data = await res.json();
-      setAnalysisResult(data.analysis);
+      console.log('[takeoff] response:', {
+        floor_area_sqft: data.floor_area_sqft,
+        floor_area_method: data.floor_area_method,
+        sealed_endpoint_gap_count: data.area_debug?.sealed_endpoint_gap_count,
+        room_closure_status: data.room_closure_status,
+        net_wall_board_sqft: data.net_wall_board_sqft,
+        sheets_required: data.sheets_required,
+        scale,
+        cv_walls: data.cv_walls,
+      });
+      const parsed: TakeoffData = mapStructuredTakeoff(data) ?? parseTakeoff(data.analysis || '');
+      const comparison = compareTakeoffRuns(generated ? takeoff : null, parsed);
+
+      setTakeoff(parsed);
+      setGenerated(true);
+      setRunComparisonMessage(comparison.message);
+      setRunComparisonReason(comparison.reason);
+      setMetricDeltas(comparison.deltas);
+
+      // Store annotated image for overlay (no Supabase)
+      const nextAnnotatedImage = data.annotated_image ? `data:image/png;base64,${data.annotated_image}` : null;
+      setAnnotatedImage(nextAnnotatedImage);
+      if (typeof window !== 'undefined') {
+        const cached: CachedPageTakeoff = {
+          takeoff: parsed,
+          generated: true,
+          annotatedImage: nextAnnotatedImage,
+          runComparisonMessage: comparison.message,
+          runComparisonReason: comparison.reason,
+          metricDeltas: comparison.deltas,
+        };
+        window.sessionStorage.setItem(takeoffCacheKey, JSON.stringify(cached));
+      }
     } catch (e: any) {
-      setAnalysisError(e.message || 'Analysis failed');
+      setTakeoffError(e.message || 'Generation failed');
     } finally {
-      setAnalyzing(false);
+      stopStepper();
+      setGenerating(false);
     }
   }
 
   const isPdf = useMemo(() => project?.file_mime === 'application/pdf', [project?.file_mime]);
-  const isImage = useMemo(() => project?.file_mime?.startsWith('image/'), [project?.file_mime]);
+  const editorMode = workspaceMode === 'annotate';
+  const scaleValue = scalePxPerFt.trim() ? Number(scalePxPerFt) : null;
+  const ceilingHeightValue = ceilingHeightFt.trim() ? Number(ceilingHeightFt) : null;
+  const hasScale = typeof scaleValue === 'number' && Number.isFinite(scaleValue) && scaleValue > 0;
+  const hasCeilingHeight = typeof ceilingHeightValue === 'number' && Number.isFinite(ceilingHeightValue) && ceilingHeightValue > 0;
+  const hasReferenceFloorArea = takeoff.referenceFloorArea > 0;
+  const takeoffSourceDisplay = generated
+    ? geometrySourceLabel(takeoff.geometrySource)
+    : editorDocument
+      ? 'Saved Geometry'
+      : 'CV Geometry';
+
+  useEffect(() => {
+    if (project?.file_mime !== 'application/pdf' || !numPages) return;
+
+    setPageStatuses((current) => ({
+      ...current,
+      [pageNumber]: {
+        visited: true,
+        hasScale,
+        hasAnnotationDoc: Boolean(editorDocument),
+        generated,
+        estimateReady: takeoff.estimateReady,
+        saveStatus: editorSaveStatus,
+      },
+    }));
+  }, [editorDocument, editorSaveStatus, generated, hasScale, numPages, pageNumber, project?.file_mime, takeoff.estimateReady]);
+  const reviewWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (!hasScale) {
+      warnings.push('Scale missing. Floor area, wall lengths, and deductions are provisional.');
+    }
+    if (!hasCeilingHeight) {
+      warnings.push('Ceiling height drives sheet count. Confirm before trusting material output.');
+    }
+    if (generated && takeoff.floorAreaMethod === 'legacy_convex_hull_fallback') {
+      warnings.push('Floor area fell back to legacy geometry. Review outer wall closure before trusting this page.');
+    }
+    if (generated && hasReferenceFloorArea && takeoff.referenceAreaDeltaPct > 5) {
+      warnings.push('Calculated floor area differs from the reference by more than 5%.');
+    }
+    if (generated && takeoff.takeoffConfidence === 'low') {
+      warnings.push('Takeoff confidence is low. Review closure status, unmatched openings, and scale before trusting totals.');
+    }
+    if (generated && !takeoff.estimateReady) {
+      warnings.push('This estimate is still in draft mode. Final sheet count is blocked until the remaining QA issues are resolved.');
+    }
+    if (generated && takeoff.unknownWallCount > 0) {
+      warnings.push('Wall board is provisional because some walls are still unclassified. Unknown walls are currently counted as one-sided draft surfaces.');
+    }
+    if (generated && takeoff.roomClosureStatus !== 'closed') {
+      warnings.push(`Room boundary is ${roomClosureLabel(takeoff.roomClosureStatus).toLowerCase()}. Floor area and ceiling board remain provisional until closure is stable.`);
+    }
+    if (generated && takeoff.unmatchedOpeningCount > 0) {
+      warnings.push(`${takeoff.unmatchedOpeningCount} opening${takeoff.unmatchedOpeningCount === 1 ? '' : 's'} could not be hosted to a wall and were excluded from deductions.`);
+    }
+    if (generated) {
+      takeoff.blockedReasons.forEach((reason) => warnings.push(reason));
+    }
+    if (editorDocument && editorSaveStatus !== 'saved') {
+      warnings.push('Generate will save the current editor geometry before recalculating takeoff.');
+    }
+    if (takeoffError) {
+      warnings.push(takeoffError);
+    }
+    if (generated && takeoff.estimateReady && takeoff.sheetsRequired === 0 && takeoff.netWallBoard > 0) {
+      warnings.push('Material totals are inconsistent. Review scale, ceiling height, and detected openings.');
+    }
+    if (generated && editorDocument && takeoff.geometrySource === 'cv_pipeline') {
+      warnings.push('Takeoff used the CV fallback instead of saved editor geometry for this run.');
+    }
+    return warnings;
+  }, [
+    editorDocument,
+    editorSaveStatus,
+    generated,
+    hasCeilingHeight,
+    hasReferenceFloorArea,
+    hasScale,
+    takeoff.geometrySource,
+    takeoff.roomClosureStatus,
+    takeoff.takeoffConfidence,
+    takeoff.estimateReady,
+    takeoff.blockedReasons,
+    takeoff.floorAreaMethod,
+    takeoff.estimateReady,
+    takeoff.netWallBoard,
+    takeoff.unknownWallCount,
+    takeoff.unmatchedOpeningCount,
+    takeoff.referenceAreaDeltaPct,
+    takeoff.sheetsRequired,
+    takeoffError,
+  ]);
+
+  const actionableReviewActions = useMemo<ProjectWorkflowReviewAction[]>(() => {
+    if (!generated || !editorDocument) return [];
+
+    const unknownWallIds = editorDocument.elements
+      .filter((element) => {
+        if (element.type !== 'wall') return false;
+        const relations = element.relations as WallRelations | undefined;
+        return (relations?.surfaceClass ?? 'unknown') === 'unknown';
+      })
+      .map((element) => element.id);
+
+    const unhostedOpeningIds = editorDocument.elements
+      .filter((element) => {
+        if (element.type !== 'door' && element.type !== 'window') return false;
+        const relations = element.relations as OpeningRelations | undefined;
+        return !relations?.hostWallId;
+      })
+      .map((element) => element.id);
+
+    const fallbackOpeningIds = editorDocument.elements
+      .filter((element) => {
+        if (element.type !== 'door' && element.type !== 'window') return false;
+        const relations = element.relations as OpeningRelations | undefined;
+        return relations?.source === 'tag_projected' || relations?.source === 'gap_verified_tag_classified';
+      })
+      .map((element) => element.id);
+
+    const boundaryReviewIds = editorDocument.elements
+      .filter((element) => element.type === 'wall' || element.type === 'room')
+      .map((element) => element.id);
+
+    const actions: ProjectWorkflowReviewAction[] = [];
+
+    if (takeoff.roomClosureStatus !== 'closed' && boundaryReviewIds.length > 0) {
+      actions.push({
+        key: 'closure',
+        label: 'Review boundary closure',
+        description: `Focus ${boundaryReviewIds.length} wall and room elements tied to floor-area closure.`,
+        preset: 'final',
+        elementIds: boundaryReviewIds,
+      });
+    }
+
+    if (takeoff.unknownWallCount > 0 && unknownWallIds.length > 0) {
+      actions.push({
+        key: 'walls',
+        label: 'Classify unknown walls',
+        description: `${unknownWallIds.length} wall${unknownWallIds.length === 1 ? '' : 's'} still need a perimeter or partition decision.`,
+        preset: 'walls_qa',
+        elementIds: unknownWallIds,
+      });
+    }
+
+    if (takeoff.unmatchedOpeningCount > 0 && unhostedOpeningIds.length > 0) {
+      actions.push({
+        key: 'unhosted-openings',
+        label: 'Host unmatched openings',
+        description: `${unhostedOpeningIds.length} opening${unhostedOpeningIds.length === 1 ? '' : 's'} are missing a wall host.`,
+        preset: 'openings_qa',
+        elementIds: unhostedOpeningIds,
+      });
+    }
+
+    if (takeoff.fallbackOpeningCount > 0 && fallbackOpeningIds.length > 0) {
+      actions.push({
+        key: 'fallback-openings',
+        label: 'Review fallback openings',
+        description: `${fallbackOpeningIds.length} opening${fallbackOpeningIds.length === 1 ? '' : 's'} came from fallback evidence and should be verified.`,
+        preset: 'openings_qa',
+        elementIds: fallbackOpeningIds,
+      });
+    }
+
+    return actions;
+  }, [editorDocument, generated, takeoff.fallbackOpeningCount, takeoff.roomClosureStatus, takeoff.unknownWallCount, takeoff.unmatchedOpeningCount]);
+
+  const workflow = useProjectViewerWorkflow({
+    workspaceMode,
+    generating,
+    generated,
+    hasScale,
+    hasCeilingHeight,
+    editorDocumentExists: Boolean(editorDocument),
+    editorPendingOpsCount,
+    editorSaveStatus,
+    takeoffError,
+    scaleValue,
+    ceilingHeightValue,
+    takeoff,
+    takeoffSourceDisplay,
+    actionableReviewActions,
+  });
+
+  const handleReviewAction = useCallback((action: ProjectWorkflowReviewAction) => {
+    if (editorMode && editorDocument) {
+      setEditorViewPreset(action.preset);
+      setEditorSelection(action.elementIds);
+      requestFocusOnElements(action.elementIds);
+      return;
+    }
+
+    setPendingReviewAction(action);
+    setWorkspaceMode('annotate');
+  }, [editorDocument, editorMode, requestFocusOnElements, setEditorSelection, setEditorViewPreset]);
+
+  const openScaleCalibration = useCallback(() => {
+    setWorkspaceMode('annotate');
+    setEditorToolMode('calibrate');
+  }, [setEditorToolMode]);
+
+  const handlePrimaryAction = () => {
+    if (workflow.primaryAction.actionType === 'annotate') {
+      setWorkspaceMode('annotate');
+      return;
+    }
+    void handleGenerate();
+  };
+
+  const handleWorkflowBlocker = useCallback((blocker: WorkflowBlocker) => {
+    if (blocker.actionType === 'scale') {
+      openScaleCalibration();
+      return;
+    }
+    if (blocker.actionType === 'ceiling' || blocker.actionType === 'annotate' || blocker.actionType === 'save') {
+      setWorkspaceMode('annotate');
+      return;
+    }
+    if (blocker.actionType === 'review' && blocker.actionKey) {
+      const reviewAction = actionableReviewActions.find((action) => action.key === blocker.actionKey);
+      if (reviewAction) {
+        handleReviewAction(reviewAction);
+        return;
+      }
+    }
+    setWorkspaceMode('annotate');
+  }, [actionableReviewActions, handleReviewAction, openScaleCalibration]);
 
   if (loading) {
     return (
@@ -127,170 +775,196 @@ export default function ProjectViewerPage() {
   if (!project || !fileUrl) return null;
 
   return (
-    <div className="h-full w-full overflow-hidden">
-      <div className="h-full w-full grid grid-rows-[auto_1fr] gap-3 p-3 overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() => router.push('/dashboard/projects')}
-            className="inline-flex items-center gap-2 px-3 h-9 rounded-lg bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10 transition shrink-0"
-          >
-            <ChevronLeft size={18} />
-            Back
-          </button>
-
-          <div className="text-white font-semibold text-lg truncate">{project.name}</div>
-
-          <div className="ml-auto flex items-center gap-2 shrink-0">
-            <span className="text-xs text-gray-500">{isPdf ? 'PDF' : 'Image'}</span>
+    <div className="absolute inset-0 overflow-hidden bg-[var(--ws-bg)] text-[var(--ws-text)]">
+      <div className="flex h-full flex-col gap-3 px-3 py-3">
+        {isPdf ? (
+          <div className="hidden">
+            <Document
+              file={fileUrl}
+              onLoadSuccess={(info) => {
+                setNumPages(info.numPages);
+                setPageNumber((current) => Math.min(current, info.numPages));
+              }}
+              loading={null}
+            />
           </div>
-        </div>
+        ) : null}
+        <ProjectViewerHeader
+          projectName={project.name}
+          isPdf={isPdf}
+          pageNumber={pageNumber}
+          numPages={numPages}
+          annotationRevision={editorDocument?.meta.revision}
+          saveLabel={saveLabel(editorSaveStatus)}
+          saveTone={saveTone(editorSaveStatus)}
+          currentStep={workflow.currentStep}
+          blockerCount={workflow.blockerCount}
+          workspaceMode={workspaceMode}
+          canReview={generated}
+          onWorkspaceModeChange={setWorkspaceMode}
+          onBack={() => router.push('/dashboard/projects')}
+          onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))}
+          onNextPage={() => setPageNumber((current) => Math.min(numPages || current, current + 1))}
+        />
 
-        {/* 3-panel layout */}
-        <div className="min-h-0 h-full w-full grid gap-3 grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_320px]">
-          {/* Left */}
-          <aside className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-white font-semibold text-sm">Plans</div>
-              <div className="text-gray-500 text-xs">Current</div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-[#0b1120] p-3 flex items-center gap-3">
-              {isPdf ? <FileText size={18} className="text-gray-300" /> : <ImageIcon size={18} className="text-gray-300" />}
-              <div className="min-w-0">
-                <div className="text-sm text-white truncate">{project.name}</div>
-                <div className="text-xs text-gray-500 truncate">{project.file_mime}</div>
-              </div>
-            </div>
-
-            {isPdf && (
-              <div className="mt-auto pt-3 flex items-center justify-between text-sm text-gray-300">
-                <button
-                  onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-                  className="h-9 w-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 grid place-items-center"
-                  disabled={pageNumber <= 1}
-                >
-                  <ChevronLeft size={18} />
-                </button>
-
-                <div className="text-xs">
-                  Page <span className="text-white">{pageNumber}</span> / <span className="text-white">{numPages || '-'}</span>
+        <div className="flex min-h-0 flex-1 gap-3">
+          {isPdf && numPages > 1 ? (
+            <SheetRail
+              numPages={numPages}
+              pageNumber={pageNumber}
+              pageStatuses={pageStatuses}
+              onSelectPage={setPageNumber}
+              saveTone={saveTone}
+              saveLabel={saveLabel}
+              sheetStatusTone={sheetStatusTone}
+              sheetStatusLabel={sheetStatusLabel}
+            />
+          ) : null}
+          <section className="flex min-w-0 flex-1 flex-col">
+            <div className="ws-panel-flat flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ws-divider)] px-4 py-3">
+                <div className="min-w-0">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--ws-text-muted)]">Plan Workspace</div>
+                  <div className="mt-1 text-sm text-[var(--ws-text-secondary)]">
+                    {editorMode
+                      ? 'Inspect geometry, resolve blockers, and prepare the page for a trustworthy run.'
+                      : 'Review the latest result, compare it to the plan, and jump back into QA only when needed.'}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="ws-chip" data-active="true">
+                      {editorMode ? 'Geometry editing live' : 'Reviewing latest output'}
+                    </span>
+                    {generated ? (
+                      <span className="ws-chip" data-tone={takeoff.roomClosureStatus === 'closed' ? 'good' : 'warn'}>
+                        Closure {roomClosureLabel(takeoff.roomClosureStatus)}
+                      </span>
+                    ) : null}
+                    {hasScale ? (
+                      <span className="ws-chip" data-tone="good">Scale set</span>
+                    ) : (
+                      <span className="ws-chip" data-tone="warn">Scale needed</span>
+                    )}
+                  </div>
                 </div>
-
-                <button
-                  onClick={() => setPageNumber((p) => Math.min(numPages || p, p + 1))}
-                  className="h-9 w-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 grid place-items-center"
-                  disabled={numPages > 0 && pageNumber >= numPages}
-                >
-                  <ChevronRight size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {!editorMode ? (
+                    <div className="flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-black/20 px-2 py-1.5 text-[var(--ws-text-secondary)]">
+                      <button
+                        onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                        aria-label="Zoom out"
+                      >
+                        <ZoomOut size={16} />
+                      </button>
+                      <button
+                        onClick={() => setZoom(1)}
+                        className="min-w-[3.5rem] rounded-lg px-2 py-1 text-center text-xs transition hover:bg-white/10 hover:text-white"
+                        aria-label="Reset zoom"
+                        title="Reset to 100%"
+                      >
+                        {Math.round(zoom * 100)}%
+                      </button>
+                      <button
+                        onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                        aria-label="Zoom in"
+                      >
+                        <ZoomIn size={16} />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            )}
-          </aside>
 
-          {/* Center */}
-          <section className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex flex-col min-h-0">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-black/10 shrink-0">
-              <div className="text-gray-300 text-sm">Viewer</div>
-              <div className="ml-auto text-gray-400 text-xs">Zoom / Pan enabled</div>
-            </div>
-
-            <div className="flex-1 min-h-0 bg-[#0b1120]">
-              <TransformWrapper initialScale={1} minScale={0.5} maxScale={4} centerOnInit>
-                {({ zoomIn, zoomOut, resetTransform }) => (
-                  <div className="h-full w-full flex flex-col min-h-0">
-                    <div className="flex items-center gap-2 p-3 border-b border-white/10 bg-black/10 shrink-0">
-                      <button
-                        onClick={() => zoomOut()}
-                        className="h-9 w-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 grid place-items-center text-gray-200"
-                      >
-                        <Minus size={18} />
-                      </button>
-                      <button
-                        onClick={() => zoomIn()}
-                        className="h-9 w-9 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 grid place-items-center text-gray-200"
-                      >
-                        <Plus size={18} />
-                      </button>
-                      <button
-                        onClick={() => resetTransform()}
-                        className="h-9 px-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-200 text-sm"
-                      >
-                        Reset
-                      </button>
-
-                      {isPdf && <div className="ml-auto text-gray-400 text-sm">Page {pageNumber}</div>}
-                    </div>
-
-                    <div className="flex-1 min-h-0">
-                      <TransformComponent wrapperClass="!w-full !h-full !min-h-0" contentClass="!w-full !h-full">
-                        <div className="w-full h-full flex items-center justify-center p-1">
-                          {isPdf ? (
-                            <PdfViewerClient
-                              fileUrl={fileUrl}
-                              pageNumber={pageNumber}
-                              onLoadNumPages={(n) => {
-                                setNumPages(n);
-                                setPageNumber((p) => Math.min(p, n));
-                              }}
-                            />
-                          ) : (
-                            <img src={fileUrl} alt={project.name} className="max-h-full max-w-full object-contain" />
-                          )}
-                        </div>
-                      </TransformComponent>
-                    </div>
+              <div className="relative min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(39,212,255,0.08),_transparent_24%),radial-gradient(circle_at_bottom,_rgba(59,130,246,0.08),_transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))]">
+                {editorMode ? (
+                  <div className="h-full min-h-0 p-2">
+                    <AnnotationEditorBoundary
+                      key={`${project.id}:${pageNumber}`}
+                      onDisableEditor={() => setWorkspaceMode('review')}
+                    >
+                      <AnnotationEditorShell
+                        projectId={project.id}
+                        fileUrl={fileUrl}
+                        fileMime={project.file_mime}
+                        pageNumber={pageNumber}
+                        scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
+                        actorId={user?.id}
+                      />
+                    </AnnotationEditorBoundary>
+                  </div>
+                ) : (
+                  <div className="relative h-full overflow-auto px-2 py-2">
+                    {annotatedImage && generated ? (
+                      <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] border border-[var(--ws-border)] bg-black/10 p-4">
+                        <img
+                          src={annotatedImage}
+                          alt="Annotated floor plan"
+                          className="max-h-full max-w-full object-contain"
+                          style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                        />
+                      </div>
+                    ) : isPdf ? (
+                      <PdfViewerClient
+                        fileUrl={fileUrl}
+                        pageNumber={pageNumber}
+                        zoom={zoom}
+                        onLoadNumPages={(n) => {
+                          setNumPages(n);
+                          setPageNumber((p) => Math.min(p, n));
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] border border-[var(--ws-border)] bg-black/10 p-4">
+                        <img
+                          src={fileUrl}
+                          alt={project.name}
+                          className="max-h-full max-w-full object-contain"
+                          style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                        />
+                      </div>
+                    )}
+                    <TakeoffAnalyzingOverlay isOpen={generating} statusText={overlayStatus} />
                   </div>
                 )}
-              </TransformWrapper>
+              </div>
             </div>
           </section>
 
-          {/* Right — Analysis Panel */}
-          <aside className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col min-h-0">
-            <div className="text-white font-semibold mb-3 text-sm">AI Takeoff</div>
-
-            <button
-              onClick={handleAnalyze}
-              disabled={analyzing}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 text-white text-sm font-medium transition mb-3 shrink-0"
-            >
-              {analyzing ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Analyzing…
-                </>
-              ) : (
-                <>
-                  <Sparkles size={16} />
-                  Analyze Plan
-                </>
-              )}
-            </button>
-
-            {analysisError && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 mb-3 shrink-0">
-                <div className="flex items-start gap-2">
-                  <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
-                  <p className="text-red-300 text-xs">{analysisError}</p>
-                </div>
-              </div>
-            )}
-
-            {analysisResult ? (
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
-                <div className="text-gray-300 text-xs whitespace-pre-wrap leading-relaxed font-mono">
-                  {analysisResult}
-                </div>
-              </div>
-            ) : !analyzing && (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-gray-500 text-xs text-center px-2">
-                  Click &quot;Analyze Plan&quot; to extract rooms, walls, doors, windows, and get a material estimate.
-                </p>
-              </div>
-            )}
-          </aside>
+          <WorkflowRail
+            mode={workspaceMode}
+            workflow={workflow}
+            generating={generating}
+            generated={generated}
+            overlayStatus={overlayStatus}
+            takeoff={takeoff}
+            takeoffSourceDisplay={takeoffSourceDisplay}
+            scalePxPerFt={scalePxPerFt}
+            ceilingHeightFt={ceilingHeightFt}
+            referenceFloorAreaSqFt={referenceFloorAreaSqFt}
+            runComparisonMessage={runComparisonMessage}
+            runComparisonReason={runComparisonReason}
+            metricDeltas={metricDeltas}
+            takeoffError={takeoffError}
+            reviewWarnings={reviewWarnings}
+            reviewActions={actionableReviewActions}
+            onSetScalePxPerFt={(value) => {
+              setScalePxPerFt(value);
+              if (!editorDocument) return;
+              const parsed = value.trim() ? Number(value) : undefined;
+              if (typeof parsed === 'number' && Number.isFinite(parsed) && parsed > 0) {
+                setEditorBaseImageScale(parsed, 'manual', true);
+              } else {
+                setEditorBaseImageScale(undefined, undefined, false);
+              }
+            }}
+            onSetCeilingHeightFt={setCeilingHeightFt}
+            onSetReferenceFloorAreaSqFt={setReferenceFloorAreaSqFt}
+            onOpenScaleCalibration={openScaleCalibration}
+            onPrimaryAction={handlePrimaryAction}
+            onBlockerAction={handleWorkflowBlocker}
+            onReviewAction={handleReviewAction}
+          />
         </div>
       </div>
     </div>

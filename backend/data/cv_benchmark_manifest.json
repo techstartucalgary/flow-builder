@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "description": "Curated CV benchmark set for FlowBuildr accuracy tuning. Ranges are intentionally broad and are used as regression guards rather than final acceptance truth.",
+  "samples": [
+    {
+      "id": "boxhaus_page_3",
+      "label": "Boxhaus Page 3 PDF",
+      "source": {
+        "kind": "file",
+        "path": "backend/data/Boxhaus_Page_3.pdf",
+        "mime": "application/pdf",
+        "page_number": 1
+      },
+      "expected": {
+        "walls": { "min": 8, "max": 80 },
+        "doors": { "min": 1, "max": 20 },
+        "windows": { "min": 0, "max": 12 }
+      },
+      "known_failure_modes": [
+        "wall bleed at intersections",
+        "missing short interior segments",
+        "door under-detection"
+      ]
+    },
+    {
+      "id": "arch5_pdf",
+      "label": "112125_14_ARCH-5 PDF",
+      "source": {
+        "kind": "file",
+        "path": "backend/data/112125_14_ARCH-5.pdf",
+        "mime": "application/pdf",
+        "page_number": 1
+      },
+      "expected": {
+        "walls": { "min": 50, "max": 100 },
+        "doors": { "min": 0, "max": 20 },
+        "windows": { "min": 0, "max": 20 }
+      },
+      "known_failure_modes": [
+        "measurement-line artifacts",
+        "window false positives near legends",
+        "wall thickness instability"
+      ]
+    },
+    {
+      "id": "basement_snapshot",
+      "label": "Basement sample preview image",
+      "source": {
+        "kind": "annotation_preview",
+        "path": "backend/data/annotations/0cf961ef-2a6c-47ff-a368-402e3060beaa_page_1.json"
+      },
+      "expected": {
+        "walls": { "min": 8, "max": 80 },
+        "doors": { "min": 4, "max": 16 },
+        "windows": { "min": 0, "max": 8 }
+      },
+      "known_failure_modes": [
+        "door openings missed when wall break is weak",
+        "windows projected into walls",
+        "opening classification ambiguity"
+      ]
+    }
+  ]
+}

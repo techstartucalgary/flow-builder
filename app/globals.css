@@ -5,6 +5,28 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* ── Auth surface tokens (derived from existing palette) ── */
+  --auth-surface: #f8f9fb;       /* right-panel bg — 2% tint of white       */
+  --auth-border: #e5e7eb;        /* input/card border — gray-200            */
+  --auth-ring: rgba(0, 153, 252, 0.20); /* focus ring from existing #0099FC */
+
+  /* ── Project workstation tokens ── */
+  --ws-bg: #030712;
+  --ws-surface: rgba(10, 15, 26, 0.92);
+  --ws-surface-elevated: rgba(14, 23, 39, 0.98);
+  --ws-surface-muted: rgba(255, 255, 255, 0.035);
+  --ws-border: rgba(148, 163, 184, 0.12);
+  --ws-border-strong: rgba(96, 165, 250, 0.18);
+  --ws-divider: rgba(148, 163, 184, 0.08);
+  --ws-text: #f8fafc;
+  --ws-text-secondary: #cbd5e1;
+  --ws-text-muted: #64748b;
+  --ws-accent-cyan: #22d3ee;
+  --ws-accent-amber: #f59e0b;
+  --ws-accent-green: #22c55e;
+  --ws-accent-rose: #fb7185;
+  --ws-shadow: 0 20px 60px rgba(2, 6, 23, 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -12,6 +34,15 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+/* ── Micro-interaction: fade-in for inline toasts ── */
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.auth-fade-in {
+  animation: authFadeIn 0.2s ease-out forwards;
 }
 
 body {
@@ -24,4 +55,161 @@ body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+@layer components {
+  .ws-panel {
+    background: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 1rem;
+    box-shadow: var(--ws-shadow);
+    backdrop-filter: blur(18px);
+  }
+
+  .ws-panel-elevated {
+    background: var(--ws-surface-elevated);
+    border: 1px solid var(--ws-border-strong);
+    border-radius: 1rem;
+    box-shadow: var(--ws-shadow);
+    backdrop-filter: blur(22px);
+  }
+
+  .ws-section {
+    border: 1px solid var(--ws-border);
+    border-radius: 1rem;
+    background: var(--ws-surface-muted);
+  }
+
+  .ws-panel-flat {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+    border: 1px solid var(--ws-border);
+    border-radius: 1rem;
+  }
+
+  .ws-divider {
+    border-color: var(--ws-divider);
+  }
+
+  .ws-section-header {
+    color: var(--ws-text-secondary);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .ws-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--ws-border);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.35rem 0.7rem;
+    color: var(--ws-text-secondary);
+    font-size: 0.72rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .ws-chip[data-active='true'] {
+    border-color: rgba(34, 211, 238, 0.35);
+    background: rgba(34, 211, 238, 0.12);
+    color: #cffafe;
+  }
+
+  .ws-chip[data-tone='accent'] {
+    border-color: rgba(34, 211, 238, 0.35);
+    background: rgba(34, 211, 238, 0.12);
+    color: #cffafe;
+  }
+
+  .ws-chip[data-tone='warn'] {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.12);
+    color: #fde68a;
+  }
+
+  .ws-chip[data-tone='good'] {
+    border-color: rgba(34, 197, 94, 0.35);
+    background: rgba(34, 197, 94, 0.12);
+    color: #bbf7d0;
+  }
+
+  .ws-chip[data-tone='danger'] {
+    border-color: rgba(251, 113, 133, 0.35);
+    background: rgba(251, 113, 133, 0.12);
+    color: #fecdd3;
+  }
+
+  .review-rail-scroll {
+    scrollbar-gutter: stable;
+  }
+
+  .review-inputs-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .review-inputs-summary-item {
+    min-width: 0;
+    flex: 1 1 10rem;
+  }
+}
+
+@keyframes wsFadeLift {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ws-fade-lift {
+  animation: wsFadeLift 0.28s ease-out both;
+}
+
+/* ── Takeoff Analyzing Overlay ── */
+
+/* Scanline: a thin gradient band sweeping top-to-bottom */
+.takeoff-scanline {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    transparent 45%,
+    rgba(99, 102, 241, 0.25) 49%,
+    rgba(99, 102, 241, 0.45) 50%,
+    rgba(99, 102, 241, 0.25) 51%,
+    transparent 55%,
+    transparent 100%
+  );
+  background-size: 100% 200%;
+  animation: takeoff-scan 2.4s ease-in-out infinite;
+}
+
+@keyframes takeoff-scan {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+
+/* Focus boxes: dashed border with pulsing glow */
+.takeoff-focus-box {
+  border: 1.5px dashed rgba(129, 140, 248, 0.5);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.15), inset 0 0 8px rgba(99, 102, 241, 0.08);
+  animation: takeoff-pulse 2s ease-in-out infinite;
+}
+
+@keyframes takeoff-pulse {
+  0%, 100% {
+    border-color: rgba(129, 140, 248, 0.3);
+    box-shadow: 0 0 6px rgba(99, 102, 241, 0.1), inset 0 0 6px rgba(99, 102, 241, 0.05);
+  }
+  50% {
+    border-color: rgba(129, 140, 248, 0.7);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.3), inset 0 0 14px rgba(99, 102, 241, 0.12);
+  }
 }

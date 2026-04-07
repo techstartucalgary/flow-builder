@@ -1,8 +1,8 @@
 """API routes."""
 
-from . import vision
-from . import floorplan
+from . import annotations
 from . import partitions
 from . import takeoff
+from . import cv_takeoff
 
-__all__ = ["vision", "floorplan", "partitions", "takeoff"]
+__all__ = ["annotations", "partitions", "takeoff", "cv_takeoff"]
