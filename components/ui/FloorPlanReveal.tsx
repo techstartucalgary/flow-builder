@@ -1,18 +1,14 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { useInViewOnce } from '@/hooks/useInViewOnce';
 
 /*
  * ── FloorPlanReveal ──────────────────────────────────────────────────
  *
- * Animated SVG floor plan that draws in 3 phases:
- *   Phase 1 — horizontal walls  (.h paths)     0 → 1.0 s
- *   Phase 2 — vertical walls    (.v paths)     0.6 → 1.6 s
- *   Phase 3 — detail lines      (.d paths)     1.2 → 2.4 s
+ * Animated SVG floor plan that draws all path groups on a synced timeline
+ * so it starts/ends with the hero text animation.
  *
  * Animation is pure CSS (stroke-dasharray / stroke-dashoffset).
- * Starts once via IntersectionObserver when the component scrolls into view.
  *
  * ── How to replace the SVG with your own plan ──
  *
@@ -30,15 +26,14 @@ import { useInViewOnce } from '@/hooks/useInViewOnce';
  */
 
 // ── Timing (seconds) — tweak these to taste ─────────────────────────
-const PHASE_1_DELAY = 0;         // horizontals start
-const PHASE_1_DUR   = 1.0;
-const PHASE_2_DELAY = 0.6;       // verticals start (overlaps P1)
-const PHASE_2_DUR   = 1.0;
-const PHASE_3_DELAY = 1.2;       // details start
-const PHASE_3_DUR   = 1.2;
+const PHASE_1_DELAY = 0.2;
+const PHASE_1_DUR   = 1.5;
+const PHASE_2_DELAY = 0.2;
+const PHASE_2_DUR   = 1.5;
+const PHASE_3_DELAY = 0.2;
+const PHASE_3_DUR   = 1.5;
 
 export default function FloorPlanReveal() {
-  const [wrapperRef, inView] = useInViewOnce<HTMLDivElement>(0.15);
   const [replayKey, setReplayKey] = useState(0);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -48,10 +43,10 @@ export default function FloorPlanReveal() {
     (window as any).__replayFloorPlan = replay;
   }
 
-  const active = inView || replayKey > 0;
+  const active = true;
 
   return (
-    <div ref={wrapperRef} className="relative w-full h-full min-h-[260px] flex items-center justify-center [contain:layout]">
+    <div className="relative w-full h-full min-h-[260px] flex items-center justify-center [contain:layout]">
       {/* Glow behind the plan (subtle, component-level) */}
       <div className="absolute inset-0 -inset-x-4 blur-[50px] opacity-25 pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,rgba(96,165,250,0.15),transparent)]" />
 

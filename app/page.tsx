@@ -43,7 +43,7 @@ export default function Home() {
       <Navbar />
 
       {/* ─── HERO ──────────────────────────────────────────────────── */}
-      <section className="relative min-h-[calc(100vh-80px)] overflow-hidden flex items-center py-20 lg:py-28">
+      <section className="relative min-h-[calc(100vh-80px)] overflow-hidden flex items-center py-3 sm:py-4 lg:py-5 xl:py-6">
         {/* Background glows + grid */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <div className="absolute top-1/2 left-0 w-[80vw] max-w-[900px] h-[70vh] -translate-y-1/2 -translate-x-1/4 bg-blue-500/[0.12] rounded-full blur-[140px]" />
@@ -51,19 +51,19 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:50px_50px]" />
         </div>
 
-        <div className="relative z-10 w-full max-w-[1400px] mx-auto px-8 sm:px-12 lg:px-16 xl:px-20
-                        grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-20 xl:gap-24 items-stretch">
+        <div className="relative z-10 w-full max-w-[1420px] mx-auto px-6 sm:px-10 lg:px-10 xl:px-12
+                        grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8 lg:gap-1 xl:gap-2 items-center lg:place-items-center lg:-translate-y-3 xl:-translate-y-4">
 
-          {/* Left — Blueprint animation (large, prominent) */}
-          <div className="order-2 lg:order-1 flex items-center justify-center min-w-0 h-full min-h-[360px] lg:min-h-0 hero-scale-in">
-            <div className="w-full h-full max-w-[90vw] lg:max-w-full flex items-center justify-center">
+          {/* Right — Blueprint animation (large, prominent) */}
+          <div className="order-2 flex items-center justify-center min-w-0 w-full hero-scale-in lg:justify-self-start lg:-translate-x-6">
+            <div className="w-full h-[clamp(420px,56vh,700px)] max-w-[95vw] lg:max-w-[980px] xl:max-w-[1040px] flex items-center justify-center origin-center">
               <FloorPlanReveal />
             </div>
           </div>
 
-          {/* Right — Text stack */}
-          <div className="order-1 lg:order-2 flex flex-col justify-center items-center lg:items-start text-center lg:text-left">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[0.95] hero-fade-up">
+          {/* Left — Text stack */}
+          <div className="order-1 flex flex-col justify-center items-center lg:items-start text-center lg:text-left w-full max-w-lg lg:max-w-[36rem] lg:justify-self-end lg:translate-x-6">
+            <h1 className="text-[clamp(2.7rem,5.6vw,4.9rem)] font-bold text-white tracking-tight leading-[0.94] hero-headline-in">
               Analyzing
               <br />
               House Costs
@@ -71,13 +71,13 @@ export default function Home() {
               with Ease
             </h1>
 
-            <div className="mt-4 flex items-center hero-fade-up-delay-1">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0099FC]">
+            <div className="mt-4 flex items-center hero-kicker-in">
+              <p className="text-sm sm:text-[0.98rem] font-semibold uppercase tracking-[0.18em] text-[#0099FC]">
                 AI Integrated Takeoff for Builders
               </p>
             </div>
 
-            <p className="mt-3 text-lg leading-relaxed text-white/50 max-w-md hero-fade-up-delay-2">
+            <p className="mt-4 text-[clamp(1.04rem,1.4vw,1.26rem)] leading-relaxed text-white/55 max-w-[36rem] hero-copy-in">
               Upload your blueprints, get accurate material quantities,
               and streamline your construction workflow all powered by AI.
             </p>
@@ -85,12 +85,12 @@ export default function Home() {
             <Link
               href="/auth/signup"
               className="mt-5 inline-flex items-center gap-2.5 px-10 py-4 rounded-full
-                         font-bold text-base text-white
+                         font-bold text-base sm:text-lg text-white
                          bg-[#297FD6] hover:bg-[#2473C2]
                          shadow-[0_0_32px_-4px_rgba(41,127,214,0.4)]
                          hover:shadow-[0_0_40px_-2px_rgba(41,127,214,0.5)]
                          transition-all duration-200 transform hover:-translate-y-0.5
-                         hero-fade-up-delay-3"
+                         hero-cta-in"
             >
               Start Building
               <ArrowRight className="h-5 w-5" />
@@ -116,31 +116,31 @@ export default function Home() {
       </section>
 
       {/* ─── AI TAKEOFF TOOLS ──────────────────────────────────────── */}
-      <section className="py-20 lg:py-24 border-t border-white/[0.04]">
+      <section className="py-14 lg:py-16 border-t border-white/[0.04]">
         <ScrollReveal>
-          <div className="max-w-[1200px] mx-auto px-6 lg:px-10">
-            <div className="text-center max-w-2xl mx-auto mb-10">
-              <h2 className="text-3xl sm:text-4xl lg:text-[2.5rem] font-bold tracking-tight leading-tight">
+          <div className="max-w-[980px] mx-auto px-6 lg:px-8">
+            <div className="text-center max-w-[640px] mx-auto mb-6 lg:mb-7">
+              <h2 className="text-[clamp(2rem,3.8vw,3rem)] font-bold tracking-tight leading-[1.04]">
                 AI Takeoff Tools That Handle
                 <br />
                 the Hard Part
               </h2>
-              <p className="mt-3 text-gray-500 text-sm leading-relaxed">
+              <p className="mt-2.5 text-gray-500 text-[13px] leading-relaxed">
                 Build smarter takeoffs and reduce manual measuring and data entry technologies.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-3">
               {TAKEOFF_TOOLS.map((f) => (
                 <div
                   key={f.title}
-                  className="rounded-[10px] border border-white/[0.06] bg-[#0a1225] p-5 hover:border-white/[0.10] transition"
+                  className="h-full min-h-[148px] rounded-[10px] border border-white/[0.06] bg-[#0a1225] p-4 hover:border-white/[0.10] transition"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-blue-500/[0.08] border border-blue-500/[0.15] flex items-center justify-center mb-3.5">
-                    <f.icon size={16} className="text-blue-400" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/[0.08] border border-blue-500/[0.15] flex items-center justify-center mb-3">
+                    <f.icon size={15} className="text-blue-400" />
                   </div>
-                  <h3 className="text-sm font-semibold text-white mb-1.5">{f.title}</h3>
-                  <p className="text-[13px] text-gray-500 leading-relaxed">{f.description}</p>
+                  <h3 className="text-[15px] font-semibold text-white mb-1.5">{f.title}</h3>
+                  <p className="text-[12.5px] text-gray-500 leading-[1.5]">{f.description}</p>
                 </div>
               ))}
             </div>
