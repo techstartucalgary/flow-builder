@@ -51,19 +51,19 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:50px_50px]" />
         </div>
 
-        <div className="relative z-10 w-full max-w-[1420px] mx-auto px-6 sm:px-10 lg:px-10 xl:px-12
-                        grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8 lg:gap-1 xl:gap-2 items-center lg:place-items-center lg:-translate-y-3 xl:-translate-y-4">
+        <div className="relative z-10 w-full max-w-[1220px] mx-auto px-6 sm:px-8 lg:px-10 xl:px-12
+                        grid grid-cols-1 lg:grid-cols-[minmax(0,auto)_minmax(0,auto)] gap-4 lg:gap-0 xl:gap-0 items-center justify-center lg:place-items-center lg:-translate-y-3 xl:-translate-y-4">
 
           {/* Right — Blueprint animation (large, prominent) */}
-          <div className="order-2 flex items-center justify-center min-w-0 w-full hero-scale-in lg:justify-self-start lg:-translate-x-6">
-            <div className="w-full h-[clamp(420px,56vh,700px)] max-w-[95vw] lg:max-w-[980px] xl:max-w-[1040px] flex items-center justify-center origin-center">
+          <div className="order-2 flex items-center justify-center min-w-0 w-full hero-scale-in lg:justify-self-start lg:-translate-x-6 xl:-translate-x-8">
+            <div className="w-full h-[clamp(420px,55vh,680px)] max-w-[98vw] lg:max-w-[900px] xl:max-w-[960px] flex items-center justify-center origin-center">
               <FloorPlanReveal />
             </div>
           </div>
 
           {/* Left — Text stack */}
-          <div className="order-1 flex flex-col justify-center items-center lg:items-start text-center lg:text-left w-full max-w-lg lg:max-w-[36rem] lg:justify-self-end lg:translate-x-6">
-            <h1 className="text-[clamp(2.7rem,5.6vw,4.9rem)] font-bold text-white tracking-tight leading-[0.94] hero-headline-in">
+          <div className="order-1 flex flex-col justify-center items-center lg:items-start text-center lg:text-left w-full max-w-[32rem] lg:max-w-[34rem] lg:justify-self-end lg:translate-x-5 xl:translate-x-6">
+            <h1 className="text-[clamp(2.6rem,5vw,4.8rem)] font-bold text-white tracking-tight leading-[0.9] hero-headline-in">
               Analyzing
               <br />
               House Costs
@@ -71,20 +71,20 @@ export default function Home() {
               with Ease
             </h1>
 
-            <div className="mt-4 flex items-center hero-kicker-in">
-              <p className="text-sm sm:text-[0.98rem] font-semibold uppercase tracking-[0.18em] text-[#0099FC]">
+            <div className="mt-1 flex items-center hero-kicker-in">
+              <p className="text-[0.88rem] sm:text-[0.95rem] font-semibold uppercase tracking-[0.18em] text-[#0099FC]">
                 AI Integrated Takeoff for Builders
               </p>
             </div>
 
-            <p className="mt-4 text-[clamp(1.04rem,1.4vw,1.26rem)] leading-relaxed text-white/55 max-w-[36rem] hero-copy-in">
+            <p className="mt-1.5 text-[clamp(1rem,1.35vw,1.24rem)] leading-[1.5] text-white/55 max-w-[34rem] hero-copy-in">
               Upload your blueprints, get accurate material quantities,
               and streamline your construction workflow all powered by AI.
             </p>
 
             <Link
               href="/auth/signup"
-              className="mt-5 inline-flex items-center gap-2.5 px-10 py-4 rounded-full
+              className="mt-3 inline-flex items-center gap-2.5 px-10 py-4 rounded-full
                          font-bold text-base sm:text-lg text-white
                          bg-[#297FD6] hover:bg-[#2473C2]
                          shadow-[0_0_32px_-4px_rgba(41,127,214,0.4)]
