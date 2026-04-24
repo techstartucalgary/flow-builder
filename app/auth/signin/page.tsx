@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseConfigErrorMessage, supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -29,15 +29,22 @@ export default function SignIn() {
   const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const resetSuccess = searchParams.get('reset') === 'success';
+  const supabaseConfigError = getSupabaseConfigErrorMessage();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
+
+    if (supabaseConfigError) {
+      setLocalError(supabaseConfigError);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await signIn(email, password);
-      router.push('/dashboard');
+      router.push('/dashboard/projects');
     } catch (error: any) {
       setLocalError(error.message || 'An error occurred during sign in');
     } finally {
@@ -48,6 +55,11 @@ export default function SignIn() {
   const handleForgotPassword = async () => {
     setLocalError('');
     setForgotMsg('');
+
+    if (supabaseConfigError) {
+      setLocalError(supabaseConfigError);
+      return;
+    }
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
@@ -62,7 +74,12 @@ export default function SignIn() {
       if (error) throw error;
       setForgotMsg('Password reset email sent. Check your inbox.');
     } catch (error: any) {
-      setLocalError(error?.message || 'Failed to send password reset email.');
+      const rawMessage = error?.message || '';
+      const friendlyMessage =
+        /failed to fetch|networkerror|load failed|fetch failed/i.test(rawMessage)
+          ? 'Unable to reach Supabase Auth. Check your internet connection and Supabase URL configuration.'
+          : rawMessage || 'Failed to send password reset email.';
+      setLocalError(friendlyMessage);
     }
   };
 
@@ -97,6 +114,12 @@ export default function SignIn() {
         {localError && (
           <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm text-center auth-fade-in">
             {localError}
+          </div>
+        )}
+
+        {!localError && supabaseConfigError && (
+          <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-sm text-center auth-fade-in">
+            {supabaseConfigError}
           </div>
         )}
 
@@ -177,7 +200,7 @@ export default function SignIn() {
           {/* ── Submit ── */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !!supabaseConfigError}
             className="w-full h-12 rounded-xl font-semibold text-sm text-white
                        bg-gradient-to-r from-blue-600 to-indigo-600
                        hover:from-blue-500 hover:to-indigo-500

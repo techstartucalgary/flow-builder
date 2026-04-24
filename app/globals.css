@@ -173,6 +173,35 @@ body {
   animation: wsFadeLift 0.28s ease-out both;
 }
 
+/* Dashboard dark scrollbar */
+.dark-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(31, 41, 55, 0.8) #020617;
+}
+
+.dark-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dark-scrollbar::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 999px;
+  border: 1px solid #020617;
+}
+
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+.dark-scrollbar::-webkit-scrollbar-corner {
+  background: #020617;
+}
+
 /* ── Takeoff Analyzing Overlay ── */
 
 /* Scanline: a thin gradient band sweeping top-to-bottom */
