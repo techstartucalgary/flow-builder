@@ -385,6 +385,20 @@ export default function ProjectsPage() {
     };
   }, [dashboardProjects]);
 
+  const portfolioOverview = useMemo(() => {
+    const totalProjects = filteredProjects.length;
+    const readyProjects = filteredProjects.filter((project) => project.status === 'Ready').length;
+    const inProgressProjects = filteredProjects.filter((project) => project.status === 'In Progress').length;
+    const totalEstimatedValue = filteredProjects.reduce((sum, project) => sum + project.estimatedValue, 0);
+
+    return {
+      totalProjects,
+      readyProjects,
+      inProgressProjects,
+      totalEstimatedValue,
+    };
+  }, [filteredProjects]);
+
   const detailsQuickStats = useMemo(
     () => (detailsProject ? buildProjectQuickStats(detailsProject) : []),
     [detailsProject],
@@ -561,7 +575,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="mx-auto h-full w-full max-w-[1900px] min-h-0">
+    <div className="h-full w-full min-h-0">
       <div className="grid min-h-0 gap-4 xl:grid-cols-[220px_minmax(0,1fr)_300px] 2xl:grid-cols-[235px_minmax(0,1fr)_320px]">
         <aside className="ws-panel-flat flex min-h-0 flex-col p-4 xl:max-h-[calc(100dvh-8.5rem)] xl:sticky xl:top-4 xl:overflow-y-auto dark-scrollbar">
           <h1 className="text-lg font-semibold text-white">Projects</h1>
@@ -618,28 +632,47 @@ export default function ProjectsPage() {
             />
           </div>
 
-          <div className="mt-auto pt-4">
-            <p className="text-xs text-slate-500">
-              Use the Create Project action in the Project Pipeline header.
-            </p>
-          </div>
         </aside>
 
         <section className="ws-panel-flat flex min-h-0 flex-col overflow-hidden xl:max-h-[calc(100dvh-8.5rem)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-3.5">
             <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Workflow Dashboard</p>
-              <h2 className="mt-1 text-xl font-semibold text-white">Project Pipeline</h2>
+              <h2 className="text-xl font-semibold text-white">Workflow Dashboard</h2>
             </div>
 
             <button
               onClick={openCreateModal}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-cyan-400/35 bg-cyan-500/15 px-4 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25"
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#297FD6] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2473C2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#53a7ff]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#040a16] active:scale-[0.98]"
             >
               <Plus size={15} />
               Create Project
             </button>
           </div>
+
+          <section className="border-b border-white/10 px-5 py-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs uppercase tracking-[0.14em] text-slate-400">Portfolio Overview</h3>
+              <span className="text-[11px] text-slate-500">Reflects current table filters</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              <PortfolioStatCard
+                label="Total Projects"
+                value={NUMBER_FORMAT.format(portfolioOverview.totalProjects)}
+              />
+              <PortfolioStatCard
+                label="Ready Projects"
+                value={NUMBER_FORMAT.format(portfolioOverview.readyProjects)}
+              />
+              <PortfolioStatCard
+                label="In Progress"
+                value={NUMBER_FORMAT.format(portfolioOverview.inProgressProjects)}
+              />
+              <PortfolioStatCard
+                label="Total Est. Value"
+                value={CURRENCY_FORMAT.format(portfolioOverview.totalEstimatedValue)}
+              />
+            </div>
+          </section>
 
           <div className="grid gap-3 border-b border-white/10 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_220px]">
             <div className="relative">
@@ -770,11 +803,11 @@ export default function ProjectsPage() {
             <p className="mt-1 text-xs text-slate-400">
               {detailsProject
                 ? `${detailsProject.buildingType} • ${detailsProject.status} • ${formatTimestamp(detailsProject.lastUpdated)}`
-                : 'Select a row, then click Details to load this panel.'}
+                : 'Click Details on a project row to load project-specific activity and stats.'}
             </p>
           </div>
 
-          <section className="rounded-xl border border-white/10 bg-[#090f1d]/80 p-3">
+          <section className="rounded-xl border border-white/10 bg-[#090f1d]/90 p-3">
             <h4 className="text-sm font-semibold text-slate-100">Recent Activity</h4>
             <div className="mt-2 border-t border-white/10 pt-2">
               {detailsProject ? (
@@ -800,7 +833,7 @@ export default function ProjectsPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-white/10 bg-[#090f1d]/80 p-3">
+          <section className="rounded-xl border border-white/10 bg-[#090f1d]/90 p-3">
             <h4 className="text-sm font-semibold text-slate-100">Quick Stats</h4>
             <div className="mt-2 border-t border-white/10 pt-2">
               {detailsProject ? (
@@ -816,12 +849,7 @@ export default function ProjectsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <QuickStatCell value={NUMBER_FORMAT.format(quickStats.totalProjects)} label="Plan Files" />
-                  <QuickStatCell value={COMPACT_CURRENCY_FORMAT.format(quickStats.totalValue)} label="Est. Value" />
-                  <QuickStatCell value={NUMBER_FORMAT.format(quickStats.recentUpdates)} label="Revisions" />
-                  <QuickStatCell value={NUMBER_FORMAT.format(quickStats.activeTakeoffs)} label="Active Takeoffs" />
-                </div>
+                <p className="text-sm text-slate-400">Click Details to view project-specific quick stats.</p>
               )}
             </div>
           </section>
@@ -829,24 +857,24 @@ export default function ProjectsPage() {
       </div>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-[70] flex items-start justify-center px-4 pt-20 pb-6">
           <div className="absolute inset-0 bg-black/75" onClick={closeCreateModal} />
-          <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[radial-gradient(120%_180%_at_0%_0%,rgba(26,67,122,0.34),#070f1f_55%,#050a14_100%)] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-7 py-5">
+          <div className="relative w-full max-w-[36rem] max-h-[calc(100dvh-6.5rem)] overflow-y-auto dark-scrollbar rounded-2xl border border-white/14 bg-[radial-gradient(120%_180%_at_0%_0%,rgba(26,67,122,0.34),#070f1f_55%,#050a14_100%)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Create Project</p>
-                <h3 className="mt-1 text-2xl font-semibold text-white">Start New Workflow</h3>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400/90">Create Project</p>
+                <h3 className="mt-1 text-[1.75rem] font-semibold leading-tight text-white">Start New Workflow</h3>
               </div>
               <button
                 onClick={closeCreateModal}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/[0.02] text-slate-400 transition hover:bg-white/10 hover:text-white"
                 aria-label="Close create project modal"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-5 px-7 py-5">
+            <div className="space-y-5 px-6 py-5">
               {createError ? (
                 <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
                   {createError}
@@ -859,7 +887,7 @@ export default function ProjectsPage() {
                   value={projectName}
                   onChange={(event) => setProjectName(event.target.value)}
                   placeholder="e.g. Midtown Studio Renovation"
-                  className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400/40 focus:outline-none"
+                  className="h-12 w-full rounded-xl border border-white/15 bg-[#0b1326]/85 px-4 text-sm text-white placeholder:text-slate-400/90 transition-colors focus:border-[#53a7ff]/70 focus:outline-none focus:ring-2 focus:ring-[#53a7ff]/20"
                 />
               </div>
 
@@ -869,7 +897,7 @@ export default function ProjectsPage() {
                   <select
                     value={buildingType}
                     onChange={(event) => setBuildingType(event.target.value as BuildingType)}
-                    className="h-12 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.04] px-4 pr-10 text-sm text-white focus:border-cyan-400/40 focus:outline-none"
+                    className="h-12 w-full appearance-none rounded-xl border border-white/15 bg-[#0b1326]/85 px-4 pr-10 text-sm text-white transition-colors focus:border-[#53a7ff]/70 focus:outline-none focus:ring-2 focus:ring-[#53a7ff]/20"
                   >
                     <option value="Residential" className="bg-[#081224] text-slate-100">Residential</option>
                     <option value="Commercial" className="bg-[#081224] text-slate-100">Commercial</option>
@@ -904,13 +932,13 @@ export default function ProjectsPage() {
                     setUploadFile(dropped);
                   }}
                   className={[
-                    'w-full rounded-xl border border-dashed px-6 py-9 text-center transition',
+                    'w-full rounded-xl border border-dashed px-6 py-8 text-center transition-colors duration-200',
                     dragOver
-                      ? 'border-cyan-400/70 bg-cyan-500/10'
-                      : 'border-white/20 bg-[#061021] hover:border-cyan-400/35 hover:bg-cyan-500/[0.06]',
+                      ? 'border-[#53a7ff]/80 bg-[#1e4f8b]/15 shadow-[inset_0_0_0_1px_rgba(83,167,255,0.25)]'
+                      : 'border-white/24 bg-[#071125] hover:border-[#53a7ff]/45 hover:bg-[#0b1f3a]/35',
                   ].join(' ')}
                 >
-                  <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-white/5 text-slate-300">
+                  <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/5 text-slate-200">
                     <UploadCloud size={20} />
                   </div>
                   <div className="text-lg font-semibold text-slate-100">
@@ -925,11 +953,11 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 border-t border-white/10 px-7 py-5">
+            <div className="flex items-center gap-3 border-t border-white/10 px-6 py-4">
               <button
                 onClick={() => void handleCreateProject()}
                 disabled={creating || !projectName.trim()}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-cyan-400/35 bg-cyan-500/20 px-6 text-base font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-55"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-[#297FD6] px-6 text-base font-semibold text-white transition-colors duration-200 hover:bg-[#2473C2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#53a7ff]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a14] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#1f3f63] disabled:text-white/60"
               >
                 {creating ? (
                   <span className="inline-flex items-center gap-2">
@@ -943,7 +971,7 @@ export default function ProjectsPage() {
               <button
                 onClick={closeCreateModal}
                 disabled={creating}
-                className="h-11 min-w-[140px] rounded-full border border-white/15 bg-white/[0.03] px-6 text-sm text-slate-200 transition hover:bg-white/10"
+                className="h-11 min-w-[140px] rounded-full border border-white/20 bg-transparent px-6 text-sm font-medium text-slate-200 transition hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1053,6 +1081,15 @@ function QuickStatCell({
     >
       <div className="truncate text-[1.35rem] font-semibold leading-none text-white">{value}</div>
       <div className="mt-1 text-xs text-slate-400">{label}</div>
+    </div>
+  );
+}
+
+function PortfolioStatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-[#0a1225]/80 px-3 py-2.5">
+      <p className="text-[11px] uppercase tracking-[0.08em] text-slate-400">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-slate-100">{value}</p>
     </div>
   );
 }
