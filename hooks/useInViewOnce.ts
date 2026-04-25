@@ -18,18 +18,38 @@ export function useInViewOnce<T extends HTMLElement = HTMLDivElement>(
     const el = ref.current;
     if (!el || seen) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setSeen(true);
-          observer.disconnect();
-        }
-      },
-      { threshold },
-    );
+    if (typeof window === 'undefined') return;
+    // Never let sections remain hidden if observer support/behavior is inconsistent.
+    const visibilityFailSafe = window.setTimeout(() => setSeen(true), 900);
 
-    observer.observe(el);
-    return () => observer.disconnect();
+    if (!('IntersectionObserver' in window)) {
+      clearTimeout(visibilityFailSafe);
+      setSeen(true);
+      return;
+    }
+
+    try {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            clearTimeout(visibilityFailSafe);
+            setSeen(true);
+            observer.disconnect();
+          }
+        },
+        { threshold },
+      );
+
+      observer.observe(el);
+      return () => {
+        clearTimeout(visibilityFailSafe);
+        observer.disconnect();
+      };
+    } catch {
+      clearTimeout(visibilityFailSafe);
+      setSeen(true);
+      return;
+    }
   }, [threshold, seen]);
 
   return [ref, seen];

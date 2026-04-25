@@ -100,7 +100,7 @@ export default function Home() {
       </section>
 
       {/* ─── TRUSTED BY ────────────────────────────────────────────── */}
-      <section className="border-t border-white/[0.04] py-10">
+      <section id="about" className="border-t border-white/[0.04] py-10">
         <ScrollReveal>
           <div className="max-w-[1200px] mx-auto px-6 lg:px-10 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-600 mb-8">
@@ -116,7 +116,7 @@ export default function Home() {
       </section>
 
       {/* ─── AI TAKEOFF TOOLS ──────────────────────────────────────── */}
-      <section className="py-14 lg:py-16 border-t border-white/[0.04]">
+      <section id="features" className="py-14 lg:py-16 border-t border-white/[0.04]">
         <ScrollReveal>
           <div className="max-w-[980px] mx-auto px-6 lg:px-8">
             <div className="text-center max-w-[640px] mx-auto mb-6 lg:mb-7">
@@ -378,10 +378,9 @@ export default function Home() {
       </section>
 
       {/* ─── CONTACT ───────────────────────────────────────────────── */}
-      <section id="contact" className="sr-only" />
 
       {/* ─── FOOTER ────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/[0.06] pt-16 pb-10">
+      <footer id="contact" className="border-t border-white/[0.06] pt-16 pb-10">
         <div className="max-w-[1200px] mx-auto px-6 lg:px-10">
           <div className="grid grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-10 mb-14">
             {/* Brand column */}

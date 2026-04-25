@@ -6,6 +6,9 @@ import {
   ArrowLeft,
   Bell,
   CheckCircle2,
+  Eye,
+  EyeOff,
+  Lock,
   ShieldCheck,
   SlidersHorizontal,
   UserRound,
@@ -54,6 +57,26 @@ const INITIAL_NOTIFICATION_SETTINGS: NotificationSettings = {
   revisionAlerts: true,
 };
 
+const getPasswordErrorMessage = (raw: string): string => {
+  if (/invalid login credentials/i.test(raw)) {
+    return 'Current password is incorrect.';
+  }
+
+  if (/same as the old password|different from the old password|same password/i.test(raw)) {
+    return 'New password must be different from your current password.';
+  }
+
+  if (/password/i.test(raw) && /least|length|characters|weak/i.test(raw)) {
+    return 'Choose a stronger password with at least 8 characters.';
+  }
+
+  if (/failed to fetch|networkerror|fetch failed|load failed/i.test(raw)) {
+    return 'Unable to reach Supabase Auth right now. Check your connection and try again.';
+  }
+
+  return raw || 'Unable to update password right now. Please try again.';
+};
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('account');
@@ -65,6 +88,15 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState<NotificationSettings>(
     INITIAL_NOTIFICATION_SETTINGS,
   );
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const hasChangesRef = useRef(false);
 
@@ -122,6 +154,70 @@ export default function SettingsPage() {
       value: projectCountError ? 'Unavailable' : projectCount === null ? 'Loading...' : String(projectCount),
     },
   ];
+
+  const handlePasswordUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setPasswordError('All password fields are required.');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordError('New password must be different from your current password.');
+      return;
+    }
+
+    if (!user?.email) {
+      setPasswordError('No signed-in email was found for this session.');
+      return;
+    }
+
+    setUpdatingPassword(true);
+
+    try {
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (verifyError) {
+        setPasswordError(getPasswordErrorMessage(verifyError.message));
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        setPasswordError(getPasswordErrorMessage(updateError.message));
+        return;
+      }
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setPasswordSuccess('Password updated successfully.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      setPasswordError(getPasswordErrorMessage(message));
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4 pb-2">
@@ -370,6 +466,105 @@ export default function SettingsPage() {
                 <dd className="mt-1 text-sm text-slate-100">Managed on this device</dd>
               </div>
             </dl>
+
+            <div className="mt-3 rounded-xl border border-white/10 bg-[#0b1120]/70 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Lock size={15} className="text-cyan-300" />
+                <h3 className="text-sm font-semibold text-slate-100">Change Password</h3>
+              </div>
+
+              {passwordError ? (
+                <p className="mb-2.5 rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                  {passwordError}
+                </p>
+              ) : null}
+              {passwordSuccess ? (
+                <p className="mb-2.5 rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+                  {passwordSuccess}
+                </p>
+              ) : null}
+
+              <form onSubmit={handlePasswordUpdate} className="grid gap-2.5">
+                <label className="space-y-1.5">
+                  <span className="text-xs uppercase tracking-[0.1em] text-slate-400">Current Password</span>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      className="w-full rounded-lg border border-white/15 bg-[#081224] px-3 py-2 pr-10 text-sm text-slate-100 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-500/20"
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword((value) => !value)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-200"
+                      aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                    >
+                      {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </label>
+
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <label className="space-y-1.5">
+                    <span className="text-xs uppercase tracking-[0.1em] text-slate-400">New Password</span>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(event) => setNewPassword(event.target.value)}
+                        className="w-full rounded-lg border border-white/15 bg-[#081224] px-3 py-2 pr-10 text-sm text-slate-100 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-500/20"
+                        autoComplete="new-password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword((value) => !value)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-200"
+                        aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                      >
+                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </label>
+
+                  <label className="space-y-1.5">
+                    <span className="text-xs uppercase tracking-[0.1em] text-slate-400">Confirm New Password</span>
+                    <div className="relative">
+                      <input
+                        type={showConfirmNewPassword ? 'text' : 'password'}
+                        value={confirmNewPassword}
+                        onChange={(event) => setConfirmNewPassword(event.target.value)}
+                        className="w-full rounded-lg border border-white/15 bg-[#081224] px-3 py-2 pr-10 text-sm text-slate-100 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-500/20"
+                        autoComplete="new-password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmNewPassword((value) => !value)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-200"
+                        aria-label={showConfirmNewPassword ? 'Hide confirm password' : 'Show confirm password'}
+                      >
+                        {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  <p className="text-xs text-slate-400">Use at least 8 characters.</p>
+                  <button
+                    type="submit"
+                    disabled={updatingPassword}
+                    className="inline-flex items-center justify-center rounded-lg bg-[#297FD6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2473C2] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {updatingPassword ? 'Updating...' : 'Update Password'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </section>
         </div>
       </div>
