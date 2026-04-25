@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 9,
+  "latest_revision": 25,
   "document": {
     "documentId": "6070c6d8-9617-4bd1-9ece-deeebbb46c44_page_1",
     "projectId": "6070c6d8-9617-4bd1-9ece-deeebbb46c44",
@@ -10,19 +10,19 @@
       "widthPx": 7200,
       "heightPx": 4800,
       "scalePxPerFt": 50,
-      "scaleLocked": true,
-      "scaleSource": "manual"
+      "scaleSource": "manual",
+      "scaleLocked": true
     },
     "meta": {
       "schemaVersion": 1,
       "source": "merged",
       "createdAt": "2026-03-19T22:57:11.130Z",
-      "updatedAt": "2026-03-23T21:59:23.273Z",
-      "revision": 9,
+      "updatedAt": "2026-03-23T23:31:25.514Z",
+      "revision": 25,
       "coordinateSpaceId": "coord_fae705fdea2616aa",
       "hasManualGeometryEdits": false,
       "roomExtractionVersion": "2026-03-room-refresh-v1",
-      "roomExtractionRevision": 5,
+      "roomExtractionRevision": 9,
       "roomExtractionStatus": "ambiguous"
     },
     "layers": {
@@ -1652,80 +1652,80 @@
           "points": [
             [
               3673,
-              1661
+              1625
             ],
             [
               3673,
-              1845
+              1809
             ],
             [
               3673,
-              2064
+              2028
             ],
             [
               3673,
-              2233
+              2197
             ],
             [
               3673,
-              2485
+              2449
             ],
             [
               3673,
-              2875
+              2839
             ],
             [
               3841,
-              2875
+              2839
             ],
             [
               4326,
-              2875
+              2839
             ],
             [
               4326,
-              2803
+              2767
             ],
             [
               4326,
-              2429
+              2393
             ],
             [
               4326,
-              2330
+              2294
             ],
             [
               3904,
-              2330
+              2294
             ],
             [
               3904,
-              2509
+              2473
             ],
             [
               3857,
-              2509
+              2473
             ],
             [
               3857,
-              2306
+              2270
             ],
             [
               4326,
-              2306
+              2270
             ],
             [
               4326,
-              1661
+              1625
             ],
             [
               4132,
-              1661
+              1625
             ]
           ]
         },
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
           "confidence": 0.8367
@@ -1930,6 +1930,48 @@
             "touches_border": false,
             "accepted_reason": "fallback_supported"
           }
+        }
+      },
+      {
+        "id": "wall_sbjcjxp",
+        "attrs": {
+          "status": "new",
+          "geometryEdited": true,
+          "locked": false,
+          "visible": true,
+          "confidence": 1
+        },
+        "relations": {},
+        "type": "wall",
+        "geometry": {
+          "kind": "segment",
+          "x1": 4680,
+          "y1": 2768,
+          "x2": 4800,
+          "y2": 2768,
+          "thicknessPx": 14,
+          "rotationDeg": 0
+        }
+      },
+      {
+        "id": "wall_w87e4rt",
+        "attrs": {
+          "status": "new",
+          "geometryEdited": true,
+          "locked": false,
+          "visible": true,
+          "confidence": 1
+        },
+        "relations": {},
+        "type": "wall",
+        "geometry": {
+          "kind": "segment",
+          "x1": 4624,
+          "y1": 2864,
+          "x2": 4744,
+          "y2": 2864,
+          "thicknessPx": 14,
+          "rotationDeg": 0
         }
       }
     ],
@@ -2631,6 +2673,1201 @@
                 "touches_border": false,
                 "accepted_reason": "auto"
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308573226_r337v",
+      "revisionId": 11,
+      "parentRevisionId": 10,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:29:33.226Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_6",
+          "before": {
+            "id": "room_auto_6",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  3673,
+                  1661
+                ],
+                [
+                  3673,
+                  1845
+                ],
+                [
+                  3673,
+                  2064
+                ],
+                [
+                  3673,
+                  2233
+                ],
+                [
+                  3673,
+                  2485
+                ],
+                [
+                  3673,
+                  2875
+                ],
+                [
+                  3841,
+                  2875
+                ],
+                [
+                  4326,
+                  2875
+                ],
+                [
+                  4326,
+                  2803
+                ],
+                [
+                  4326,
+                  2429
+                ],
+                [
+                  4326,
+                  2330
+                ],
+                [
+                  3904,
+                  2330
+                ],
+                [
+                  3904,
+                  2509
+                ],
+                [
+                  3857,
+                  2509
+                ],
+                [
+                  3857,
+                  2306
+                ],
+                [
+                  4326,
+                  2306
+                ],
+                [
+                  4326,
+                  1661
+                ],
+                [
+                  4132,
+                  1661
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.8367
+            },
+            "relations": {
+              "areaSqFt": 0,
+              "quantityRequired": 0,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.8367,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 3673,
+                "minY": 1661,
+                "maxX": 4326,
+                "maxY": 2875
+              },
+              "centroid": [
+                3999.455,
+                2265.623
+              ],
+              "diagnostics": {
+                "component_label": 13,
+                "candidate_component_area_px": 2938413,
+                "boundary_support_ratio": 0.8278,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "auto"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_6",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  3673,
+                  1625
+                ],
+                [
+                  3673,
+                  1809
+                ],
+                [
+                  3673,
+                  2028
+                ],
+                [
+                  3673,
+                  2197
+                ],
+                [
+                  3673,
+                  2449
+                ],
+                [
+                  3673,
+                  2839
+                ],
+                [
+                  3841,
+                  2839
+                ],
+                [
+                  4326,
+                  2839
+                ],
+                [
+                  4326,
+                  2767
+                ],
+                [
+                  4326,
+                  2393
+                ],
+                [
+                  4326,
+                  2294
+                ],
+                [
+                  3904,
+                  2294
+                ],
+                [
+                  3904,
+                  2473
+                ],
+                [
+                  3857,
+                  2473
+                ],
+                [
+                  3857,
+                  2270
+                ],
+                [
+                  4326,
+                  2270
+                ],
+                [
+                  4326,
+                  1625
+                ],
+                [
+                  4132,
+                  1625
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.8367
+            },
+            "relations": {
+              "areaSqFt": 0,
+              "quantityRequired": 0,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.8367,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 3673,
+                "minY": 1661,
+                "maxX": 4326,
+                "maxY": 2875
+              },
+              "centroid": [
+                3999.455,
+                2265.623
+              ],
+              "diagnostics": {
+                "component_label": 13,
+                "candidate_component_area_px": 2938413,
+                "boundary_support_ratio": 0.8278,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "auto"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308654011_go17l",
+      "revisionId": 12,
+      "parentRevisionId": 11,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:30:54.011Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_sbjcjxp",
+          "element": {
+            "id": "wall_sbjcjxp",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4680,
+              "y1": 2768,
+              "x2": 4800,
+              "y2": 2768,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308655084_f45mr",
+      "revisionId": 13,
+      "parentRevisionId": 12,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:30:55.084Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_oa8napf",
+          "element": {
+            "id": "wall_oa8napf",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4608,
+              "y1": 3080,
+              "x2": 4728,
+              "y2": 3080,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308656163_sfwiv",
+      "revisionId": 14,
+      "parentRevisionId": 13,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:30:56.163Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_w87e4rt",
+          "element": {
+            "id": "wall_w87e4rt",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4624,
+              "y1": 2864,
+              "x2": 4744,
+              "y2": 2864,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308656779_d08uk",
+      "revisionId": 15,
+      "parentRevisionId": 14,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:30:56.779Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_wukog4i",
+          "element": {
+            "id": "wall_wukog4i",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4592,
+              "y1": 2888,
+              "x2": 4712,
+              "y2": 2888,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308657399_vlk9u",
+      "revisionId": 16,
+      "parentRevisionId": 15,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:30:57.399Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_704kdor",
+          "element": {
+            "id": "wall_704kdor",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4568,
+              "y1": 2968,
+              "x2": 4688,
+              "y2": 2968,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308659397_3t91j",
+      "revisionId": 17,
+      "parentRevisionId": 16,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:30:59.397Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_704kdor",
+          "element": {
+            "id": "wall_704kdor",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4568,
+              "y1": 2968,
+              "x2": 4688,
+              "y2": 2968,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308660707_0gto4",
+      "revisionId": 18,
+      "parentRevisionId": 17,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:00.707Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_oa8napf",
+          "element": {
+            "id": "wall_oa8napf",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4608,
+              "y1": 3080,
+              "x2": 4728,
+              "y2": 3080,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308662337_cll37",
+      "revisionId": 19,
+      "parentRevisionId": 18,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:02.337Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_wukog4i",
+          "element": {
+            "id": "wall_wukog4i",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4592,
+              "y1": 2888,
+              "x2": 4712,
+              "y2": 2888,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308663206_r90sh",
+      "revisionId": 20,
+      "parentRevisionId": 19,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:03.206Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_1eer5oh",
+          "element": {
+            "id": "wall_1eer5oh",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4640,
+              "y1": 2856,
+              "x2": 4760,
+              "y2": 2856,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308663767_09dwu",
+      "revisionId": 21,
+      "parentRevisionId": 20,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:03.767Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_1eer5oh",
+          "element": {
+            "id": "wall_1eer5oh",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 4640,
+              "y1": 2856,
+              "x2": 4760,
+              "y2": 2856,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308678880_evr16",
+      "revisionId": 22,
+      "parentRevisionId": 21,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:18.880Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "wall_0ueldcp",
+          "element": {
+            "id": "wall_0ueldcp",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 2920,
+              "y1": 2168,
+              "x2": 3040,
+              "y2": 2168,
+              "thicknessPx": 14,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308681160_e63d9",
+      "revisionId": 23,
+      "parentRevisionId": 22,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:21.160Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_1",
+          "before": {
+            "id": "room_auto_1",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2336,
+                  1661
+                ],
+                [
+                  2336,
+                  2064
+                ],
+                [
+                  2947,
+                  2064
+                ],
+                [
+                  2947,
+                  2485
+                ],
+                [
+                  2336,
+                  2485
+                ],
+                [
+                  2336,
+                  2875
+                ],
+                [
+                  2336,
+                  3690
+                ],
+                [
+                  4326,
+                  3690
+                ],
+                [
+                  4326,
+                  2886
+                ],
+                [
+                  3673,
+                  2886
+                ],
+                [
+                  3673,
+                  3070
+                ],
+                [
+                  3663,
+                  3070
+                ],
+                [
+                  3663,
+                  2240
+                ],
+                [
+                  3352,
+                  2240
+                ],
+                [
+                  3352,
+                  2064
+                ],
+                [
+                  3663,
+                  2064
+                ],
+                [
+                  3663,
+                  1852
+                ],
+                [
+                  3374,
+                  1852
+                ],
+                [
+                  3374,
+                  1661
+                ],
+                [
+                  3326,
+                  1661
+                ],
+                [
+                  3110,
+                  1661
+                ],
+                [
+                  2911,
+                  1661
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.8211
+            },
+            "relations": {
+              "areaSqFt": 0,
+              "quantityRequired": 0,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.8211,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1661,
+                "maxX": 4326,
+                "maxY": 3690
+              },
+              "centroid": [
+                3197.219,
+                2853.503
+              ],
+              "diagnostics": {
+                "component_label": 1,
+                "candidate_component_area_px": 11001667,
+                "boundary_support_ratio": 0.8019,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "auto"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_1",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2236,
+                  1789
+                ],
+                [
+                  2236,
+                  2192
+                ],
+                [
+                  2847,
+                  2192
+                ],
+                [
+                  2847,
+                  2613
+                ],
+                [
+                  2236,
+                  2613
+                ],
+                [
+                  2236,
+                  3003
+                ],
+                [
+                  2236,
+                  3818
+                ],
+                [
+                  4226,
+                  3818
+                ],
+                [
+                  4226,
+                  3014
+                ],
+                [
+                  3573,
+                  3014
+                ],
+                [
+                  3573,
+                  3198
+                ],
+                [
+                  3563,
+                  3198
+                ],
+                [
+                  3563,
+                  2368
+                ],
+                [
+                  3252,
+                  2368
+                ],
+                [
+                  3252,
+                  2192
+                ],
+                [
+                  3563,
+                  2192
+                ],
+                [
+                  3563,
+                  1980
+                ],
+                [
+                  3274,
+                  1980
+                ],
+                [
+                  3274,
+                  1789
+                ],
+                [
+                  3226,
+                  1789
+                ],
+                [
+                  3010,
+                  1789
+                ],
+                [
+                  2811,
+                  1789
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.8211
+            },
+            "relations": {
+              "areaSqFt": 0,
+              "quantityRequired": 0,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.8211,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1661,
+                "maxX": 4326,
+                "maxY": 3690
+              },
+              "centroid": [
+                3197.219,
+                2853.503
+              ],
+              "diagnostics": {
+                "component_label": 1,
+                "candidate_component_area_px": 11001667,
+                "boundary_support_ratio": 0.8019,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "auto"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308682026_4fymo",
+      "revisionId": 24,
+      "parentRevisionId": 23,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:22.026Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_1",
+          "before": {
+            "id": "room_auto_1",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2236,
+                  1789
+                ],
+                [
+                  2236,
+                  2192
+                ],
+                [
+                  2847,
+                  2192
+                ],
+                [
+                  2847,
+                  2613
+                ],
+                [
+                  2236,
+                  2613
+                ],
+                [
+                  2236,
+                  3003
+                ],
+                [
+                  2236,
+                  3818
+                ],
+                [
+                  4226,
+                  3818
+                ],
+                [
+                  4226,
+                  3014
+                ],
+                [
+                  3573,
+                  3014
+                ],
+                [
+                  3573,
+                  3198
+                ],
+                [
+                  3563,
+                  3198
+                ],
+                [
+                  3563,
+                  2368
+                ],
+                [
+                  3252,
+                  2368
+                ],
+                [
+                  3252,
+                  2192
+                ],
+                [
+                  3563,
+                  2192
+                ],
+                [
+                  3563,
+                  1980
+                ],
+                [
+                  3274,
+                  1980
+                ],
+                [
+                  3274,
+                  1789
+                ],
+                [
+                  3226,
+                  1789
+                ],
+                [
+                  3010,
+                  1789
+                ],
+                [
+                  2811,
+                  1789
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.8211
+            },
+            "relations": {
+              "areaSqFt": 0,
+              "quantityRequired": 0,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.8211,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1661,
+                "maxX": 4326,
+                "maxY": 3690
+              },
+              "centroid": [
+                3197.219,
+                2853.503
+              ],
+              "diagnostics": {
+                "component_label": 1,
+                "candidate_component_area_px": 11001667,
+                "boundary_support_ratio": 0.8019,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "auto"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_1",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2336,
+                  1661
+                ],
+                [
+                  2336,
+                  2064
+                ],
+                [
+                  2947,
+                  2064
+                ],
+                [
+                  2947,
+                  2485
+                ],
+                [
+                  2336,
+                  2485
+                ],
+                [
+                  2336,
+                  2875
+                ],
+                [
+                  2336,
+                  3690
+                ],
+                [
+                  4326,
+                  3690
+                ],
+                [
+                  4326,
+                  2886
+                ],
+                [
+                  3673,
+                  2886
+                ],
+                [
+                  3673,
+                  3070
+                ],
+                [
+                  3663,
+                  3070
+                ],
+                [
+                  3663,
+                  2240
+                ],
+                [
+                  3352,
+                  2240
+                ],
+                [
+                  3352,
+                  2064
+                ],
+                [
+                  3663,
+                  2064
+                ],
+                [
+                  3663,
+                  1852
+                ],
+                [
+                  3374,
+                  1852
+                ],
+                [
+                  3374,
+                  1661
+                ],
+                [
+                  3326,
+                  1661
+                ],
+                [
+                  3110,
+                  1661
+                ],
+                [
+                  2911,
+                  1661
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.8211
+            },
+            "relations": {
+              "areaSqFt": 0,
+              "quantityRequired": 0,
+              "quantityUnit": "sqft",
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.8211,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1661,
+                "maxX": 4326,
+                "maxY": 3690
+              },
+              "centroid": [
+                3197.219,
+                2853.503
+              ],
+              "diagnostics": {
+                "component_label": 1,
+                "candidate_component_area_px": 11001667,
+                "boundary_support_ratio": 0.8019,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "auto"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1774308685514_vexwl",
+      "revisionId": 25,
+      "parentRevisionId": 24,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-03-23T23:31:25.514Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "wall_0ueldcp",
+          "element": {
+            "id": "wall_0ueldcp",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "wall",
+            "geometry": {
+              "kind": "segment",
+              "x1": 2920,
+              "y1": 2168,
+              "x2": 3040,
+              "y2": 2168,
+              "thicknessPx": 14,
+              "rotationDeg": 0
             }
           }
         }
