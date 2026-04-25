@@ -30,8 +30,9 @@ import AnnotationEditorBoundary from '@/components/annotation/AnnotationEditorBo
 import ProjectViewerHeader from '@/components/project-viewer/ProjectViewerHeader';
 import SheetRail from '@/components/project-viewer/SheetRail';
 import WorkflowRail from '@/components/project-viewer/WorkflowRail';
+import MeasurementsRail from '@/components/project-viewer/MeasurementsRail';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
-import type { OpeningRelations, WallRelations } from '@/types/annotation';
+import type { AnnotationElement, OpeningRelations, RoomRelations, WallRelations } from '@/types/annotation';
 import { Document, pdfjs } from 'react-pdf';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -250,6 +251,8 @@ export default function ProjectViewerPage() {
   const [overlayStatus, setOverlayStatus] = useState(ANALYSIS_STEPS[0]);
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const editorDocument = useAnnotationEditorStore((s) => s.document);
+  const editorSelection = useAnnotationEditorStore((s) => s.selection);
+  const editorEntities = useAnnotationEditorStore((s) => s.entities);
   const editorSaveStatus = useAnnotationEditorStore((s) => s.saveStatus);
   const editorPendingOpsCount = useAnnotationEditorStore((s) => s.history.pendingOps.length);
   const editorViewPreset = useAnnotationEditorStore((s) => s.viewPreset);
@@ -731,6 +734,73 @@ export default function ProjectViewerPage() {
     setWorkspaceMode('annotate');
   }, [editorDocument, editorMode, requestFocusOnElements, setEditorSelection, setEditorViewPreset]);
 
+  const focusMeasurementElements = useCallback((elementIds: string[]) => {
+    if (!elementIds.length || !editorDocument) return;
+    const focusedElements = elementIds
+      .map((id) => editorDocument.elements.find((element) => element.id === id))
+      .filter((element): element is AnnotationElement => Boolean(element));
+    const first = focusedElements[0];
+    if (!first) return;
+
+    setWorkspaceMode('annotate');
+    setEditorSelection(elementIds);
+    if (first.type === 'wall') setEditorViewPreset('walls_qa');
+    else if (first.type === 'door' || first.type === 'window') setEditorViewPreset('openings_qa');
+    else setEditorViewPreset('final');
+    requestFocusOnElements(elementIds, first.type === 'wall' ? 148 : 120);
+  }, [editorDocument, requestFocusOnElements, setEditorSelection, setEditorViewPreset]);
+
+  const selectionSummary = useMemo(() => {
+    const selected = editorSelection
+      .map((id) => editorEntities.byId[id])
+      .filter((element): element is AnnotationElement => Boolean(element));
+    if (!selected.length) {
+      return {
+        label: 'Nothing selected',
+        count: 0,
+        details: [
+          'Select a wall, opening, or room on the plan.',
+          editorDocument ? `${editorDocument.elements.length} total elements on this sheet.` : 'Annotation document is loading.',
+        ],
+      };
+    }
+
+    if (selected.length > 1) {
+      const counts = selected.reduce<Record<string, number>>((acc, element) => {
+        acc[element.type] = (acc[element.type] ?? 0) + 1;
+        return acc;
+      }, {});
+      return {
+        label: `${selected.length} elements selected`,
+        count: selected.length,
+        details: Object.entries(counts).map(([type, count]) => `${count} ${type}${count === 1 ? '' : 's'}`),
+      };
+    }
+
+    const element = selected[0];
+    const details: string[] = [`Type: ${element.type}`];
+    if (element.attrs.name) details.push(`Name: ${element.attrs.name}`);
+    if (element.type === 'wall') {
+      const relations = element.relations as WallRelations | undefined;
+      details.push(`Surface: ${relations?.surfaceClass ?? 'unknown'}`);
+      details.push(`Board sides: ${relations?.boardSides ?? 2}`);
+    } else if (element.type === 'door' || element.type === 'window') {
+      const relations = element.relations as OpeningRelations | undefined;
+      details.push(`Host wall: ${relations?.hostWallId ? 'Assigned' : 'Missing'}`);
+      if (typeof relations?.confidence === 'number') details.push(`Confidence: ${Math.round(relations.confidence * 100)}%`);
+    } else if (element.type === 'room') {
+      const relations = element.relations as RoomRelations | undefined;
+      if (typeof relations?.areaSqFt === 'number') details.push(`Area: ${relations.areaSqFt.toLocaleString()} sq ft`);
+      if (relations?.material) details.push(`Material: ${relations.material}`);
+    }
+
+    return {
+      label: element.attrs.name || `${element.type[0].toUpperCase()}${element.type.slice(1)} selected`,
+      count: 1,
+      details,
+    };
+  }, [editorDocument, editorEntities.byId, editorSelection]);
+
   const openScaleCalibration = useCallback(() => {
     setWorkspaceMode('annotate');
     setEditorToolMode('calibrate');
@@ -791,64 +861,57 @@ export default function ProjectViewerPage() {
         ) : null}
         <ProjectViewerHeader
           projectName={project.name}
-          isPdf={isPdf}
-          pageNumber={pageNumber}
-          numPages={numPages}
-          annotationRevision={editorDocument?.meta.revision}
           saveLabel={saveLabel(editorSaveStatus)}
           saveTone={saveTone(editorSaveStatus)}
-          currentStep={workflow.currentStep}
           blockerCount={workflow.blockerCount}
           workspaceMode={workspaceMode}
           canReview={generated}
           onWorkspaceModeChange={setWorkspaceMode}
           onBack={() => router.push('/dashboard/projects')}
-          onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))}
-          onNextPage={() => setPageNumber((current) => Math.min(numPages || current, current + 1))}
         />
 
-        <div className="flex min-h-0 flex-1 gap-3">
-          {isPdf && numPages > 1 ? (
+        <div className="project-viewer-grid min-h-0 flex-1">
+          <MeasurementsRail
+            document={editorDocument}
+            pageNumber={pageNumber}
+            onFocusElements={focusMeasurementElements}
+          />
+
+          <section className="project-viewer-center min-w-0">
             <SheetRail
-              numPages={numPages}
+              numPages={isPdf ? numPages : 1}
               pageNumber={pageNumber}
               pageStatuses={pageStatuses}
+              fileUrl={fileUrl}
+              isPdf={isPdf}
               onSelectPage={setPageNumber}
-              saveTone={saveTone}
-              saveLabel={saveLabel}
+              onPreviousPage={() => setPageNumber((current) => Math.max(1, current - 1))}
+              onNextPage={() => setPageNumber((current) => Math.min(numPages || current, current + 1))}
               sheetStatusTone={sheetStatusTone}
               sheetStatusLabel={sheetStatusLabel}
             />
-          ) : null}
-          <section className="flex min-w-0 flex-1 flex-col">
-            <div className="ws-panel-flat flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ws-divider)] px-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--ws-text-muted)]">Plan Workspace</div>
-                  <div className="mt-1 text-sm text-[var(--ws-text-secondary)]">
-                    {editorMode
-                      ? 'Inspect geometry, resolve blockers, and prepare the page for a trustworthy run.'
-                      : 'Review the latest result, compare it to the plan, and jump back into QA only when needed.'}
+
+            <div className="project-plan-panel ws-panel-flat min-h-0 overflow-hidden">
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                {editorMode ? (
+                  <div className="h-full min-h-0">
+                    <AnnotationEditorBoundary
+                      key={`${project.id}:${pageNumber}`}
+                      onDisableEditor={() => setWorkspaceMode('review')}
+                    >
+                      <AnnotationEditorShell
+                        projectId={project.id}
+                        fileUrl={fileUrl}
+                        fileMime={project.file_mime}
+                        pageNumber={pageNumber}
+                        scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
+                        actorId={user?.id}
+                      />
+                    </AnnotationEditorBoundary>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="ws-chip" data-active="true">
-                      {editorMode ? 'Geometry editing live' : 'Reviewing latest output'}
-                    </span>
-                    {generated ? (
-                      <span className="ws-chip" data-tone={takeoff.roomClosureStatus === 'closed' ? 'good' : 'warn'}>
-                        Closure {roomClosureLabel(takeoff.roomClosureStatus)}
-                      </span>
-                    ) : null}
-                    {hasScale ? (
-                      <span className="ws-chip" data-tone="good">Scale set</span>
-                    ) : (
-                      <span className="ws-chip" data-tone="warn">Scale needed</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!editorMode ? (
-                    <div className="flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-black/20 px-2 py-1.5 text-[var(--ws-text-secondary)]">
+                ) : (
+                  <div className="relative h-full overflow-auto p-3">
+                    <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-2xl border border-[var(--ws-border)] bg-slate-950/80 px-2 py-1.5 text-[var(--ws-text-secondary)] shadow-lg backdrop-blur-xl">
                       <button
                         onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
@@ -872,31 +935,8 @@ export default function ProjectViewerPage() {
                         <ZoomIn size={16} />
                       </button>
                     </div>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="relative min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(39,212,255,0.08),_transparent_24%),radial-gradient(circle_at_bottom,_rgba(59,130,246,0.08),_transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))]">
-                {editorMode ? (
-                  <div className="h-full min-h-0 p-2">
-                    <AnnotationEditorBoundary
-                      key={`${project.id}:${pageNumber}`}
-                      onDisableEditor={() => setWorkspaceMode('review')}
-                    >
-                      <AnnotationEditorShell
-                        projectId={project.id}
-                        fileUrl={fileUrl}
-                        fileMime={project.file_mime}
-                        pageNumber={pageNumber}
-                        scalePxPerFt={scalePxPerFt.trim() ? parseFloat(scalePxPerFt) : undefined}
-                        actorId={user?.id}
-                      />
-                    </AnnotationEditorBoundary>
-                  </div>
-                ) : (
-                  <div className="relative h-full overflow-auto px-2 py-2">
                     {annotatedImage && generated ? (
-                      <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] border border-[var(--ws-border)] bg-black/10 p-4">
+                      <div className="flex h-full w-full items-center justify-center bg-black/10 p-4">
                         <img
                           src={annotatedImage}
                           alt="Annotated floor plan"
@@ -905,17 +945,19 @@ export default function ProjectViewerPage() {
                         />
                       </div>
                     ) : isPdf ? (
-                      <PdfViewerClient
-                        fileUrl={fileUrl}
-                        pageNumber={pageNumber}
-                        zoom={zoom}
-                        onLoadNumPages={(n) => {
-                          setNumPages(n);
-                          setPageNumber((p) => Math.min(p, n));
-                        }}
-                      />
+                      <div className="flex h-full w-full items-center justify-center">
+                        <PdfViewerClient
+                          fileUrl={fileUrl}
+                          pageNumber={pageNumber}
+                          zoom={zoom}
+                          onLoadNumPages={(n) => {
+                            setNumPages(n);
+                            setPageNumber((p) => Math.min(p, n));
+                          }}
+                        />
+                      </div>
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] border border-[var(--ws-border)] bg-black/10 p-4">
+                      <div className="flex h-full w-full items-center justify-center bg-black/10 p-4">
                         <img
                           src={fileUrl}
                           alt={project.name}
@@ -948,6 +990,7 @@ export default function ProjectViewerPage() {
             takeoffError={takeoffError}
             reviewWarnings={reviewWarnings}
             reviewActions={actionableReviewActions}
+            selectionSummary={selectionSummary}
             onSetScalePxPerFt={(value) => {
               setScalePxPerFt(value);
               if (!editorDocument) return;

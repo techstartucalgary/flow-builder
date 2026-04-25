@@ -1004,159 +1004,157 @@ export default function AnnotationEditorShell({
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-3">
-      <EditorToolbar
-        toolMode={toolMode}
-        onToolChange={setToolMode}
-        viewPreset={viewPreset}
-        onViewPresetChange={setViewPreset}
-        onUndo={undo}
-        onRedo={redo}
-        onDelete={deleteSelected}
-        onSave={() => void saveSnapshot()}
-        onRefreshOpenings={() => {
-          if (!document) return;
-          setSaveStatus('syncing');
-          const refreshLabel = hasManualGeometryEdits(document) ? 'Refreshing openings from CV...' : 'Refreshing geometry from CV...';
-          setStatusMessage(refreshLabel);
-          void refreshGeometryFromCV(document, document.meta.revision)
-            .then((result) => {
-              setSaveStatus(result.blocked ? 'unsaved' : 'saved');
-              setStatusMessage(result.blocked ? 'Refresh paused for coordinate review.' : null);
-            })
-            .catch((err: any) => {
-              setSaveStatus('error');
-              setError(err?.message || 'Failed to refresh geometry');
-              setStatusMessage('Geometry refresh failed.');
-            });
-        }}
-        onRefreshRooms={() => {
-          if (!document) return;
-          setSaveStatus('syncing');
-          setStatusMessage('Refreshing room extraction...');
-          void refreshRoomsFromDocument(document, document.meta.revision)
-            .then(() => {
-              setSaveStatus('saved');
-              setStatusMessage(null);
-            })
-            .catch((err: any) => {
-              setSaveStatus('error');
-              setError(err?.message || 'Failed to refresh rooms');
-              setStatusMessage('Room refresh failed.');
-            });
-        }}
-        showBaseImage={showBaseImage}
-        onToggleBaseImage={() => setShowBaseImage((v) => !v)}
-        showTags={tagOverlay.showTags}
-        onToggleShowTags={() => setTagOverlay((current) => ({ ...current, showTags: !current.showTags }))}
-        gridEnabled={gridEnabled}
-        wallSnapEnabled={wallSnapEnabled}
-        onToggleGrid={toggleGrid}
-        onToggleWallSnap={toggleWallSnap}
-      />
+    <div className="annotation-shell-redesign relative h-full min-h-0 w-full overflow-hidden">
+      <div className="floating-editor-toolbar">
+        <EditorToolbar
+          toolMode={toolMode}
+          onToolChange={setToolMode}
+          viewPreset={viewPreset}
+          onViewPresetChange={setViewPreset}
+          onUndo={undo}
+          onRedo={redo}
+          onDelete={deleteSelected}
+          onSave={() => void saveSnapshot()}
+          onRefreshOpenings={() => {
+            if (!document) return;
+            setSaveStatus('syncing');
+            const refreshLabel = hasManualGeometryEdits(document) ? 'Refreshing openings from CV...' : 'Refreshing geometry from CV...';
+            setStatusMessage(refreshLabel);
+            void refreshGeometryFromCV(document, document.meta.revision)
+              .then((result) => {
+                setSaveStatus(result.blocked ? 'unsaved' : 'saved');
+                setStatusMessage(result.blocked ? 'Refresh paused for coordinate review.' : null);
+              })
+              .catch((err: any) => {
+                setSaveStatus('error');
+                setError(err?.message || 'Failed to refresh geometry');
+                setStatusMessage('Geometry refresh failed.');
+              });
+          }}
+          onRefreshRooms={() => {
+            if (!document) return;
+            setSaveStatus('syncing');
+            setStatusMessage('Refreshing room extraction...');
+            void refreshRoomsFromDocument(document, document.meta.revision)
+              .then(() => {
+                setSaveStatus('saved');
+                setStatusMessage(null);
+              })
+              .catch((err: any) => {
+                setSaveStatus('error');
+                setError(err?.message || 'Failed to refresh rooms');
+                setStatusMessage('Room refresh failed.');
+              });
+          }}
+          showBaseImage={showBaseImage}
+          onToggleBaseImage={() => setShowBaseImage((v) => !v)}
+          showTags={tagOverlay.showTags}
+          onToggleShowTags={() => setTagOverlay((current) => ({ ...current, showTags: !current.showTags }))}
+          gridEnabled={gridEnabled}
+          wallSnapEnabled={wallSnapEnabled}
+          onToggleGrid={toggleGrid}
+          onToggleWallSnap={toggleWallSnap}
+        />
+      </div>
 
-      <EditorStatusBanner
-        saveStatus={saveStatus}
-        statusMessage={statusMessage}
-        warning={warning}
-        error={error}
-        pendingRebuild={Boolean(pendingRebuild)}
-        onRebuild={pendingRebuild ? () => {
-          setSaveStatus('syncing');
-          setStatusMessage('Rebuilding geometry from the current CV snapshot...');
-          void rebuildGeometryFromCV()
-            .then(() => {
-              setSaveStatus('saved');
-              setStatusMessage(null);
-            })
-            .catch((err: any) => {
-              setSaveStatus('error');
-              setError(err?.message || 'Failed to rebuild geometry from CV');
-              setStatusMessage('Geometry rebuild failed.');
-            });
-        } : undefined}
-        onDismissWarning={warning ? () => setWarning(null) : undefined}
-      >
-        {toolMode === 'calibrate' ? (
-        <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-3 text-xs text-cyan-50">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-medium text-white">Plan Scale Calibration</div>
-              <div className="mt-1 text-cyan-100/80">
-                {!calibrationDraft.start
-                  ? 'Click the first reference point on the plan.'
-                  : !calibrationDraft.end
-                    ? 'Click the second reference point to finish the measured segment.'
-                    : 'Enter the real-world distance between the selected points to persist scale.'}
+      <div className="editor-status-overlay">
+        <EditorStatusBanner
+          saveStatus={saveStatus}
+          statusMessage={statusMessage}
+          warning={warning}
+          error={error}
+          pendingRebuild={Boolean(pendingRebuild)}
+          onRebuild={pendingRebuild ? () => {
+            setSaveStatus('syncing');
+            setStatusMessage('Rebuilding geometry from the current CV snapshot...');
+            void rebuildGeometryFromCV()
+              .then(() => {
+                setSaveStatus('saved');
+                setStatusMessage(null);
+              })
+              .catch((err: any) => {
+                setSaveStatus('error');
+                setError(err?.message || 'Failed to rebuild geometry from CV');
+                setStatusMessage('Geometry rebuild failed.');
+              });
+          } : undefined}
+          onDismissWarning={warning ? () => setWarning(null) : undefined}
+        >
+          {toolMode === 'calibrate' ? (
+          <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-3 text-xs text-cyan-50">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-white">Plan Scale Calibration</div>
+                <div className="mt-1 text-cyan-100/80">
+                  {!calibrationDraft.start
+                    ? 'Click the first reference point on the plan.'
+                    : !calibrationDraft.end
+                      ? 'Click the second reference point to finish the measured segment.'
+                      : 'Enter the real-world distance between the selected points to persist scale.'}
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={resetCalibration}
-                className="rounded border border-white/10 px-2 py-1 text-cyan-50 transition hover:bg-white/5"
-              >
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setToolMode('select');
-                  resetCalibration();
-                }}
-                className="rounded border border-white/10 px-2 py-1 text-cyan-50 transition hover:bg-white/5"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
-            <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-cyan-50/90">
-              <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-100/70">Measured Segment</div>
-              <div className="mt-1 text-sm font-medium text-white">
-                {calibrationDistancePx > 0 ? `${calibrationDistancePx.toFixed(1)} px` : 'Waiting for two points'}
-              </div>
-            </div>
-            <div>
-              <label htmlFor="calibration-known-distance-ft" className="block text-[11px] uppercase tracking-[0.16em] text-cyan-100/70">
-                Known Distance (ft)
-              </label>
-              <div className="mt-1 flex items-center gap-2">
-                <input
-                  id="calibration-known-distance-ft"
-                  type="number"
-                  min={0.01}
-                  step={0.01}
-                  value={calibrationDraft.knownDistanceFt}
-                  onChange={(event) => setCalibrationDraft((current) => ({
-                    ...current,
-                    knownDistanceFt: event.target.value,
-                    error: null,
-                  }))}
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:border-cyan-400/60 focus:outline-none"
-                  placeholder="e.g. 10"
-                />
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={resetCalibration} className="rounded border border-white/10 px-2 py-1 text-cyan-50 transition hover:bg-white/5">Reset</button>
                 <button
                   type="button"
-                  onClick={applyCalibration}
-                  disabled={!calibrationDraft.start || !calibrationDraft.end}
-                  className="rounded-lg border border-cyan-300/40 bg-cyan-400/10 px-3 py-2 text-sm font-medium text-cyan-50 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => {
+                    setToolMode('select');
+                    resetCalibration();
+                  }}
+                  className="rounded border border-white/10 px-2 py-1 text-cyan-50 transition hover:bg-white/5"
                 >
-                  Apply
+                  Done
                 </button>
               </div>
             </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
+              <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-cyan-50/90">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-100/70">Measured Segment</div>
+                <div className="mt-1 text-sm font-medium text-white">
+                  {calibrationDistancePx > 0 ? `${calibrationDistancePx.toFixed(1)} px` : 'Waiting for two points'}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="calibration-known-distance-ft" className="block text-[11px] uppercase tracking-[0.16em] text-cyan-100/70">
+                  Known Distance (ft)
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    id="calibration-known-distance-ft"
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    value={calibrationDraft.knownDistanceFt}
+                    onChange={(event) => setCalibrationDraft((current) => ({
+                      ...current,
+                      knownDistanceFt: event.target.value,
+                      error: null,
+                    }))}
+                    className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:border-cyan-400/60 focus:outline-none"
+                    placeholder="e.g. 10"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCalibration}
+                    disabled={!calibrationDraft.start || !calibrationDraft.end}
+                    className="rounded-lg border border-cyan-300/40 bg-cyan-400/10 px-3 py-2 text-sm font-medium text-cyan-50 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {calibrationDraft.error ? (
+              <div className="mt-2 text-[11px] text-amber-100">{calibrationDraft.error}</div>
+            ) : null}
           </div>
-
-          {calibrationDraft.error ? (
-            <div className="mt-2 text-[11px] text-amber-100">{calibrationDraft.error}</div>
           ) : null}
-        </div>
-        ) : null}
-      </EditorStatusBanner>
+        </EditorStatusBanner>
+      </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_332px] gap-3">
+      <div className="h-full min-h-0">
         <ViewportStage
           baseImageUrl={document.baseImage.sourceUrl}
           widthPx={document.baseImage.widthPx}
@@ -1174,7 +1172,9 @@ export default function AnnotationEditorShell({
           calibrationDraft={calibrationDraft}
           onCalibrationPoint={registerCalibrationPoint}
         />
+      </div>
 
+      <div className="editor-inspector-dock">
         <EditorInspectorRail
           activeTab={inspectorTab}
           onTabChange={setInspectorTab}

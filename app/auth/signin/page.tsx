@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts';
 import { getSupabaseConfigErrorMessage, supabase } from '@/lib/supabase';
@@ -18,7 +18,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
  *   - Button gradient   → from-blue-600 to-indigo-600 (matches landing CTA)
  *   - Focus ring color  → var(--auth-ring)  /  border-[#0099FC]
  */
-export default function SignIn() {
+function SignInContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -255,5 +255,13 @@ export default function SignIn() {
         </Link>
       </p>
     </>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={null}>
+      <SignInContent />
+    </Suspense>
   );
 }
