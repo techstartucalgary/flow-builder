@@ -67,6 +67,39 @@ function elementBounds(element: AnnotationElement) {
   };
 }
 
+function getFitZoom(container: { width: number; height: number }, widthPx: number, heightPx: number): number {
+  if (!container.width || !container.height || !widthPx || !heightPx) return 0;
+  return Math.min(container.width / widthPx, container.height / heightPx);
+}
+
+function getCenteredPan(container: { width: number; height: number }, widthPx: number, heightPx: number, zoom: number) {
+  return {
+    panX: (container.width - widthPx * zoom) / 2,
+    panY: (container.height - heightPx * zoom) / 2,
+  };
+}
+
+function constrainPan(
+  pan: { panX: number; panY: number },
+  container: { width: number; height: number },
+  widthPx: number,
+  heightPx: number,
+  zoom: number,
+) {
+  const scaledWidth = widthPx * zoom;
+  const scaledHeight = heightPx * zoom;
+  const centered = getCenteredPan(container, widthPx, heightPx, zoom);
+
+  return {
+    panX: scaledWidth <= container.width
+      ? centered.panX
+      : clamp(pan.panX, container.width - scaledWidth, 0),
+    panY: scaledHeight <= container.height
+      ? centered.panY
+      : clamp(pan.panY, container.height - scaledHeight, 0),
+  };
+}
+
 export default function ViewportStage({
   baseImageUrl,
   widthPx,
@@ -170,14 +203,14 @@ export default function ViewportStage({
 
   useEffect(() => {
     if (!container.width || !container.height) return;
-    const fitX = container.width / widthPx;
-    const fitY = container.height / heightPx;
-    const fitZoom = Math.min(fitX, fitY);
+    const fitZoom = getFitZoom(container, widthPx, heightPx);
     if (fitZoom > 0) {
+      const centered = getCenteredPan(container, widthPx, heightPx, fitZoom);
       setCamera({
         zoom: fitZoom,
-        panX: (container.width - widthPx * fitZoom) / 2,
-        panY: (container.height - heightPx * fitZoom) / 2,
+        minZoom: fitZoom,
+        panX: centered.panX,
+        panY: centered.panY,
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -526,7 +559,10 @@ export default function ViewportStage({
 
     const scaleBy = 1.04;
     const direction = e.evt.deltaY > 0 ? -1 : 1;
-    const newScale = clamp(direction > 0 ? oldScale * scaleBy : oldScale / scaleBy, camera.minZoom, camera.maxZoom);
+    const fitZoom = getFitZoom(container, widthPx, heightPx) || camera.minZoom;
+    const minZoom = Math.max(camera.minZoom, fitZoom);
+    const unclampedScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+    const newScale = clamp(unclampedScale, minZoom, camera.maxZoom);
 
     const mousePointTo = {
       x: (pointer.x - camera.panX) / oldScale,
@@ -538,12 +574,24 @@ export default function ViewportStage({
       panY: pointer.y - mousePointTo.y * newScale,
     };
 
-    setCamera({ zoom: newScale, ...newPan });
+    setCamera({
+      zoom: newScale,
+      minZoom,
+      ...constrainPan(newPan, container, widthPx, heightPx, newScale),
+    });
   }
 
   function syncCameraToStage(node: Konva.Stage) {
-    const nextPanX = node.x();
-    const nextPanY = node.y();
+    const constrained = constrainPan(
+      { panX: node.x(), panY: node.y() },
+      container,
+      widthPx,
+      heightPx,
+      camera.zoom,
+    );
+    const nextPanX = constrained.panX;
+    const nextPanY = constrained.panY;
+    node.position({ x: nextPanX, y: nextPanY });
     if (camera.panX === nextPanX && camera.panY === nextPanY) return;
     setCamera({ panX: nextPanX, panY: nextPanY });
   }
