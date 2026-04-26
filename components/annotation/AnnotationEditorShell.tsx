@@ -761,13 +761,27 @@ export default function AnnotationEditorShell({
         tags: initialSnapshot.raw.tags || [],
         coordinateSpaceId: initialSnapshot.raw.metadata.coordinate_space_id,
       }));
-      initializeDocument(sanitizedDoc);
+      setStatusMessage('Saving initial annotation document...');
+      const savedInitial = await saveAnnotationDocumentWithConflictRetry({
+        projectId,
+        pageNumber,
+        document: sanitizedDoc,
+        onConflictRevision: markRevision,
+      });
+      const persistedInitialDoc = sanitizeAnnotationDocument({
+        ...sanitizedDoc,
+        meta: {
+          ...sanitizedDoc.meta,
+          revision: savedInitial.latest_revision,
+        },
+      });
+      initializeDocument(persistedInitialDoc);
       setLoading(false);
-      const roomRefreshKey = `${projectId}:${pageNumber}:${sanitizedDoc.documentId}:${sanitizedDoc.meta.revision}:${ROOM_EXTRACTION_VERSION}`;
+      const roomRefreshKey = `${projectId}:${pageNumber}:${persistedInitialDoc.documentId}:${savedInitial.latest_revision}:${ROOM_EXTRACTION_VERSION}`;
       if (!completedStartupRoomRefreshes.has(roomRefreshKey)) {
         completedStartupRoomRefreshes.add(roomRefreshKey);
         setStatusMessage('Refreshing room extraction...');
-        void refreshRoomsFromDocument(sanitizedDoc, sanitizedDoc.meta.revision, { persist: false })
+        void refreshRoomsFromDocument(persistedInitialDoc, savedInitial.latest_revision)
           .then(() => {
             setStatusMessage(null);
           })
@@ -976,9 +990,21 @@ export default function AnnotationEditorShell({
           setSaveStatus('saved');
           setStatusMessage(null);
         } catch {
-          restorePendingOps(pending);
-          setSaveStatus('error');
-          setStatusMessage('Revision sync failed.');
+          try {
+            const saved = await saveAnnotationDocumentWithConflictRetry({
+              projectId,
+              pageNumber,
+              document,
+              onConflictRevision: markRevision,
+            });
+            markRevision(saved.latest_revision);
+            setSaveStatus('saved');
+            setStatusMessage(null);
+          } catch {
+            restorePendingOps(pending);
+            setSaveStatus('error');
+            setStatusMessage('Revision sync failed.');
+          }
         }
         return;
       }
