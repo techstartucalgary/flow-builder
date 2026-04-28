@@ -4,6 +4,7 @@ import { BrickWall, ChevronDown, DoorOpen, Layers3, MoreVertical, Search, Square
 import type { LucideIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { roomPaletteForElement } from '@/lib/roomPalette';
 import type { AnnotationDocument, AnnotationElement, RoomRelations, WallRelations } from '@/types/annotation';
 
 interface MeasurementGroup {
@@ -13,8 +14,11 @@ interface MeasurementGroup {
   items: Array<{
     id: string;
     label: string;
+    detail?: string;
     count: number;
     elementIds: string[];
+    color?: string;
+    fill?: string;
   }>;
 }
 
@@ -46,28 +50,47 @@ function elementLabel(element: AnnotationElement): string {
   return relations?.material ? titleCase(relations.material) : 'Room / Area';
 }
 
-function buildItems(elements: AnnotationElement[]): MeasurementGroup['items'] {
-  const grouped = new Map<string, { label: string; elementIds: string[] }>();
-  for (const element of elements) {
-    const label = elementLabel(element);
-    const key = label.toLowerCase();
-    const existing = grouped.get(key);
-    if (existing) {
-      existing.elementIds.push(element.id);
-    } else {
-      grouped.set(key, { label, elementIds: [element.id] });
-    }
+function itemDetail(element: AnnotationElement): string | undefined {
+  if (element.type === 'room') {
+    const relations = element.relations as RoomRelations | undefined;
+    const area = Number(relations?.areaSqFt ?? 0);
+    if (area > 0) return `${area.toFixed(0)} sf`;
   }
-  return Array.from(grouped.values()).map((item) => ({
-    id: item.label,
-    label: item.label,
-    count: item.elementIds.length,
-    elementIds: item.elementIds,
-  }));
+
+  const confidence = Number(element.attrs.confidence ?? 0);
+  if (confidence > 0 && confidence < 1) return `${Math.round(confidence * 100)}%`;
+  return undefined;
+}
+
+function buildItems(elements: AnnotationElement[]): MeasurementGroup['items'] {
+  const typeCounts = new Map<string, number>();
+
+  return elements.map((element) => {
+    const baseLabel = elementLabel(element);
+    const nextIndex = (typeCounts.get(baseLabel) ?? 0) + 1;
+    typeCounts.set(baseLabel, nextIndex);
+    const roomColor = element.type === 'room' ? roomPaletteForElement(element) : null;
+
+    return {
+      id: element.id,
+      label: `${baseLabel} ${nextIndex}`,
+      detail: itemDetail(element),
+      count: 1,
+      elementIds: [element.id],
+      color: roomColor?.stroke,
+      fill: roomColor?.fill,
+    };
+  });
 }
 
 export default function MeasurementsRail({ document, pageNumber, onFocusElements }: MeasurementsRailProps) {
   const [query, setQuery] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    walls: true,
+    doors: true,
+    windows: true,
+    rooms: true,
+  });
 
   const groups = useMemo<MeasurementGroup[]>(() => {
     const elements = document?.elements ?? [];
@@ -142,29 +165,64 @@ export default function MeasurementsRail({ document, pageNumber, onFocusElements
           {visibleGroups.map((group) => {
             const Icon = group.icon;
             const total = group.items.reduce((sum, item) => sum + item.count, 0);
+            const allElementIds = group.items.flatMap((item) => item.elementIds);
+            const expanded = expandedGroups[group.id] ?? true;
             return (
               <div key={group.id}>
                 <div className="flex items-center gap-2 rounded-lg bg-white/[0.055] px-2.5 py-2 text-sm font-medium text-white">
-                  <ChevronDown size={14} className="text-[var(--ws-text-muted)]" />
-                  <Icon size={15} className="text-cyan-200" />
-                  <span className="min-w-0 flex-1 truncate">{group.label}</span>
-                  <span className="measurement-count">{total}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandedGroups((current) => ({ ...current, [group.id]: !expanded }));
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left transition hover:text-cyan-100"
+                    aria-expanded={expanded}
+                  >
+                    <ChevronDown
+                      size={14}
+                      className={`shrink-0 text-[var(--ws-text-muted)] transition-transform ${expanded ? '' : '-rotate-90'}`}
+                    />
+                    <Icon size={15} className="shrink-0 text-cyan-200" />
+                    <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="measurement-count transition hover:bg-cyan-400/20 hover:text-white"
+                    title={`Jump to all ${group.label.toLowerCase()}`}
+                    onClick={() => {
+                      if (allElementIds.length) onFocusElements(allElementIds);
+                    }}
+                  >
+                    {total}
+                  </button>
                 </div>
-                <div className="mt-1 space-y-0.5 pl-8">
-                  {group.items.length ? group.items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => onFocusElements(item.elementIds)}
-                      className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-[var(--ws-text-secondary)] transition hover:bg-white/[0.055] hover:text-white"
-                    >
-                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                      <span className="measurement-count">{item.count}</span>
-                    </button>
-                  )) : (
-                    <div className="px-2 py-1.5 text-xs text-[var(--ws-text-muted)]">No items</div>
-                  )}
-                </div>
+                {expanded ? (
+                  <div className="mt-1 space-y-0.5 pl-8">
+                    {group.items.length ? group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => onFocusElements(item.elementIds)}
+                        className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-[var(--ws-text-secondary)] transition hover:bg-white/[0.055] hover:text-white"
+                      >
+                        {item.color ? (
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-[3px] border"
+                            style={{ borderColor: item.color, background: item.fill }}
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                        {item.detail ? (
+                          <span className="shrink-0 text-[11px] text-[var(--ws-text-muted)]">{item.detail}</span>
+                        ) : null}
+                        <span className="measurement-count">{item.count}</span>
+                      </button>
+                    )) : (
+                      <div className="px-2 py-1.5 text-xs text-[var(--ws-text-muted)]">No items</div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             );
           })}
