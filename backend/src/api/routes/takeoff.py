@@ -31,7 +31,11 @@ from src.estimators.drywall.annotation_geometry import (
     build_takeoff_geometry_snapshot,
 )
 from src.estimators.drywall.board_estimator import estimate_board_requirements
-from src.estimators.drywall.room_closure import compute_enclosed_regions
+from src.estimators.drywall.room_closure import (
+    ExtractedRoom,
+    compute_enclosed_regions,
+    extract_room_regions,
+)
 from src.estimators.drywall.surface_classification import classify_wall_surfaces
 from src.vision.cv import pipeline as cv_pipeline
 from src.vision.cv.preprocessing import load_image, crop_drawing_area
@@ -180,6 +184,16 @@ class TakeoffResult(BaseModel):
 WALL_COLOR = (0, 180, 0)
 DOOR_COLOR = (0, 0, 255)
 WINDOW_COLOR = (255, 150, 0)
+ROOM_PALETTE_BGR: list[tuple[int, int, int]] = [
+    (200, 220, 245),
+    (210, 240, 220),
+    (230, 220, 245),
+    (200, 235, 245),
+    (245, 220, 220),
+    (220, 235, 200),
+    (245, 230, 200),
+    (215, 215, 245),
+]
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
@@ -536,11 +550,53 @@ def _generate_annotated_image(
     crop_top: float = 0.0,
     crop_right: float = 1.0,
     crop_bottom: float = 1.0,
+    rooms: Optional[list[ExtractedRoom]] = None,
 ) -> str:
     """Draw CV detections on the floor plan and return as a base64 PNG string."""
     bgr = load_image(file_bytes, mime_type, dpi=200, page_number=page_number)
     bgr = crop_drawing_area(bgr, crop_left, crop_top, crop_right, crop_bottom)
     annotated = bgr.copy()
+
+    if rooms:
+        room_overlay = annotated.copy()
+        for index, room in enumerate(rooms):
+            if not room.polygon or len(room.polygon) < 3:
+                continue
+            color = ROOM_PALETTE_BGR[index % len(ROOM_PALETTE_BGR)]
+            polygon_np = np.array([[int(round(x)), int(round(y))] for x, y in room.polygon], dtype=np.int32)
+            cv2.fillPoly(room_overlay, [polygon_np], color)
+        cv2.addWeighted(room_overlay, 0.45, annotated, 0.55, 0, annotated)
+        for room in rooms:
+            if not room.polygon or len(room.polygon) < 3:
+                continue
+            cx = int(round(float(room.centroid[0])))
+            cy = int(round(float(room.centroid[1])))
+            label_parts = []
+            if room.name:
+                label_parts.append(room.name)
+            if room.area_sqft > 0:
+                label_parts.append(f"{room.area_sqft:.0f} sqft")
+            if not label_parts:
+                continue
+            label = " - ".join(label_parts)
+            (tw, th), _ = cv2.getTextSize(label, FONT, 0.55, 1)
+            cv2.rectangle(
+                annotated,
+                (cx - tw // 2 - 4, cy - th // 2 - 4),
+                (cx + tw // 2 + 4, cy + th // 2 + 4),
+                (255, 255, 255),
+                -1,
+            )
+            cv2.putText(
+                annotated,
+                label,
+                (cx - tw // 2, cy + th // 2),
+                FONT,
+                0.55,
+                (40, 40, 40),
+                1,
+                cv2.LINE_AA,
+            )
 
     wall_overlay = annotated.copy()
     for wall in geometry_result.walls:
@@ -568,9 +624,10 @@ def _generate_annotated_image(
         cv2.rectangle(annotated, (x, y), (x + width, y + height), WINDOW_COLOR, 2)
         cv2.putText(annotated, opening.id, (x, max(12, y - 6)), FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
 
+    legend_height = 138 if rooms else 110
     lx, ly = 20, 30
-    cv2.rectangle(annotated, (10, 10), (320, 110), (255, 255, 255), -1)
-    cv2.rectangle(annotated, (10, 10), (320, 110), (0, 0, 0), 1)
+    cv2.rectangle(annotated, (10, 10), (320, legend_height), (255, 255, 255), -1)
+    cv2.rectangle(annotated, (10, 10), (320, legend_height), (0, 0, 0), 1)
     cv2.putText(annotated, "LEGEND", (lx, ly), FONT, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
     cv2.rectangle(annotated, (lx, ly + 8), (lx + 30, ly + 16), WALL_COLOR, -1)
     cv2.putText(annotated, f"Walls ({len(geometry_result.walls)})", (lx + 40, ly + 16), FONT, 0.4, WALL_COLOR, 1, cv2.LINE_AA)
@@ -580,6 +637,10 @@ def _generate_annotated_image(
     ly += 28
     cv2.rectangle(annotated, (lx + 4, ly - 3), (lx + 20, ly + 11), WINDOW_COLOR, 2)
     cv2.putText(annotated, f"Windows ({len(window_openings)})", (lx + 40, ly + 8), FONT, 0.4, WINDOW_COLOR, 1, cv2.LINE_AA)
+    if rooms:
+        ly += 28
+        cv2.rectangle(annotated, (lx + 4, ly - 3), (lx + 20, ly + 11), ROOM_PALETTE_BGR[0], -1)
+        cv2.putText(annotated, f"Rooms ({len(rooms)})", (lx + 40, ly + 8), FONT, 0.4, (60, 60, 60), 1, cv2.LINE_AA)
 
     _, buf = cv2.imencode(".png", annotated)
     return base64.b64encode(buf.tobytes()).decode("utf-8")
@@ -1317,6 +1378,19 @@ async def analyze_takeoff(req: TakeoffRequest):
         )
         area_debug["takeoff_confidence"] = takeoff_confidence
 
+        existing_document = saved_annotation.document if saved_annotation is not None else None
+        room_extraction_result = None
+        if effective_scale_px_per_ft and effective_scale_px_per_ft > 0:
+            try:
+                room_extraction_result = extract_room_regions(geometry_snapshot, existing_document=existing_document)
+            except Exception as exc:  # noqa: BLE001
+                area_debug["room_extraction_error"] = str(exc)
+        rooms_for_render = list(room_extraction_result.rooms) if room_extraction_result else []
+        if room_extraction_result is not None:
+            area_debug["room_extraction_count"] = len(rooms_for_render)
+            area_debug["room_extraction_status"] = room_extraction_result.status
+            area_debug["room_extraction_confidence"] = room_extraction_result.confidence
+
         annotated_b64 = _generate_annotated_image(
             file_bytes,
             req.file_mime,
@@ -1326,6 +1400,7 @@ async def analyze_takeoff(req: TakeoffRequest):
             crop_top=req.crop_top,
             crop_right=req.crop_right,
             crop_bottom=req.crop_bottom,
+            rooms=rooms_for_render,
         )
         print(
             f"[takeoff/{geometry_source}] "

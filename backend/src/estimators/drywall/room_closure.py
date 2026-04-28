@@ -1048,6 +1048,133 @@ def _boundary_support_ratio(points: list[tuple[int, int]], snapshot: TakeoffGeom
     return float(supported / sampled) if sampled else 0.0
 
 
+def _segment_wall_support_ratio(
+    start: tuple[int, int],
+    end: tuple[int, int],
+    snapshot: TakeoffGeometrySnapshot,
+    tolerance: float,
+) -> float:
+    edge_length = hypot(end[0] - start[0], end[1] - start[1])
+    if edge_length <= 0 or not snapshot.walls:
+        return 0.0
+    sample_count = max(4, int(round(edge_length / 12.0)))
+    supported = 0
+    for sample_index in range(sample_count):
+        t = (sample_index + 0.5) / sample_count
+        px = start[0] + ((end[0] - start[0]) * t)
+        py = start[1] + ((end[1] - start[1]) * t)
+        nearest = min(
+            _distance_point_to_segment(px, py, wall.start, wall.end)
+            for wall in snapshot.walls
+        )
+        if nearest <= tolerance:
+            supported += 1
+    return float(supported / sample_count)
+
+
+def _polygon_signed_area(points: list[tuple[int, int]]) -> float:
+    area = 0.0
+    for index, (x1, y1) in enumerate(points):
+        x2, y2 = points[(index + 1) % len(points)]
+        area += (x1 * y2) - (x2 * y1)
+    return area / 2.0
+
+
+def _bypass_aligns_with_polygon_edge(
+    a: tuple[int, int],
+    c: tuple[int, int],
+    points: list[tuple[int, int]],
+    skip_edge_starts: set[int],
+    tolerance: float,
+) -> bool:
+    """Return True when bypass A->C is axis-aligned and another polygon
+    edge lies on the same horizontal or vertical line within tolerance.
+
+    Edges whose start index is in skip_edge_starts are ignored (the two
+    edges adjacent to the candidate vertex B).
+    """
+    n = len(points)
+    if abs(a[1] - c[1]) <= tolerance:
+        target_y = (a[1] + c[1]) / 2.0
+        for index in range(n):
+            if index in skip_edge_starts:
+                continue
+            point = points[index]
+            other = points[(index + 1) % n]
+            if abs(point[1] - other[1]) > tolerance:
+                continue
+            edge_y = (point[1] + other[1]) / 2.0
+            if abs(edge_y - target_y) <= tolerance:
+                return True
+    if abs(a[0] - c[0]) <= tolerance:
+        target_x = (a[0] + c[0]) / 2.0
+        for index in range(n):
+            if index in skip_edge_starts:
+                continue
+            point = points[index]
+            other = points[(index + 1) % n]
+            if abs(point[0] - other[0]) > tolerance:
+                continue
+            edge_x = (point[0] + other[0]) / 2.0
+            if abs(edge_x - target_x) <= tolerance:
+                return True
+    return False
+
+
+def _collapse_unsupported_concave_wedges(
+    points: list[tuple[int, int]],
+    snapshot: TakeoffGeometrySnapshot,
+) -> list[tuple[int, int]]:
+    """Drop reflex vertices whose bypass edge is a phantom artifact.
+
+    A bypass A->C is treated as a phantom (B should be dropped) when
+    either (a) it follows real wall segments, or (b) it is axis-aligned
+    and collinear with another edge of the same polygon. Case (b) catches
+    inward "bites" carved into otherwise rectilinear room boundaries by
+    the rasterizer — the polygon visibly shares a top/bottom/side line
+    with the bypass, so the wedge is just a detour.
+    """
+    if len(points) < 5:
+        return points
+
+    median_thickness = _median_wall_thickness(snapshot) if snapshot.walls else 6.0
+    tolerance = max(6.0, min(ROOM_SUPPORT_DISTANCE_PX, median_thickness * 1.5))
+    support_min_ratio = 0.85
+    align_tolerance = max(4.0, tolerance * 0.6)
+
+    current = list(points)
+    keep_iterating = True
+    while keep_iterating and len(current) >= 5:
+        keep_iterating = False
+        signed_area = _polygon_signed_area(current)
+        if signed_area == 0:
+            return current
+        is_ccw = signed_area > 0
+        for i in range(len(current)):
+            n = len(current)
+            a = current[(i - 1) % n]
+            b = current[i]
+            c = current[(i + 1) % n]
+            cross = ((b[0] - a[0]) * (c[1] - b[1])) - ((b[1] - a[1]) * (c[0] - b[0]))
+            is_reflex = cross < 0 if is_ccw else cross > 0
+            if not is_reflex:
+                continue
+            ab = hypot(b[0] - a[0], b[1] - a[1])
+            bc = hypot(c[0] - b[0], c[1] - b[1])
+            if ab < 2 or bc < 2:
+                continue
+            should_drop = False
+            if snapshot.walls and _segment_wall_support_ratio(a, c, snapshot, tolerance) >= support_min_ratio:
+                should_drop = True
+            elif _bypass_aligns_with_polygon_edge(a, c, current, {(i - 1) % n, i}, align_tolerance):
+                should_drop = True
+            if should_drop:
+                current = current[:i] + current[i + 1:]
+                keep_iterating = True
+                break
+    return current
+
+
 def _clean_polygon(points: list[tuple[int, int]], snapshot: TakeoffGeometrySnapshot, bbox: tuple[int, int, int, int]) -> list[tuple[int, int]]:
     current = _dedupe_polygon_points(points)
     current = _remove_short_edges(current)
@@ -1058,6 +1185,9 @@ def _clean_polygon(points: list[tuple[int, int]], snapshot: TakeoffGeometrySnaps
     current = _snap_polygon_to_wall_guides(current, snapshot, bbox)
     current = _remove_small_spikes(current, _positive_scale(snapshot))
     current = _remove_short_edges(current)
+    current = _remove_nearly_collinear(current)
+    current = _dedupe_polygon_points(current)
+    current = _collapse_unsupported_concave_wedges(current, snapshot)
     current = _remove_nearly_collinear(current)
     return _dedupe_polygon_points(current)
 

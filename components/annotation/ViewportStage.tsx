@@ -902,6 +902,17 @@ export default function ViewportStage({
                 updateElement(next);
               }}
               onRoomPointCommit={() => setEndpointSnapGuide([])}
+              onRoomPointDelete={(id, pointIndex) => {
+                const room = entities.byId[id];
+                if (!room || room.type !== 'room' || room.geometry.kind !== 'polygon') return;
+                if (room.geometry.points.length <= 3) return;
+                const next = safeClone(room);
+                if (next.geometry.kind !== 'polygon') return;
+                next.geometry.points = next.geometry.points.filter((_, idx) => idx !== pointIndex);
+                next.attrs.status = 'edited';
+                next.attrs.geometryEdited = true;
+                updateElement(next);
+              }}
             />
             <SelectionTransformer
               stageRef={stageRef}

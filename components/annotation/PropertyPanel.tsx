@@ -226,6 +226,33 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
     });
   }
 
+  function rectangularizeRoom() {
+    applyImmediate((updated) => {
+      if (updated.type !== 'room' || updated.geometry.kind !== 'polygon') return;
+      const points = updated.geometry.points;
+      if (points.length < 3) return;
+      let minX = points[0][0];
+      let minY = points[0][1];
+      let maxX = points[0][0];
+      let maxY = points[0][1];
+      for (const [x, y] of points) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+      if (maxX - minX < 2 || maxY - minY < 2) return;
+      updated.geometry.points = [
+        [minX, minY],
+        [maxX, minY],
+        [maxX, maxY],
+        [minX, maxY],
+      ];
+      updated.attrs.status = 'edited';
+      updated.attrs.geometryEdited = true;
+    });
+  }
+
   function toggleRoomScheduleCounting() {
     applyImmediate((updated) => {
       if (updated.type !== 'room') return;
@@ -451,6 +478,16 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
             >
               Clear flooring assignment
             </button>
+            {element.geometry.kind === 'polygon' && element.geometry.points.length > 4 ? (
+              <button
+                type="button"
+                onClick={rectangularizeRoom}
+                className="w-full rounded-lg border border-amber-300/40 bg-amber-500/10 px-3 py-2 text-left text-amber-100 transition hover:bg-amber-500/20"
+                title="Replace the polygon with its bounding-box corners"
+              >
+                Rectangularize room ({element.geometry.points.length} → 4 vertices)
+              </button>
+            ) : null}
           </>
         ) : null}
       </FieldSection>

@@ -11,6 +11,7 @@ interface InteractionLayerProps {
   onWallEndpointCommit: () => void;
   onRoomPointChange: (id: string, pointIndex: number, x: number, y: number) => void;
   onRoomPointCommit: () => void;
+  onRoomPointDelete: (id: string, pointIndex: number) => void;
 }
 
 export default function InteractionLayer({
@@ -20,11 +21,13 @@ export default function InteractionLayer({
   onWallEndpointCommit,
   onRoomPointChange,
   onRoomPointCommit,
+  onRoomPointDelete,
 }: InteractionLayerProps) {
   if (!selectedWall && !selectedRoom) return null;
 
   if (selectedRoom?.geometry.kind === 'polygon') {
     const points = selectedRoom.geometry.points;
+    const canDelete = points.length > 3;
 
     return (
       <>
@@ -46,6 +49,22 @@ export default function InteractionLayer({
             stroke="#111827"
             strokeWidth={1.5}
             draggable
+            onMouseDown={(e) => {
+              const evt = e.evt as MouseEvent;
+              if (canDelete && (evt.altKey || evt.button === 2)) {
+                evt.preventDefault();
+                evt.stopPropagation();
+                e.cancelBubble = true;
+                onRoomPointDelete(selectedRoom.id, index);
+              }
+            }}
+            onContextMenu={(e) => {
+              e.evt.preventDefault();
+              if (canDelete) {
+                e.cancelBubble = true;
+                onRoomPointDelete(selectedRoom.id, index);
+              }
+            }}
             onDragMove={(e) => onRoomPointChange(selectedRoom.id, index, e.target.x(), e.target.y())}
             onDragEnd={onRoomPointCommit}
           />

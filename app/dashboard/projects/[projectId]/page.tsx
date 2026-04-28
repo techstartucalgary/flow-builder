@@ -18,9 +18,12 @@ import {
 import { getBackendUrl } from '@/lib/backendUrl';
 import { hasManualGeometryEdits } from '@/lib/annotationGeometryRefresh';
 import {
+  extractRoomsFromDocument,
+  fetchAnnotationStorePayload,
   saveAnnotationDocumentWithConflictRetry,
   waitForAnnotationWritesToDrain,
 } from '@/lib/annotationPersistence';
+import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import { parseTakeoff, mapStructuredTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
 import type { TakeoffData } from '@/lib/parseTakeoff';
 import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
@@ -32,7 +35,7 @@ import SheetRail from '@/components/project-viewer/SheetRail';
 import WorkflowRail from '@/components/project-viewer/WorkflowRail';
 import MeasurementsRail from '@/components/project-viewer/MeasurementsRail';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
-import type { AnnotationElement, OpeningRelations, RoomRelations, WallRelations } from '@/types/annotation';
+import type { AnnotationDocument, AnnotationElement, OpeningRelations, RoomRelations, WallRelations } from '@/types/annotation';
 import { Document, pdfjs } from 'react-pdf';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -257,6 +260,7 @@ export default function ProjectViewerPage() {
   const editorPendingOpsCount = useAnnotationEditorStore((s) => s.history.pendingOps.length);
   const editorViewPreset = useAnnotationEditorStore((s) => s.viewPreset);
   const markEditorRevision = useAnnotationEditorStore((s) => s.markRevision);
+  const initializeEditorDocument = useAnnotationEditorStore((s) => s.initializeDocument);
   const setEditorSaveStatus = useAnnotationEditorStore((s) => s.setSaveStatus);
   const setEditorBaseImageScale = useAnnotationEditorStore((s) => s.setBaseImageScale);
   const setEditorSelection = useAnnotationEditorStore((s) => s.setSelection);
@@ -448,7 +452,8 @@ export default function ProjectViewerPage() {
 
       if (currentEditorDocument) {
         geometryRevision = currentEditorDocument.meta.revision;
-        const useSavedGeometry = hasManualGeometryEdits(currentEditorDocument);
+        const hasRoomGeometry = currentEditorDocument.elements.some((element) => element.type === 'room');
+        const useSavedGeometry = hasManualGeometryEdits(currentEditorDocument) || hasRoomGeometry;
 
         if (currentEditorSaveStatus !== 'saved' || currentPendingOpsCount > 0) {
           setEditorSaveStatus('syncing');
@@ -525,6 +530,59 @@ export default function ProjectViewerPage() {
           metricDeltas: comparison.deltas,
         };
         window.sessionStorage.setItem(takeoffCacheKey, JSON.stringify(cached));
+      }
+
+      try {
+        const latest = await fetchAnnotationStorePayload(project.id, pageNumber);
+        if (latest.document) {
+          const latestDoc = sanitizeAnnotationDocument(latest.document);
+          const existingRoomCount = latestDoc.elements.filter((el) => el.type === 'room').length;
+          const hasManualRoomEdits = latestDoc.elements.some(
+            (el) => el.type === 'room' && el.attrs.status === 'edited',
+          );
+          if (!hasManualRoomEdits && (typeof scale === 'number' && scale > 0)) {
+            const extracted = await extractRoomsFromDocument({
+              document: latestDoc,
+              revision: latest.latest_revision,
+              effectiveScalePxPerFt: latestDoc.baseImage.scalePxPerFt ?? scale,
+            });
+            if (extracted.status === 'ok' && extracted.rooms.length > 0) {
+              const nextDoc: AnnotationDocument = {
+                ...latestDoc,
+                elements: [
+                  ...latestDoc.elements.filter((el) => el.type !== 'room'),
+                  ...extracted.rooms,
+                ],
+                meta: {
+                  ...latestDoc.meta,
+                  roomExtractionVersion: '2026-03-room-refresh-v1',
+                  roomExtractionRevision: latest.latest_revision,
+                  roomExtractionStatus: extracted.summary.status,
+                },
+              };
+              const savedRooms = await saveAnnotationDocumentWithConflictRetry({
+                projectId: project.id,
+                pageNumber,
+                document: sanitizeAnnotationDocument(nextDoc),
+              });
+              const persistedRoomDoc = sanitizeAnnotationDocument({
+                ...nextDoc,
+                meta: {
+                  ...nextDoc.meta,
+                  revision: savedRooms.latest_revision,
+                  roomExtractionRevision: savedRooms.latest_revision,
+                },
+              });
+              initializeEditorDocument(persistedRoomDoc);
+              setEditorViewPreset('final');
+              setEditorSelection(extracted.rooms.map((room) => room.id));
+              requestFocusOnElements(extracted.rooms.map((room) => room.id), 120);
+              console.log('[takeoff] persisted', extracted.rooms.length, 'rooms (was', existingRoomCount, ')');
+            }
+          }
+        }
+      } catch (roomErr) {
+        console.warn('[takeoff] room persistence failed (non-fatal):', roomErr);
       }
     } catch (e: any) {
       setTakeoffError(e.message || 'Generation failed');
