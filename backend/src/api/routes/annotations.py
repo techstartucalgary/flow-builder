@@ -222,6 +222,20 @@ async def post_extract_rooms(payload: RoomExtractionPayload):
         payload.revision,
         payload.effective_scale_px_per_ft,
     )
+    if not snapshot.scale_px_per_ft or snapshot.scale_px_per_ft <= 0:
+        return {
+            "status": "no_scale",
+            "rooms": [],
+            "summary": {
+                "room_count": 0,
+                "space_count": 0,
+                "non_countable_space_count": 0,
+                "total_area_sqft": 0.0,
+                "status": "open",
+                "confidence": "low",
+            },
+            "debug": {"reason": "missing_scale_px_per_ft"},
+        }
     result = extract_room_regions(snapshot, existing_document=payload.document)
 
     return {

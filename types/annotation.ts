@@ -358,7 +358,7 @@ export interface RoomExtractionSummary {
 }
 
 export interface RoomExtractionResponse {
-  status: 'ok';
+  status: 'ok' | 'no_scale';
   rooms: RoomElement[];
   summary: RoomExtractionSummary;
   debug: Record<string, string | number | boolean>;

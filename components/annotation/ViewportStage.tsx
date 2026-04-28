@@ -16,6 +16,7 @@ import type {
   AnnotationRenderHints,
   CVTag,
   EditorViewPreset,
+  RoomElement,
 } from '@/types/annotation';
 import { useAnnotationEditorStore } from '@/stores/useAnnotationEditorStore';
 import AnnotationRenderLayer from '@/components/annotation/AnnotationRenderLayer';
@@ -150,11 +151,6 @@ export default function ViewportStage({
     () => selection.some((id) => displayedElementIds.has(id)),
     [displayedElementIds, selection],
   );
-  const hasRoomSelection = useMemo(
-    () => selection.some((id) => entities.byId[id]?.type === 'room'),
-    [entities.byId, selection],
-  );
-
   useEffect(() => {
     if (!wrapRef.current) return;
     const el = wrapRef.current;
@@ -288,6 +284,14 @@ export default function ViewportStage({
     const el = entities.byId[selection[0]];
     if (!el || !displayedElementIds.has(el.id)) return null;
     if (!el || el.type !== 'wall' || el.geometry.kind !== 'segment') return null;
+    return el;
+  }, [displayedElementIds, entities.byId, selection]);
+
+  const selectedRoom = useMemo((): RoomElement | null => {
+    if (selection.length !== 1) return null;
+    const el = entities.byId[selection[0]];
+    if (!el || !displayedElementIds.has(el.id)) return null;
+    if (el.type !== 'room') return null;
     return el;
   }, [displayedElementIds, entities.byId, selection]);
 
@@ -454,14 +458,31 @@ export default function ViewportStage({
 
   function onTransformEnd(id: string, e: any) {
     const el = entities.byId[id];
-    if (!el || el.geometry.kind === 'segment' || el.geometry.kind === 'polygon') return;
+    if (!el || el.geometry.kind === 'segment') return;
 
     const node = e.target;
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
 
     const next = safeClone(el);
-    if (next.geometry.kind === 'segment' || next.geometry.kind === 'polygon') return;
+    if (next.geometry.kind === 'segment') return;
+    if (next.geometry.kind === 'polygon') {
+      const transform = node.getTransform().copy();
+      next.geometry.points = next.geometry.points.map(([x, y]) => {
+        const transformed = transform.point({ x, y });
+        return [transformed.x, transformed.y] as [number, number];
+      });
+      next.attrs.status = 'edited';
+      next.attrs.geometryEdited = true;
+
+      node.position({ x: 0, y: 0 });
+      node.scaleX(1);
+      node.scaleY(1);
+      node.rotation(0);
+      updateElement(next);
+      return;
+    }
+
     next.geometry.x = node.x();
     next.geometry.y = node.y();
     next.geometry.rotationDeg = node.rotation();
@@ -845,6 +866,7 @@ export default function ViewportStage({
           <Layer>
             <InteractionLayer
               selectedWall={selectedWall}
+              selectedRoom={selectedRoom}
               onWallEndpointChange={(id, endpoint, x, y) => {
                 const wall = entities.byId[id];
                 if (!wall || wall.type !== 'wall' || wall.geometry.kind !== 'segment') return;
@@ -867,11 +889,24 @@ export default function ViewportStage({
                 updateElement(next);
               }}
               onWallEndpointCommit={() => setEndpointSnapGuide([])}
+              onRoomPointChange={(id, pointIndex, x, y) => {
+                const room = entities.byId[id];
+                if (!room || room.type !== 'room' || room.geometry.kind !== 'polygon') return;
+                const next = safeClone(room);
+                if (next.geometry.kind !== 'polygon') return;
+                next.geometry.points = next.geometry.points.map((point, index) => (
+                  index === pointIndex ? [x, y] as [number, number] : point
+                ));
+                next.attrs.status = 'edited';
+                next.attrs.geometryEdited = true;
+                updateElement(next);
+              }}
+              onRoomPointCommit={() => setEndpointSnapGuide([])}
             />
             <SelectionTransformer
               stageRef={stageRef}
               selectedIds={selection}
-              enabled={hasVisibleSelection && !hasRoomSelection && (!selectedWall || toolMode !== 'wall')}
+              enabled={hasVisibleSelection && (!selectedWall || toolMode !== 'wall')}
             />
           </Layer>
         </Stage>

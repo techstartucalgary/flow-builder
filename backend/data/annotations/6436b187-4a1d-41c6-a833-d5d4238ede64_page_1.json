@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 3,
+  "latest_revision": 17,
   "document": {
     "documentId": "6436b187-4a1d-41c6-a833-d5d4238ede64_page_1",
     "projectId": "6436b187-4a1d-41c6-a833-d5d4238ede64",
@@ -17,12 +17,12 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-04-26T00:12:04.082Z",
-      "updatedAt": "2026-04-26T00:45:46.136Z",
-      "revision": 3,
+      "updatedAt": "2026-04-28T22:28:00.861Z",
+      "revision": 17,
       "coordinateSpaceId": "coord_fae705fdea2616aa",
       "hasManualGeometryEdits": true,
       "roomExtractionVersion": "2026-03-room-refresh-v1",
-      "roomExtractionRevision": 0,
+      "roomExtractionRevision": 3,
       "roomExtractionStatus": "ambiguous"
     },
     "layers": {
@@ -1225,6 +1225,28 @@
         }
       },
       {
+        "id": "window_ivqorml",
+        "attrs": {
+          "status": "edited",
+          "geometryEdited": true,
+          "locked": false,
+          "visible": true,
+          "confidence": 1
+        },
+        "relations": {
+          "hostWallId": "wall_H-25"
+        },
+        "type": "window",
+        "geometry": {
+          "kind": "rect",
+          "x": 2711.227067577557,
+          "y": 3729.4544823315564,
+          "width": 330.4263687485208,
+          "height": 62.22596310249547,
+          "rotationDeg": 0
+        }
+      },
+      {
         "id": "room_auto_1",
         "type": "room",
         "geometry": {
@@ -1236,86 +1258,14 @@
             ],
             [
               2336,
-              2064
+              1788
             ],
             [
-              2947,
-              2064
+              2929,
+              1788
             ],
             [
-              2947,
-              2485
-            ],
-            [
-              2336,
-              2485
-            ],
-            [
-              2336,
-              2875
-            ],
-            [
-              2336,
-              3690
-            ],
-            [
-              4326,
-              3690
-            ],
-            [
-              4326,
-              2886
-            ],
-            [
-              3673,
-              2886
-            ],
-            [
-              3673,
-              3070
-            ],
-            [
-              3663,
-              3070
-            ],
-            [
-              3663,
-              2240
-            ],
-            [
-              3352,
-              2240
-            ],
-            [
-              3352,
-              2064
-            ],
-            [
-              3663,
-              2064
-            ],
-            [
-              3663,
-              1852
-            ],
-            [
-              3374,
-              1852
-            ],
-            [
-              3374,
-              1661
-            ],
-            [
-              3326,
-              1661
-            ],
-            [
-              3110,
-              1661
-            ],
-            [
-              2911,
+              2929,
               1661
             ]
           ]
@@ -1324,94 +1274,31 @@
           "status": "auto",
           "locked": false,
           "visible": true,
-          "confidence": 0.8211
+          "confidence": 0.74
         },
         "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
+          "areaSqFt": 30.1244,
+          "quantityRequired": 30.1244,
           "quantityUnit": "sqft",
           "spaceType": "counted_room",
           "countInRoomSchedule": true,
           "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.8211,
+          "extractionConfidence": 0.74,
           "touchesBorder": false,
           "bbox": {
             "minX": 2336,
             "minY": 1661,
-            "maxX": 4326,
-            "maxY": 3690
+            "maxX": 2929,
+            "maxY": 1788
           },
           "centroid": [
-            3197.219,
-            2853.503
+            2632.5,
+            1724.5
           ],
           "diagnostics": {
             "component_label": 1,
-            "candidate_component_area_px": 11001667,
-            "boundary_support_ratio": 0.8019,
-            "orthogonality_ratio": 1,
-            "closure_status": "open",
-            "touches_border": false,
-            "accepted_reason": "auto",
-            "space_kind": "counted_room",
-            "countable": true,
-            "space_classification_reason": "default_room"
-          }
-        }
-      },
-      {
-        "id": "room_auto_10",
-        "type": "room",
-        "geometry": {
-          "kind": "polygon",
-          "points": [
-            [
-              3762,
-              3674
-            ],
-            [
-              3762,
-              3690
-            ],
-            [
-              3770,
-              3690
-            ],
-            [
-              3770,
-              3674
-            ]
-          ]
-        },
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.79
-        },
-        "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
-          "quantityUnit": "sqft",
-          "spaceType": "counted_room",
-          "countInRoomSchedule": true,
-          "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.79,
-          "touchesBorder": false,
-          "bbox": {
-            "minX": 3762,
-            "minY": 3674,
-            "maxX": 3770,
-            "maxY": 3690
-          },
-          "centroid": [
-            3766,
-            3682
-          ],
-          "diagnostics": {
-            "component_label": 19,
-            "candidate_component_area_px": 135,
-            "boundary_support_ratio": 0.75,
+            "candidate_component_area_px": 224345,
+            "boundary_support_ratio": 0.6667,
             "orthogonality_ratio": 1,
             "closure_status": "open",
             "touches_border": false,
@@ -1423,58 +1310,138 @@
         }
       },
       {
-        "id": "room_auto_2",
+        "id": "room_auto_12",
         "type": "room",
         "geometry": {
           "kind": "polygon",
           "points": [
             [
-              3364,
-              1780
+              2342.8306905331087,
+              1673.7577988080704
             ],
             [
-              3364,
-              1796
+              2342.8306905331087,
+              2324.2336538343566
             ],
             [
-              3383,
-              1796
+              2947.7633350096094,
+              2324.2336538343566
             ],
             [
-              3383,
-              1780
+              2947.7633350096094,
+              2339.084700752765
+            ],
+            [
+              3315.0792287915765,
+              2339.084700752765
+            ],
+            [
+              3315.0792287915765,
+              1673.7577988080704
+            ],
+            [
+              3087.7100014912207,
+              1906.556611196378
+            ],
+            [
+              2947.7633350096094,
+              1673.7577988080704
             ]
           ]
         },
         "attrs": {
-          "status": "auto",
+          "status": "edited",
           "locked": false,
           "visible": true,
-          "confidence": 0.64
+          "confidence": 0.4522,
+          "geometryEdited": true
         },
         "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
+          "areaSqFt": 243.378,
+          "quantityRequired": 243.378,
           "quantityUnit": "sqft",
           "spaceType": "counted_room",
           "countInRoomSchedule": true,
           "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.64,
+          "extractionConfidence": 0.4522,
           "touchesBorder": false,
           "bbox": {
-            "minX": 3364,
-            "minY": 1780,
-            "maxX": 3383,
-            "maxY": 1796
+            "minX": 2336,
+            "minY": 1840,
+            "maxX": 3318,
+            "maxY": 2512
           },
           "centroid": [
-            3373.5,
-            1788
+            2809.705,
+            2189.125
           ],
           "diagnostics": {
-            "component_label": 8,
-            "candidate_component_area_px": 595,
-            "boundary_support_ratio": 0.5,
+            "component_label": 2,
+            "candidate_component_area_px": 2412061,
+            "boundary_support_ratio": 0.3537,
+            "orthogonality_ratio": 0.75,
+            "closure_status": "open",
+            "touches_border": false,
+            "accepted_reason": "fallback_supported",
+            "space_kind": "counted_room",
+            "countable": true,
+            "space_classification_reason": "default_room"
+          }
+        }
+      },
+      {
+        "id": "room_auto_13",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              2344.232035928144,
+              2512.109281437126
+            ],
+            [
+              2344.232035928144,
+              2674.109281437126
+            ],
+            [
+              2955.232035928144,
+              2674.109281437126
+            ],
+            [
+              2955.232035928144,
+              2512.109281437126
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "edited",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.5275
+        },
+        "relations": {
+          "areaSqFt": 39.5928,
+          "quantityRequired": 39.5928,
+          "quantityUnit": "sqft",
+          "spaceType": "counted_room",
+          "countInRoomSchedule": true,
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.5275,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 2336,
+            "minY": 2524,
+            "maxX": 2947,
+            "maxY": 2686
+          },
+          "centroid": [
+            2641.5,
+            2605
+          ],
+          "diagnostics": {
+            "component_label": 3,
+            "candidate_component_area_px": 362705,
+            "boundary_support_ratio": 0.3125,
             "orthogonality_ratio": 1,
             "closure_status": "open",
             "touches_border": false,
@@ -1486,26 +1453,42 @@
         }
       },
       {
-        "id": "room_auto_3",
+        "id": "room_auto_14",
         "type": "room",
         "geometry": {
           "kind": "polygon",
           "points": [
             [
-              3352,
-              3674
+              3374,
+              1874
             ],
             [
-              3352,
-              3690
+              3374,
+              2050
             ],
             [
-              3372,
-              3690
+              3383,
+              2050
             ],
             [
-              3372,
-              3674
+              3383,
+              2071
+            ],
+            [
+              3663,
+              2071
+            ],
+            [
+              3663,
+              1852
+            ],
+            [
+              3383,
+              1852
+            ],
+            [
+              3383,
+              1874
             ]
           ]
         },
@@ -1513,35 +1496,261 @@
           "status": "auto",
           "locked": false,
           "visible": true,
-          "confidence": 0.865
+          "confidence": 0.8025
         },
         "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
+          "areaSqFt": 25.1616,
+          "quantityRequired": 25.1616,
           "quantityUnit": "sqft",
           "spaceType": "counted_room",
           "countInRoomSchedule": true,
           "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.865,
+          "extractionConfidence": 0.8025,
           "touchesBorder": false,
           "bbox": {
-            "minX": 3352,
-            "minY": 3674,
-            "maxX": 3372,
-            "maxY": 3690
+            "minX": 3374,
+            "minY": 1852,
+            "maxX": 3663,
+            "maxY": 2071
           },
           "centroid": [
-            3362,
-            3682
+            3519.361,
+            1961.513
           ],
           "diagnostics": {
-            "component_label": 10,
-            "candidate_component_area_px": 153,
-            "boundary_support_ratio": 0.875,
+            "component_label": 5,
+            "candidate_component_area_px": 217890,
+            "boundary_support_ratio": 0.7708,
             "orthogonality_ratio": 1,
             "closure_status": "open",
             "touches_border": false,
-            "accepted_reason": "auto",
+            "accepted_reason": "fallback_supported",
+            "space_kind": "counted_room",
+            "countable": true,
+            "space_classification_reason": "default_room"
+          }
+        }
+      },
+      {
+        "id": "room_auto_15",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              3374,
+              2240
+            ],
+            [
+              3374,
+              2674
+            ],
+            [
+              3663,
+              2674
+            ],
+            [
+              3663,
+              2485
+            ],
+            [
+              3648,
+              2485
+            ],
+            [
+              3648,
+              2445
+            ],
+            [
+              3673,
+              2326
+            ],
+            [
+              3663,
+              2326
+            ],
+            [
+              3663,
+              2240
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.6169
+        },
+        "relations": {
+          "areaSqFt": 49.8114,
+          "quantityRequired": 49.8114,
+          "quantityUnit": "sqft",
+          "spaceType": "counted_room",
+          "countInRoomSchedule": true,
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.6169,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 3374,
+            "minY": 2240,
+            "maxX": 3673,
+            "maxY": 2674
+          },
+          "centroid": [
+            3517.523,
+            2456.895
+          ],
+          "diagnostics": {
+            "component_label": 6,
+            "candidate_component_area_px": 489771,
+            "boundary_support_ratio": 0.4615,
+            "orthogonality_ratio": 1,
+            "closure_status": "open",
+            "touches_border": false,
+            "accepted_reason": "fallback_supported",
+            "space_kind": "counted_room",
+            "countable": true,
+            "space_classification_reason": "default_room"
+          }
+        }
+      },
+      {
+        "id": "room_auto_16",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              3372,
+              2806
+            ],
+            [
+              3372,
+              3687
+            ],
+            [
+              3673,
+              3687
+            ],
+            [
+              3673,
+              2806
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "auto",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.508
+        },
+        "relations": {
+          "areaSqFt": 106.0724,
+          "quantityRequired": 106.0724,
+          "quantityUnit": "sqft",
+          "spaceType": "counted_room",
+          "countInRoomSchedule": true,
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.508,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 3372,
+            "minY": 2806,
+            "maxX": 3673,
+            "maxY": 3687
+          },
+          "centroid": [
+            3522.5,
+            3246.5
+          ],
+          "diagnostics": {
+            "component_label": 7,
+            "candidate_component_area_px": 1029615,
+            "boundary_support_ratio": 0.28,
+            "orthogonality_ratio": 1,
+            "closure_status": "open",
+            "touches_border": false,
+            "accepted_reason": "fallback_supported",
+            "space_kind": "counted_room",
+            "countable": true,
+            "space_classification_reason": "default_room"
+          }
+        }
+      },
+      {
+        "id": "room_auto_20",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              3887.044011029474,
+              2330.176977783204
+            ],
+            [
+              3887.044011029474,
+              2530.296326578128
+            ],
+            [
+              3887.044011029474,
+              2547.066104410105
+            ],
+            [
+              3782.7125365470815,
+              2547.066104410105
+            ],
+            [
+              3782.7125365470815,
+              2858.983972084875
+            ],
+            [
+              4326.0236112101065,
+              2858.983972084875
+            ],
+            [
+              4326.0236112101065,
+              2440.8575114742516
+            ],
+            [
+              4326.0236112101065,
+              2330.176977783204
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "edited",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.7124,
+          "geometryEdited": true
+        },
+        "relations": {
+          "areaSqFt": 96.2128,
+          "quantityRequired": 96.2128,
+          "quantityUnit": "sqft",
+          "spaceType": "counted_room",
+          "countInRoomSchedule": true,
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.7124,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 3774,
+            "minY": 2330,
+            "maxX": 4326,
+            "maxY": 2803
+          },
+          "centroid": [
+            4069.065,
+            2578.426
+          ],
+          "diagnostics": {
+            "component_label": 12,
+            "candidate_component_area_px": 901529,
+            "boundary_support_ratio": 0.6207,
+            "orthogonality_ratio": 1,
+            "closure_status": "open",
+            "touches_border": false,
+            "accepted_reason": "fallback_supported",
             "space_kind": "counted_room",
             "countable": true,
             "space_classification_reason": "default_room"
@@ -1579,8 +1788,8 @@
           "confidence": 0.8768
         },
         "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
+          "areaSqFt": 19.5364,
+          "quantityRequired": 19.5364,
           "quantityUnit": "sqft",
           "spaceType": "counted_room",
           "countInRoomSchedule": true,
@@ -1598,72 +1807,9 @@
             2155.5
           ],
           "diagnostics": {
-            "component_label": 11,
-            "candidate_component_area_px": 165277,
+            "component_label": 8,
+            "candidate_component_area_px": 164573,
             "boundary_support_ratio": 0.8947,
-            "orthogonality_ratio": 1,
-            "closure_status": "open",
-            "touches_border": false,
-            "accepted_reason": "auto",
-            "space_kind": "counted_room",
-            "countable": true,
-            "space_classification_reason": "default_room"
-          }
-        }
-      },
-      {
-        "id": "room_auto_5",
-        "type": "room",
-        "geometry": {
-          "kind": "polygon",
-          "points": [
-            [
-              3383,
-              1661
-            ],
-            [
-              3383,
-              1852
-            ],
-            [
-              3663,
-              1852
-            ],
-            [
-              3663,
-              1661
-            ]
-          ]
-        },
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.94
-        },
-        "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
-          "quantityUnit": "sqft",
-          "spaceType": "counted_room",
-          "countInRoomSchedule": true,
-          "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.94,
-          "touchesBorder": false,
-          "bbox": {
-            "minX": 3383,
-            "minY": 1661,
-            "maxX": 3663,
-            "maxY": 1852
-          },
-          "centroid": [
-            3523,
-            1756.5
-          ],
-          "diagnostics": {
-            "component_label": 12,
-            "candidate_component_area_px": 173892,
-            "boundary_support_ratio": 1,
             "orthogonality_ratio": 1,
             "closure_status": "open",
             "touches_border": false,
@@ -1681,75 +1827,19 @@
           "kind": "polygon",
           "points": [
             [
-              3673,
+              3774,
               1661
             ],
             [
-              3673,
-              1845
-            ],
-            [
-              3673,
-              2064
-            ],
-            [
-              3673,
-              2233
-            ],
-            [
-              3673,
-              2485
-            ],
-            [
-              3673,
-              2875
-            ],
-            [
-              3841,
-              2875
+              3774,
+              1776
             ],
             [
               4326,
-              2875
+              1776
             ],
             [
               4326,
-              2803
-            ],
-            [
-              4326,
-              2429
-            ],
-            [
-              4326,
-              2330
-            ],
-            [
-              3904,
-              2330
-            ],
-            [
-              3904,
-              2509
-            ],
-            [
-              3857,
-              2509
-            ],
-            [
-              3857,
-              2306
-            ],
-            [
-              4326,
-              2306
-            ],
-            [
-              4326,
-              1661
-            ],
-            [
-              4132,
               1661
             ]
           ]
@@ -1758,157 +1848,31 @@
           "status": "auto",
           "locked": false,
           "visible": true,
-          "confidence": 0.8367
+          "confidence": 0.6614
         },
         "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
+          "areaSqFt": 25.392,
+          "quantityRequired": 25.392,
           "quantityUnit": "sqft",
           "spaceType": "counted_room",
           "countInRoomSchedule": true,
           "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.8367,
+          "extractionConfidence": 0.6614,
           "touchesBorder": false,
           "bbox": {
-            "minX": 3673,
+            "minX": 3774,
             "minY": 1661,
             "maxX": 4326,
-            "maxY": 2875
+            "maxY": 1776
           },
           "centroid": [
-            3999.455,
-            2265.623
+            4050,
+            1718.5
           ],
           "diagnostics": {
-            "component_label": 13,
-            "candidate_component_area_px": 2938413,
-            "boundary_support_ratio": 0.8278,
-            "orthogonality_ratio": 1,
-            "closure_status": "open",
-            "touches_border": false,
-            "accepted_reason": "auto",
-            "space_kind": "counted_room",
-            "countable": true,
-            "space_classification_reason": "default_room"
-          }
-        }
-      },
-      {
-        "id": "room_auto_7",
-        "type": "room",
-        "geometry": {
-          "kind": "polygon",
-          "points": [
-            [
-              3663,
-              1780
-            ],
-            [
-              3663,
-              1796
-            ],
-            [
-              3682,
-              1796
-            ],
-            [
-              3682,
-              1780
-            ]
-          ]
-        },
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.64
-        },
-        "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
-          "quantityUnit": "sqft",
-          "spaceType": "counted_room",
-          "countInRoomSchedule": true,
-          "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.64,
-          "touchesBorder": false,
-          "bbox": {
-            "minX": 3663,
-            "minY": 1780,
-            "maxX": 3682,
-            "maxY": 1796
-          },
-          "centroid": [
-            3672.5,
-            1788
-          ],
-          "diagnostics": {
-            "component_label": 14,
-            "candidate_component_area_px": 595,
-            "boundary_support_ratio": 0.5,
-            "orthogonality_ratio": 1,
-            "closure_status": "open",
-            "touches_border": false,
-            "accepted_reason": "fallback_supported",
-            "space_kind": "counted_room",
-            "countable": true,
-            "space_classification_reason": "default_room"
-          }
-        }
-      },
-      {
-        "id": "room_auto_8",
-        "type": "room",
-        "geometry": {
-          "kind": "polygon",
-          "points": [
-            [
-              3674,
-              3674
-            ],
-            [
-              3674,
-              3690
-            ],
-            [
-              3682,
-              3690
-            ],
-            [
-              3682,
-              3674
-            ]
-          ]
-        },
-        "attrs": {
-          "status": "auto",
-          "locked": false,
-          "visible": true,
-          "confidence": 0.79
-        },
-        "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
-          "quantityUnit": "sqft",
-          "spaceType": "counted_room",
-          "countInRoomSchedule": true,
-          "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.79,
-          "touchesBorder": false,
-          "bbox": {
-            "minX": 3674,
-            "minY": 3674,
-            "maxX": 3682,
-            "maxY": 3690
-          },
-          "centroid": [
-            3678,
-            3682
-          ],
-          "diagnostics": {
-            "component_label": 15,
-            "candidate_component_area_px": 153,
-            "boundary_support_ratio": 0.75,
+            "component_label": 10,
+            "candidate_component_area_px": 222821,
+            "boundary_support_ratio": 0.5357,
             "orthogonality_ratio": 1,
             "closure_status": "open",
             "touches_border": false,
@@ -1926,19 +1890,19 @@
           "kind": "polygon",
           "points": [
             [
-              3762,
+              3673,
               2875
             ],
             [
-              3762,
-              2896
+              3673,
+              3687
             ],
             [
-              3770,
-              2896
+              4326,
+              3687
             ],
             [
-              3770,
+              4326,
               2875
             ]
           ]
@@ -1947,35 +1911,35 @@
           "status": "auto",
           "locked": false,
           "visible": true,
-          "confidence": 0.64
+          "confidence": 0.822
         },
         "relations": {
-          "areaSqFt": 0,
-          "quantityRequired": 0,
+          "areaSqFt": 212.0944,
+          "quantityRequired": 212.0944,
           "quantityUnit": "sqft",
           "spaceType": "counted_room",
           "countInRoomSchedule": true,
           "extractionStatus": "ambiguous",
-          "extractionConfidence": 0.64,
+          "extractionConfidence": 0.822,
           "touchesBorder": false,
           "bbox": {
-            "minX": 3762,
+            "minX": 3673,
             "minY": 2875,
-            "maxX": 3770,
-            "maxY": 2896
+            "maxX": 4326,
+            "maxY": 3687
           },
           "centroid": [
-            3766,
-            2885.5
+            3999.5,
+            3281
           ],
           "diagnostics": {
-            "component_label": 18,
-            "candidate_component_area_px": 345,
-            "boundary_support_ratio": 0.5,
+            "component_label": 9,
+            "candidate_component_area_px": 1992195,
+            "boundary_support_ratio": 0.8033,
             "orthogonality_ratio": 1,
             "closure_status": "open",
             "touches_border": false,
-            "accepted_reason": "fallback_supported",
+            "accepted_reason": "auto",
             "space_kind": "counted_room",
             "countable": true,
             "space_classification_reason": "default_room"
@@ -1983,7 +1947,7 @@
         }
       },
       {
-        "id": "window_ivqorml",
+        "id": "door_1xd9f1v",
         "attrs": {
           "status": "edited",
           "geometryEdited": true,
@@ -1991,16 +1955,14 @@
           "visible": true,
           "confidence": 1
         },
-        "relations": {
-          "hostWallId": "wall_H-25"
-        },
-        "type": "window",
+        "relations": {},
+        "type": "door",
         "geometry": {
           "kind": "rect",
-          "x": 2711.227067577557,
-          "y": 3729.4544823315564,
-          "width": 330.4263687485208,
-          "height": 62.22596310249547,
+          "x": 3681.0457059610208,
+          "y": 2444.1933916152857,
+          "width": 137.84642987850646,
+          "height": 27.094265844540697,
           "rotationDeg": 0
         }
       }
@@ -2166,6 +2128,1835 @@
                 "axisSpanPx": 63,
                 "normalSpanPx": 29,
                 "rotationDeg": 90
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777413700837_d7257",
+      "revisionId": 5,
+      "parentRevisionId": 4,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:01:40.837Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_12",
+          "before": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  1545.8073555166375,
+                  1201.1208406304727
+                ],
+                [
+                  1545.8073555166375,
+                  1858.1208406304727
+                ],
+                [
+                  2156.8073555166375,
+                  1858.1208406304727
+                ],
+                [
+                  2156.8073555166375,
+                  1873.1208406304727
+                ],
+                [
+                  2527.8073555166375,
+                  1873.1208406304727
+                ],
+                [
+                  2527.8073555166375,
+                  1201.1208406304727
+                ],
+                [
+                  2292.8073555166375,
+                  1429.1208406304727
+                ],
+                [
+                  2156.8073555166375,
+                  1201.1208406304727
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2024.540864751466,
+                  1383.7488089682038
+                ],
+                [
+                  2024.540864751466,
+                  2040.7488089682038
+                ],
+                [
+                  2635.540864751466,
+                  2040.7488089682038
+                ],
+                [
+                  2635.540864751466,
+                  2055.748808968204
+                ],
+                [
+                  3006.540864751466,
+                  2055.748808968204
+                ],
+                [
+                  3006.540864751466,
+                  1383.7488089682038
+                ],
+                [
+                  2771.540864751466,
+                  1611.7488089682038
+                ],
+                [
+                  2635.540864751466,
+                  1383.7488089682038
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777413705665_ryl75",
+      "revisionId": 6,
+      "parentRevisionId": 5,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:01:45.665Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_12",
+          "before": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2024.540864751466,
+                  1383.7488089682038
+                ],
+                [
+                  2024.540864751466,
+                  2040.7488089682038
+                ],
+                [
+                  2635.540864751466,
+                  2040.7488089682038
+                ],
+                [
+                  2635.540864751466,
+                  2055.748808968204
+                ],
+                [
+                  3006.540864751466,
+                  2055.748808968204
+                ],
+                [
+                  3006.540864751466,
+                  1383.7488089682038
+                ],
+                [
+                  2771.540864751466,
+                  1611.7488089682038
+                ],
+                [
+                  2635.540864751466,
+                  1383.7488089682038
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.391796121069,
+                  1670.6159434498063
+                ],
+                [
+                  2346.391796121069,
+                  2327.6159434498063
+                ],
+                [
+                  2957.391796121069,
+                  2327.6159434498063
+                ],
+                [
+                  2957.391796121069,
+                  2342.6159434498063
+                ],
+                [
+                  3328.391796121069,
+                  2342.6159434498063
+                ],
+                [
+                  3328.391796121069,
+                  1670.6159434498063
+                ],
+                [
+                  3093.391796121069,
+                  1898.6159434498063
+                ],
+                [
+                  2957.391796121069,
+                  1670.6159434498063
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777413729907_guhnz",
+      "revisionId": 7,
+      "parentRevisionId": 6,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:02:09.908Z",
+      "operations": [
+        {
+          "kind": "create",
+          "elementId": "door_1xd9f1v",
+          "element": {
+            "id": "door_1xd9f1v",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "door",
+            "geometry": {
+              "kind": "rect",
+              "x": 3732,
+              "y": 2444,
+              "width": 72,
+              "height": 24,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777413732530_cvla1",
+      "revisionId": 8,
+      "parentRevisionId": 7,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:02:12.530Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "door_1xd9f1v",
+          "before": {
+            "id": "door_1xd9f1v",
+            "attrs": {
+              "status": "new",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "door",
+            "geometry": {
+              "kind": "rect",
+              "x": 3732,
+              "y": 2444,
+              "width": 72,
+              "height": 24,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "door_1xd9f1v",
+            "attrs": {
+              "status": "edited",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "door",
+            "geometry": {
+              "kind": "rect",
+              "x": 3680.8523143457355,
+              "y": 2444,
+              "width": 122.10385533479028,
+              "height": 23.999999999999908,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777413734116_m23n0",
+      "revisionId": 9,
+      "parentRevisionId": 8,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:02:14.116Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "door_1xd9f1v",
+          "before": {
+            "id": "door_1xd9f1v",
+            "attrs": {
+              "status": "edited",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "door",
+            "geometry": {
+              "kind": "rect",
+              "x": 3680.8523143457355,
+              "y": 2444,
+              "width": 122.10385533479028,
+              "height": 23.999999999999908,
+              "rotationDeg": 0
+            }
+          },
+          "after": {
+            "id": "door_1xd9f1v",
+            "attrs": {
+              "status": "edited",
+              "geometryEdited": true,
+              "locked": false,
+              "visible": true,
+              "confidence": 1
+            },
+            "relations": {},
+            "type": "door",
+            "geometry": {
+              "kind": "rect",
+              "x": 3681.0457059610208,
+              "y": 2444.1933916152857,
+              "width": 137.84642987850646,
+              "height": 27.094265844540697,
+              "rotationDeg": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777414174254_67ck9",
+      "revisionId": 10,
+      "parentRevisionId": 9,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:09:34.254Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_13",
+          "before": {
+            "id": "room_auto_13",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2336,
+                  2524
+                ],
+                [
+                  2336,
+                  2686
+                ],
+                [
+                  2947,
+                  2686
+                ],
+                [
+                  2947,
+                  2524
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.5275
+            },
+            "relations": {
+              "areaSqFt": 39.5928,
+              "quantityRequired": 39.5928,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.5275,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 2524,
+                "maxX": 2947,
+                "maxY": 2686
+              },
+              "centroid": [
+                2641.5,
+                2605
+              ],
+              "diagnostics": {
+                "component_label": 3,
+                "candidate_component_area_px": 362705,
+                "boundary_support_ratio": 0.3125,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_13",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2344.232035928144,
+                  2512.109281437126
+                ],
+                [
+                  2344.232035928144,
+                  2674.109281437126
+                ],
+                [
+                  2955.232035928144,
+                  2674.109281437126
+                ],
+                [
+                  2955.232035928144,
+                  2512.109281437126
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.5275
+            },
+            "relations": {
+              "areaSqFt": 39.5928,
+              "quantityRequired": 39.5928,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.5275,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 2524,
+                "maxX": 2947,
+                "maxY": 2686
+              },
+              "centroid": [
+                2641.5,
+                2605
+              ],
+              "diagnostics": {
+                "component_label": 3,
+                "candidate_component_area_px": 362705,
+                "boundary_support_ratio": 0.3125,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777415258309_dc2bp",
+      "revisionId": 11,
+      "parentRevisionId": 10,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:27:38.309Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_20",
+          "before": {
+            "id": "room_auto_20",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  3880,
+                  2330
+                ],
+                [
+                  3880,
+                  2509
+                ],
+                [
+                  3880,
+                  2524
+                ],
+                [
+                  3774,
+                  2524
+                ],
+                [
+                  3774,
+                  2803
+                ],
+                [
+                  4326,
+                  2803
+                ],
+                [
+                  4326,
+                  2429
+                ],
+                [
+                  4326,
+                  2330
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "auto",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.7124
+            },
+            "relations": {
+              "areaSqFt": 96.2128,
+              "quantityRequired": 96.2128,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.7124,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 3774,
+                "minY": 2330,
+                "maxX": 4326,
+                "maxY": 2803
+              },
+              "centroid": [
+                4069.065,
+                2578.426
+              ],
+              "diagnostics": {
+                "component_label": 12,
+                "candidate_component_area_px": 901529,
+                "boundary_support_ratio": 0.6207,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_20",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  3879.9999999999804,
+                  2330.1769777832046
+                ],
+                [
+                  3879.9999999999804,
+                  2530.296326578129
+                ],
+                [
+                  3879.9999999999804,
+                  2547.0661044101057
+                ],
+                [
+                  3773.9999999999804,
+                  2547.0661044101057
+                ],
+                [
+                  3773.9999999999804,
+                  2858.9839720848763
+                ],
+                [
+                  4325.999999999981,
+                  2858.9839720848763
+                ],
+                [
+                  4325.999999999981,
+                  2440.857511474252
+                ],
+                [
+                  4325.999999999981,
+                  2330.1769777832046
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.7124,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 96.2128,
+              "quantityRequired": 96.2128,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.7124,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 3774,
+                "minY": 2330,
+                "maxX": 4326,
+                "maxY": 2803
+              },
+              "centroid": [
+                4069.065,
+                2578.426
+              ],
+              "diagnostics": {
+                "component_label": 12,
+                "candidate_component_area_px": 901529,
+                "boundary_support_ratio": 0.6207,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777415260904_jv2x6",
+      "revisionId": 12,
+      "parentRevisionId": 11,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:27:40.904Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_20",
+          "before": {
+            "id": "room_auto_20",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  3879.9999999999804,
+                  2330.1769777832046
+                ],
+                [
+                  3879.9999999999804,
+                  2530.296326578129
+                ],
+                [
+                  3879.9999999999804,
+                  2547.0661044101057
+                ],
+                [
+                  3773.9999999999804,
+                  2547.0661044101057
+                ],
+                [
+                  3773.9999999999804,
+                  2858.9839720848763
+                ],
+                [
+                  4325.999999999981,
+                  2858.9839720848763
+                ],
+                [
+                  4325.999999999981,
+                  2440.857511474252
+                ],
+                [
+                  4325.999999999981,
+                  2330.1769777832046
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.7124,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 96.2128,
+              "quantityRequired": 96.2128,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.7124,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 3774,
+                "minY": 2330,
+                "maxX": 4326,
+                "maxY": 2803
+              },
+              "centroid": [
+                4069.065,
+                2578.426
+              ],
+              "diagnostics": {
+                "component_label": 12,
+                "candidate_component_area_px": 901529,
+                "boundary_support_ratio": 0.6207,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_20",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  3887.044011029474,
+                  2330.176977783204
+                ],
+                [
+                  3887.044011029474,
+                  2530.296326578128
+                ],
+                [
+                  3887.044011029474,
+                  2547.066104410105
+                ],
+                [
+                  3782.7125365470815,
+                  2547.066104410105
+                ],
+                [
+                  3782.7125365470815,
+                  2858.983972084875
+                ],
+                [
+                  4326.0236112101065,
+                  2858.983972084875
+                ],
+                [
+                  4326.0236112101065,
+                  2440.8575114742516
+                ],
+                [
+                  4326.0236112101065,
+                  2330.176977783204
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.7124,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 96.2128,
+              "quantityRequired": 96.2128,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.7124,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 3774,
+                "minY": 2330,
+                "maxX": 4326,
+                "maxY": 2803
+              },
+              "centroid": [
+                4069.065,
+                2578.426
+              ],
+              "diagnostics": {
+                "component_label": 12,
+                "candidate_component_area_px": 901529,
+                "boundary_support_ratio": 0.6207,
+                "orthogonality_ratio": 1,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777415267155_5bg8w",
+      "revisionId": 13,
+      "parentRevisionId": 12,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:27:47.155Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_12",
+          "before": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.391796121069,
+                  1670.6159434498063
+                ],
+                [
+                  2346.391796121069,
+                  2327.6159434498063
+                ],
+                [
+                  2957.391796121069,
+                  2327.6159434498063
+                ],
+                [
+                  2957.391796121069,
+                  2342.6159434498063
+                ],
+                [
+                  3328.391796121069,
+                  2342.6159434498063
+                ],
+                [
+                  3328.391796121069,
+                  1670.6159434498063
+                ],
+                [
+                  3093.391796121069,
+                  1898.6159434498063
+                ],
+                [
+                  2957.391796121069,
+                  1670.6159434498063
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.3830930195877,
+                  1674.5236360052722
+                ],
+                [
+                  2346.3830930195877,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  1674.5236360052722
+                ],
+                [
+                  3089.0489484925934,
+                  1901.2007645833785
+                ],
+                [
+                  2953.8380296916175,
+                  1674.5236360052722
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777415268697_vp0r4",
+      "revisionId": 14,
+      "parentRevisionId": 13,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:27:48.697Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_12",
+          "before": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.3830930195877,
+                  1674.5236360052722
+                ],
+                [
+                  2346.3830930195877,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  1674.5236360052722
+                ],
+                [
+                  3089.0489484925934,
+                  1901.2007645833785
+                ],
+                [
+                  2953.8380296916175,
+                  1674.5236360052722
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.3830930195877,
+                  1674.5236360052722
+                ],
+                [
+                  2346.3830930195877,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  1674.5236360052722
+                ],
+                [
+                  3089.0489484925934,
+                  1908.293112868339
+                ],
+                [
+                  2953.8380296916175,
+                  1674.5236360052722
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777415270291_rfn9t",
+      "revisionId": 15,
+      "parentRevisionId": 14,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:27:50.291Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_12",
+          "before": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.3830930195877,
+                  1674.5236360052722
+                ],
+                [
+                  2346.3830930195877,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  1674.5236360052722
+                ],
+                [
+                  3089.0489484925934,
+                  1908.293112868339
+                ],
+                [
+                  2953.8380296916175,
+                  1674.5236360052722
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.3830930195877,
+                  1674.5236360052722
+                ],
+                [
+                  2346.3830930195877,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  1674.5236360052722
+                ],
+                [
+                  3094.368209706314,
+                  1908.293112868339
+                ],
+                [
+                  2953.8380296916175,
+                  1674.5236360052722
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777415273410_qm6mi",
+      "revisionId": 16,
+      "parentRevisionId": 15,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:27:53.410Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_12",
+          "before": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2346.3830930195877,
+                  1674.5236360052722
+                ],
+                [
+                  2346.3830930195877,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2327.7116775658674
+                ],
+                [
+                  2953.8380296916175,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  2342.624646551269
+                ],
+                [
+                  3322.68546259722,
+                  1674.5236360052722
+                ],
+                [
+                  3094.368209706314,
+                  1908.293112868339
+                ],
+                [
+                  2953.8380296916175,
+                  1674.5236360052722
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2342.836918877108,
+                  1670.9774618627923
+                ],
+                [
+                  2342.836918877108,
+                  2324.1655034233872
+                ],
+                [
+                  2950.291855549138,
+                  2324.1655034233872
+                ],
+                [
+                  2950.291855549138,
+                  2339.078472408789
+                ],
+                [
+                  3319.1392884547404,
+                  2339.078472408789
+                ],
+                [
+                  3319.1392884547404,
+                  1670.9774618627923
+                ],
+                [
+                  3090.822035563834,
+                  1904.746938725859
+                ],
+                [
+                  2950.291855549138,
+                  1670.9774618627923
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777415280861_ub5h9",
+      "revisionId": 17,
+      "parentRevisionId": 16,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-28T22:28:00.861Z",
+      "operations": [
+        {
+          "kind": "update",
+          "elementId": "room_auto_12",
+          "before": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2342.836918877108,
+                  1670.9774618627923
+                ],
+                [
+                  2342.836918877108,
+                  2324.1655034233872
+                ],
+                [
+                  2950.291855549138,
+                  2324.1655034233872
+                ],
+                [
+                  2950.291855549138,
+                  2339.078472408789
+                ],
+                [
+                  3319.1392884547404,
+                  2339.078472408789
+                ],
+                [
+                  3319.1392884547404,
+                  1670.9774618627923
+                ],
+                [
+                  3090.822035563834,
+                  1904.746938725859
+                ],
+                [
+                  2950.291855549138,
+                  1670.9774618627923
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
+              }
+            }
+          },
+          "after": {
+            "id": "room_auto_12",
+            "type": "room",
+            "geometry": {
+              "kind": "polygon",
+              "points": [
+                [
+                  2342.8306905331087,
+                  1673.7577988080704
+                ],
+                [
+                  2342.8306905331087,
+                  2324.2336538343566
+                ],
+                [
+                  2947.7633350096094,
+                  2324.2336538343566
+                ],
+                [
+                  2947.7633350096094,
+                  2339.084700752765
+                ],
+                [
+                  3315.0792287915765,
+                  2339.084700752765
+                ],
+                [
+                  3315.0792287915765,
+                  1673.7577988080704
+                ],
+                [
+                  3087.7100014912207,
+                  1906.556611196378
+                ],
+                [
+                  2947.7633350096094,
+                  1673.7577988080704
+                ]
+              ]
+            },
+            "attrs": {
+              "status": "edited",
+              "locked": false,
+              "visible": true,
+              "confidence": 0.4522,
+              "geometryEdited": true
+            },
+            "relations": {
+              "areaSqFt": 243.378,
+              "quantityRequired": 243.378,
+              "quantityUnit": "sqft",
+              "spaceType": "counted_room",
+              "countInRoomSchedule": true,
+              "extractionStatus": "ambiguous",
+              "extractionConfidence": 0.4522,
+              "touchesBorder": false,
+              "bbox": {
+                "minX": 2336,
+                "minY": 1840,
+                "maxX": 3318,
+                "maxY": 2512
+              },
+              "centroid": [
+                2809.705,
+                2189.125
+              ],
+              "diagnostics": {
+                "component_label": 2,
+                "candidate_component_area_px": 2412061,
+                "boundary_support_ratio": 0.3537,
+                "orthogonality_ratio": 0.75,
+                "closure_status": "open",
+                "touches_border": false,
+                "accepted_reason": "fallback_supported",
+                "space_kind": "counted_room",
+                "countable": true,
+                "space_classification_reason": "default_room"
               }
             }
           }

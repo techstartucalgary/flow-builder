@@ -709,12 +709,29 @@ def _geometry_hash_payload(snapshot: TakeoffGeometrySnapshot) -> dict[str, Any]:
     }
 
 
+def _document_scale_px_per_ft(document: dict[str, Any]) -> Optional[float]:
+    if not isinstance(document, dict):
+        return None
+    base_image = document.get("baseImage")
+    if not isinstance(base_image, dict):
+        return None
+    raw = base_image.get("scalePxPerFt")
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
 def build_takeoff_geometry_snapshot(
     document: dict[str, Any],
     revision: int,
     effective_scale_px_per_ft: Optional[float],
 ) -> TakeoffGeometrySnapshot:
     raw_walls, raw_openings, image_width, image_height = _extract_raw_geometry(document)
+
+    if not effective_scale_px_per_ft or effective_scale_px_per_ft <= 0:
+        effective_scale_px_per_ft = _document_scale_px_per_ft(document)
 
     snap_tol_px = _clamp((effective_scale_px_per_ft or 0.0) * 0.20, 6.0, 18.0)
     intersection_tol_px = _clamp((effective_scale_px_per_ft or 0.0) * 0.15, 4.0, 12.0)

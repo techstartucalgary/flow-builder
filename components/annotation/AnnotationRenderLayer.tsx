@@ -23,9 +23,39 @@ function styleForStatus(status: AnnotationElement['attrs']['status']) {
   return '#22d3ee';
 }
 
+const ROOM_PALETTE = [
+  { stroke: '#22d3ee', fill: 'rgba(34,211,238,0.18)' },
+  { stroke: '#a78bfa', fill: 'rgba(167,139,250,0.18)' },
+  { stroke: '#fb7185', fill: 'rgba(251,113,133,0.16)' },
+  { stroke: '#fbbf24', fill: 'rgba(251,191,36,0.16)' },
+  { stroke: '#34d399', fill: 'rgba(52,211,153,0.17)' },
+  { stroke: '#60a5fa', fill: 'rgba(96,165,250,0.17)' },
+  { stroke: '#f472b6', fill: 'rgba(244,114,182,0.16)' },
+  { stroke: '#fb923c', fill: 'rgba(251,146,60,0.16)' },
+  { stroke: '#2dd4bf', fill: 'rgba(45,212,191,0.17)' },
+  { stroke: '#c084fc', fill: 'rgba(192,132,252,0.16)' },
+  { stroke: '#bef264', fill: 'rgba(190,242,100,0.13)' },
+  { stroke: '#38bdf8', fill: 'rgba(56,189,248,0.17)' },
+];
+
+function hashString(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function roomPaletteFor(element: AnnotationElement) {
+  const key = `${element.attrs.name || ''}:${element.id}`;
+  return ROOM_PALETTE[hashString(key) % ROOM_PALETTE.length];
+}
+
 function styleForType(element: AnnotationElement, baseStroke: string) {
   if (element.type === 'room') {
     const relations = element.relations as RoomRelations | undefined;
+    const roomStyle = roomPaletteFor(element);
     const spaceType = relations?.spaceType ?? 'counted_room';
     const countInRoomSchedule = typeof relations?.countInRoomSchedule === 'boolean'
       ? relations.countInRoomSchedule
@@ -45,26 +75,7 @@ function styleForType(element: AnnotationElement, baseStroke: string) {
       }
       return { stroke: '#cbd5e1', fill: 'rgba(148,163,184,0.09)' };
     }
-    const material = relations?.material;
-    if (material === 'hardwood') {
-      return { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.16)' };
-    }
-    if (material === 'carpet') {
-      return { stroke: '#22c55e', fill: 'rgba(34,197,94,0.16)' };
-    }
-    if (material === 'tile') {
-      return { stroke: '#38bdf8', fill: 'rgba(56,189,248,0.16)' };
-    }
-    if (material === 'vinyl') {
-      return { stroke: '#e879f9', fill: 'rgba(232,121,249,0.16)' };
-    }
-    if (material === 'laminate') {
-      return { stroke: '#f97316', fill: 'rgba(249,115,22,0.16)' };
-    }
-    return {
-      stroke: '#f8fafc',
-      fill: 'rgba(148,163,184,0.14)',
-    };
+    return roomStyle;
   }
   if (element.type === 'door') {
     return {
@@ -251,7 +262,7 @@ export default function AnnotationRenderLayer({
                 dash={dash}
                 shadowColor={shadowColor}
                 shadowBlur={shadowBlur}
-                fill={selected ? 'rgba(56,189,248,0.22)' : fill}
+                fill={selected && element.type !== 'room' ? 'rgba(56,189,248,0.22)' : fill}
                 draggable={!element.attrs.locked}
                 onClick={(e) => onSelect(element.id, Boolean(e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey))}
                 onTap={() => onSelect(element.id)}

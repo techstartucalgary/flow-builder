@@ -610,7 +610,7 @@ export default function PropertyPanel({ element, issues, revision, onApply, onFo
             </div>
           ) : element.geometry.kind === 'polygon' ? (
             <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3 text-gray-200">
-              Polygon geometry uses the extracted room boundary and is not directly editable here.
+              Select the room on the plan, then drag its corner handles or resize box to correct the detected boundary.
             </div>
           ) : (
             <>
