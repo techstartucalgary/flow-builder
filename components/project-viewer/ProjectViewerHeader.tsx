@@ -93,7 +93,7 @@ export default function ProjectViewerHeader({
                       : 'text-[var(--ws-text-secondary)] hover:bg-white/10 hover:text-white'
                   } disabled:cursor-not-allowed disabled:opacity-40`}
                 >
-                  {mode === 'annotate' ? 'Annotate' : 'Review Result'}
+                  {mode === 'annotate' ? 'Annotate' : 'Generate RFQ'}
                 </button>
               );
             })}

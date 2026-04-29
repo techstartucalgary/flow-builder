@@ -891,6 +891,15 @@ export default function ProjectViewerPage() {
     setWorkspaceMode('annotate');
   }, [actionableReviewActions, handleReviewAction, openScaleCalibration]);
 
+  const handleWorkspaceModeChange = useCallback((mode: WorkspaceMode) => {
+    if (mode === 'review') {
+      router.push(`/dashboard/projects/${projectId}/material-cost-table`);
+      return;
+    }
+
+    setWorkspaceMode('annotate');
+  }, [projectId, router]);
+
   if (loading) {
     return (
       <div className="flex items-center gap-3 text-gray-400 p-3">
@@ -923,8 +932,8 @@ export default function ProjectViewerPage() {
           saveTone={saveTone(editorSaveStatus)}
           blockerCount={workflow.blockerCount}
           workspaceMode={workspaceMode}
-          canReview={generated}
-          onWorkspaceModeChange={setWorkspaceMode}
+          canReview
+          onWorkspaceModeChange={handleWorkspaceModeChange}
           onBack={() => router.push('/dashboard/projects')}
         />
 
