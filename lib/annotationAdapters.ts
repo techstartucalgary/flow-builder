@@ -5,6 +5,7 @@ import type {
   AnnotationIssue,
   CVTakeoffResultPayload,
   PersistedAnnotationSnapshot,
+  WallRelations,
 } from '@/types/annotation';
 
 const SUPPORTED_TYPES: ReadonlySet<AnnotationElementType> = new Set(['wall', 'door', 'window', 'room']);
@@ -55,6 +56,20 @@ export function fromCVTakeoffResult(
   const issues: AnnotationIssue[] = [];
 
   for (const wall of cv.walls) {
+    const relations: WallRelations = {};
+    if (Array.isArray(wall.source_ids) && wall.source_ids.length > 0) {
+      relations.sourceWallIds = wall.source_ids;
+    }
+    if (wall.merge_kind) {
+      relations.mergeKind = wall.merge_kind;
+    }
+    if (typeof wall.fit_support_ratio === 'number') {
+      relations.fitSupportRatio = wall.fit_support_ratio;
+    }
+    if (typeof wall.merge_confidence === 'number') {
+      relations.mergeConfidence = wall.merge_confidence;
+    }
+
     elements.push({
       ...makeBaseElement('wall', `wall_${wall.id}`),
       type: 'wall',
@@ -67,7 +82,7 @@ export function fromCVTakeoffResult(
         thicknessPx: wall.visual_thickness || wall.thickness || 12,
         rotationDeg: 0,
       },
-      relations: {},
+      relations,
     });
   }
 

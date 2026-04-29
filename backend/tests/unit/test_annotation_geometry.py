@@ -98,6 +98,30 @@ class AnnotationGeometryTests(unittest.TestCase):
         self.assertEqual(len(matched), 1)
         self.assertEqual(len(unmatched), 1)
 
+    def test_parallel_saved_wall_faces_are_merged_for_takeoff(self):
+        snapshot = build_takeoff_geometry_snapshot(
+            _document([
+                {
+                    "id": "wall_face_a",
+                    "type": "wall",
+                    "geometry": {"kind": "segment", "x1": 20, "y1": 40, "x2": 180, "y2": 40, "thicknessPx": 6},
+                },
+                {
+                    "id": "wall_face_b",
+                    "type": "wall",
+                    "geometry": {"kind": "segment", "x1": 20, "y1": 60, "x2": 180, "y2": 60, "thicknessPx": 6},
+                },
+            ]),
+            revision=1,
+            effective_scale_px_per_ft=10.0,
+        )
+
+        self.assertEqual(snapshot.wall_count, 1)
+        self.assertEqual(snapshot.walls[0].start, (20, 50))
+        self.assertEqual(snapshot.walls[0].end, (180, 50))
+        self.assertEqual(set(snapshot.walls[0].source_ids), {"wall_face_a", "wall_face_b"})
+        self.assertEqual(snapshot.diagnostics["parallel_wall_face_merge_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

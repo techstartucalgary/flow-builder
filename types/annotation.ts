@@ -94,6 +94,10 @@ export interface WallRelations {
   surfaceClassSource?: WallSurfaceClassSource;
   boardSides?: 1 | 2;
   excludeFromTakeoff?: boolean;
+  sourceWallIds?: string[];
+  mergeKind?: 'single_face' | 'paired_faces';
+  fitSupportRatio?: number;
+  mergeConfidence?: number;
 }
 
 export interface RoomRelations {
@@ -274,6 +278,10 @@ export interface CVWallSegment {
   thickness: number;
   visual_thickness: number;
   length_px: number;
+  source_ids?: string[];
+  merge_kind?: 'single_face' | 'paired_faces' | null;
+  fit_support_ratio?: number | null;
+  merge_confidence?: number | null;
 }
 
 export interface CVTag {

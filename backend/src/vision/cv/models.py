@@ -52,6 +52,26 @@ class WallSegment(BaseModel):
         default=None,
         description="Why this segment was split from its parent wall, if applicable.",
     )
+    source_ids: list[str] = Field(
+        default_factory=list,
+        description="Raw detected wall IDs that contributed to this segment.",
+    )
+    merge_kind: Optional[Literal["single_face", "paired_faces"]] = Field(
+        default=None,
+        description="Whether this wall is an original face or a merged centerline.",
+    )
+    fit_support_ratio: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Wall-mask support ratio used to validate a merged centerline.",
+    )
+    merge_confidence: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for automatic wall-face merging.",
+    )
 
 
 class TagAnchor(BaseModel):
@@ -191,6 +211,10 @@ class DebugInfo(BaseModel):
     walls_from_thin_branch: int = 0
     short_segments_promoted: int = 0
     walls_suppressed_as_text: int = 0
+    wall_faces_raw: int = 0
+    wall_faces_merged: int = 0
+    wall_face_merge_candidates: int = 0
+    wall_face_merge_rejected: int = 0
     door_tags: int = 0
     window_tags: int = 0
     door_tags_raw: int = 0

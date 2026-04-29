@@ -103,6 +103,7 @@ class RawWall:
     end: tuple[int, int]
     thickness: float
     visual_thickness: float
+    source_ids: tuple[str, ...] = field(default_factory=tuple)
     surface_class: WallSurfaceClass = "unknown"
     surface_class_source: WallSurfaceClassSource = "auto"
     board_sides: Optional[int] = None
@@ -178,6 +179,7 @@ def _orthogonalize_wall(
             end=(x1, y),
             thickness=wall.thickness,
             visual_thickness=wall.visual_thickness,
+            source_ids=wall.source_ids,
             surface_class=wall.surface_class,
             surface_class_source=wall.surface_class_source,
             board_sides=wall.board_sides,
@@ -192,6 +194,7 @@ def _orthogonalize_wall(
             end=(x, y1),
             thickness=wall.thickness,
             visual_thickness=wall.visual_thickness,
+            source_ids=wall.source_ids,
             surface_class=wall.surface_class,
             surface_class_source=wall.surface_class_source,
             board_sides=wall.board_sides,
@@ -227,6 +230,8 @@ def _extract_raw_geometry(document: dict[str, Any]) -> tuple[list[RawWall], list
             if start == end:
                 continue
             thickness = _positive_float(geometry.get("thicknessPx")) or 14.0
+            raw_source_ids = relations.get("sourceWallIds")
+            source_ids = tuple(str(item) for item in raw_source_ids if item) if isinstance(raw_source_ids, list) else (element_id,)
             surface_class = str(relations.get("surfaceClass") or "").lower()
             if surface_class not in {"perimeter", "partition", "unknown"}:
                 surface_class = "unknown"
@@ -242,6 +247,7 @@ def _extract_raw_geometry(document: dict[str, Any]) -> tuple[list[RawWall], list
                     end=end,
                     thickness=thickness,
                     visual_thickness=thickness,
+                    source_ids=source_ids or (element_id,),
                     surface_class=surface_class,
                     surface_class_source=surface_class_source,
                     board_sides=board_sides,
@@ -324,6 +330,7 @@ def _snap_wall_endpoints(walls: list[RawWall], tolerance_px: float) -> tuple[lis
                 end=end,
                 thickness=wall.thickness,
                 visual_thickness=wall.visual_thickness,
+                source_ids=wall.source_ids,
                 surface_class=wall.surface_class,
                 surface_class_source=wall.surface_class_source,
                 board_sides=wall.board_sides,
@@ -406,6 +413,7 @@ def _split_walls_at_intersections(walls: list[RawWall], tolerance_px: float) -> 
                     end=end,
                     thickness=wall.thickness,
                     visual_thickness=wall.visual_thickness,
+                    source_ids=wall.source_ids or (wall.id,),
                     surface_class=wall.surface_class,
                     surface_class_source=wall.surface_class_source,
                     board_sides=wall.board_sides,
@@ -435,6 +443,106 @@ def _wall_semantics_match(left: RawWall, right: RawWall) -> bool:
     )
 
 
+def _merge_parallel_wall_faces(
+    walls: list[RawWall],
+    min_separation_px: float = 6.0,
+    max_separation_px: float = 80.0,
+    min_overlap_ratio: float = 0.82,
+    min_length_similarity: float = 0.72,
+) -> tuple[list[RawWall], int]:
+    """Conservative raster-less fallback for saved docs with duplicate faces."""
+    candidates: list[tuple[float, int, int, tuple[int, int], tuple[int, int], float]] = []
+
+    for i, left in enumerate(walls):
+        left_orientation = _wall_orientation(left.start, left.end)
+        if left_orientation == "angled":
+            continue
+        for j in range(i + 1, len(walls)):
+            right = walls[j]
+            if left_orientation != _wall_orientation(right.start, right.end):
+                continue
+            if not _wall_semantics_match(left, right):
+                continue
+
+            if left_orientation == "horizontal":
+                left_cross = (left.start[1] + left.end[1]) / 2.0
+                right_cross = (right.start[1] + right.end[1]) / 2.0
+                left_range = sorted((left.start[0], left.end[0]))
+                right_range = sorted((right.start[0], right.end[0]))
+            else:
+                left_cross = (left.start[0] + left.end[0]) / 2.0
+                right_cross = (right.start[0] + right.end[0]) / 2.0
+                left_range = sorted((left.start[1], left.end[1]))
+                right_range = sorted((right.start[1], right.end[1]))
+
+            separation = abs(left_cross - right_cross)
+            if separation < min_separation_px or separation > max_separation_px:
+                continue
+
+            overlap_start = max(left_range[0], right_range[0])
+            overlap_end = min(left_range[1], right_range[1])
+            overlap = overlap_end - overlap_start
+            left_len = max(1, left_range[1] - left_range[0])
+            right_len = max(1, right_range[1] - right_range[0])
+            overlap_ratio = overlap / max(1, min(left_len, right_len))
+            length_similarity = min(left_len, right_len) / max(left_len, right_len)
+            if overlap_ratio < min_overlap_ratio or length_similarity < min_length_similarity:
+                continue
+
+            score = overlap_ratio * 0.65 + length_similarity * 0.35
+            if left_orientation == "horizontal":
+                center = int(round((left_cross + right_cross) / 2.0))
+                start = (int(round(overlap_start)), center)
+                end = (int(round(overlap_end)), center)
+            else:
+                center = int(round((left_cross + right_cross) / 2.0))
+                start = (center, int(round(overlap_start)))
+                end = (center, int(round(overlap_end)))
+            candidates.append((score, i, j, start, end, separation))
+
+    used: set[int] = set()
+    chosen: dict[int, tuple[int, tuple[int, int], tuple[int, int], float]] = {}
+    for _score, i, j, start, end, separation in sorted(candidates, reverse=True):
+        if i in used or j in used:
+            continue
+        used.add(i)
+        used.add(j)
+        chosen[i] = (j, start, end, separation)
+
+    merged: list[RawWall] = []
+    merge_count = 0
+    for index, wall in enumerate(walls):
+        if index in chosen:
+            other_index, start, end, separation = chosen[index]
+            other = walls[other_index]
+            source_ids = tuple(sorted({*(wall.source_ids or (wall.id,)), *(other.source_ids or (other.id,))}))
+            merged.append(
+                RawWall(
+                    id=f"{wall.id}__face_merge__{other.id}",
+                    start=start,
+                    end=end,
+                    thickness=max(wall.thickness, other.thickness),
+                    visual_thickness=max(
+                        wall.visual_thickness,
+                        other.visual_thickness,
+                        separation + max(wall.thickness, other.thickness),
+                    ),
+                    source_ids=source_ids,
+                    surface_class=wall.surface_class,
+                    surface_class_source=wall.surface_class_source,
+                    board_sides=wall.board_sides,
+                    exclude_from_takeoff=wall.exclude_from_takeoff,
+                )
+            )
+            merge_count += 1
+            continue
+        if index in used:
+            continue
+        merged.append(wall)
+
+    return merged, merge_count
+
+
 def _merge_collinear_walls(
     walls: list[RawWall],
     openings: list[RawOpening],
@@ -455,7 +563,7 @@ def _merge_collinear_walls(
             group.sort(key=lambda wall: min(wall.start[1], wall.end[1]))
 
         current = group[0]
-        current_sources = [current.id]
+        current_sources = list(current.source_ids or (current.id,))
         for next_wall in group[1:]:
             if orientation == "horizontal":
                 current_start = min(current.start[0], current.end[0])
@@ -476,12 +584,13 @@ def _merge_collinear_walls(
                         end=(max(current_end, next_end), y),
                         thickness=max(current.thickness, next_wall.thickness),
                         visual_thickness=max(current.visual_thickness, next_wall.visual_thickness),
+                        source_ids=tuple(sorted({*current_sources, *(next_wall.source_ids or (next_wall.id,))})),
                         surface_class=current.surface_class,
                         surface_class_source=current.surface_class_source,
                         board_sides=current.board_sides,
                         exclude_from_takeoff=current.exclude_from_takeoff,
                     )
-                    current_sources.append(next_wall.id)
+                    current_sources.extend(next_wall.source_ids or (next_wall.id,))
                     merge_count += 1
                     continue
             else:
@@ -503,12 +612,13 @@ def _merge_collinear_walls(
                         end=(x, max(current_end, next_end)),
                         thickness=max(current.thickness, next_wall.thickness),
                         visual_thickness=max(current.visual_thickness, next_wall.visual_thickness),
+                        source_ids=tuple(sorted({*current_sources, *(next_wall.source_ids or (next_wall.id,))})),
                         surface_class=current.surface_class,
                         surface_class_source=current.surface_class_source,
                         board_sides=current.board_sides,
                         exclude_from_takeoff=current.exclude_from_takeoff,
                     )
-                    current_sources.append(next_wall.id)
+                    current_sources.extend(next_wall.source_ids or (next_wall.id,))
                     merge_count += 1
                     continue
 
@@ -530,7 +640,7 @@ def _merge_collinear_walls(
                 )
             )
             current = next_wall
-            current_sources = [current.id]
+            current_sources = list(current.source_ids or (current.id,))
 
         start, end = _canonical_segment(current.start, current.end)
         merged.append(
@@ -748,8 +858,9 @@ def build_takeoff_geometry_snapshot(
 
     snapped_walls, snapped_cluster_count = _snap_wall_endpoints(orthogonalized_walls, snap_tol_px)
     split_walls, split_segment_count = _split_walls_at_intersections(snapped_walls, intersection_tol_px)
+    face_merged_walls, face_merge_count = _merge_parallel_wall_faces(split_walls)
     normalized_walls, merged_wall_count = _merge_collinear_walls(
-        split_walls,
+        face_merged_walls,
         raw_openings,
         cross_axis_tolerance_px=intersection_tol_px,
         gap_tolerance_px=merge_gap_tol_px,
@@ -781,6 +892,7 @@ def build_takeoff_geometry_snapshot(
             "orthogonalized_wall_count": orthogonalized_count,
             "snapped_endpoint_cluster_count": snapped_cluster_count,
             "split_segment_count": split_segment_count,
+            "parallel_wall_face_merge_count": face_merge_count,
             "merged_wall_count": merged_wall_count,
             "snap_tolerance_px": round(float(snap_tol_px), 3),
             "intersection_tolerance_px": round(float(intersection_tol_px), 3),

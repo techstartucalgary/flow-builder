@@ -39,6 +39,7 @@ from src.vision.cv.preprocessing import (
     load_image,
 )
 from src.vision.cv.tag_detection import calibrate_symbols_from_legend, detect_tags
+from src.vision.cv.wall_face_merge import merge_wall_faces_to_centerlines
 from src.vision.cv.wall_detection import (
     Gap,
     detect_gaps_with_debug,
@@ -829,6 +830,7 @@ def run(
     #        Uses orientation-matched masks (h_mask for H walls,
     #        v_mask for V walls) to prevent perpendicular contamination.
     _measure_visual_thickness(walls, combined_h_mask, combined_v_mask)
+    walls, face_merge_debug = merge_wall_faces_to_centerlines(walls, combined_h_mask, combined_v_mask)
 
     # ── 5. Double-door pair grouping ───────────────────────────────────
     double_pairs = _mark_double_doors(tags)
@@ -883,6 +885,10 @@ def run(
         walls_from_thin_branch=extraction_debug["walls_from_thin_branch"],
         short_segments_promoted=extraction_debug["short_segments_promoted"],
         walls_suppressed_as_text=suppression_debug["walls_suppressed_as_text"],
+        wall_faces_raw=face_merge_debug.raw_faces,
+        wall_faces_merged=face_merge_debug.merged_pairs,
+        wall_face_merge_candidates=face_merge_debug.candidates,
+        wall_face_merge_rejected=face_merge_debug.rejected,
         door_tags_raw=tag_debug["door_tags_raw"],
         door_tags_after_dedupe=tag_debug["door_tags_after_dedupe"],
         door_tags=sum(1 for t in tags if t.tag_class == TagClass.DOOR),
