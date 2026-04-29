@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 2,
+  "latest_revision": 3,
   "document": {
     "documentId": "d05ae924-031d-4a1f-9219-78da512d8a87_page_1",
     "projectId": "d05ae924-031d-4a1f-9219-78da512d8a87",
@@ -15,12 +15,15 @@
     },
     "meta": {
       "schemaVersion": 1,
-      "source": "cv_takeoff",
+      "source": "merged",
       "createdAt": "2026-04-28T22:30:43.813Z",
-      "updatedAt": "2026-04-28T22:30:43.888Z",
-      "revision": 2,
+      "updatedAt": "2026-04-28T23:43:31.803Z",
+      "revision": 3,
       "coordinateSpaceId": "coord_fae705fdea2616aa",
-      "hasManualGeometryEdits": false
+      "hasManualGeometryEdits": false,
+      "roomExtractionVersion": "2026-04-room-review-v2",
+      "roomExtractionRevision": 2,
+      "roomExtractionStatus": "ambiguous"
     },
     "layers": {
       "wall": true,
@@ -2838,6 +2841,76 @@
             "axisSpanPx": 81,
             "normalSpanPx": 44,
             "rotationDeg": 0
+          }
+        }
+      },
+      {
+        "id": "room_auto_1",
+        "type": "room",
+        "geometry": {
+          "kind": "polygon",
+          "points": [
+            [
+              3890,
+              2477
+            ],
+            [
+              3748.83081570997,
+              2558.5075528700904
+            ],
+            [
+              3603,
+              2561
+            ],
+            [
+              3603,
+              2752
+            ],
+            [
+              3890,
+              2752
+            ]
+          ]
+        },
+        "attrs": {
+          "status": "edited",
+          "locked": false,
+          "visible": true,
+          "confidence": 0.6082,
+          "geometryEdited": true
+        },
+        "relations": {
+          "areaSqFt": 24.3124,
+          "quantityRequired": 24.3124,
+          "quantityUnit": "sqft",
+          "spaceType": "counted_room",
+          "countInRoomSchedule": true,
+          "extractionStatus": "ambiguous",
+          "extractionConfidence": 0.6082,
+          "touchesBorder": false,
+          "bbox": {
+            "minX": 3603,
+            "minY": 2477,
+            "maxX": 3890,
+            "maxY": 2752
+          },
+          "centroid": [
+            3755.936,
+            2644.382
+          ],
+          "diagnostics": {
+            "component_label": 4,
+            "component_area_px": 224332,
+            "candidate_component_area_px": 224332,
+            "boundary_support_ratio": 0.8636,
+            "orthogonality_ratio": 0.6,
+            "closure_status": "ambiguous",
+            "touches_border": false,
+            "internal_barrier_count": 0,
+            "accepted_reason": "irregular_supported",
+            "space_kind": "counted_room",
+            "countable": true,
+            "space_classification_reason": "default_room"
           }
         }
       }

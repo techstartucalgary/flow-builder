@@ -5,6 +5,7 @@ import { produce } from 'immer';
 
 import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import { safeClone } from '@/lib/clone';
+import { polygonArea, polygonBounds, polygonCentroid } from '@/lib/geometry';
 import { applyOperation, invertOperation } from '@/lib/history';
 import { createHostedOpeningGeometry } from '@/lib/openingGeometry';
 import { snapPointToWalls, snapToGrid } from '@/lib/snapping';
@@ -109,6 +110,39 @@ function operationTouchesGeometry(op: AnnotationOperation): boolean {
     return geometryChanged(op.before, op.after);
   }
   return false;
+}
+
+function roomCountsInSchedule(relations: Record<string, unknown>): boolean {
+  if (typeof relations.countInRoomSchedule === 'boolean') return relations.countInRoomSchedule;
+  return (relations.spaceType ?? 'counted_room') === 'counted_room';
+}
+
+function withDerivedRoomArea(element: AnnotationElement, scalePxPerFt?: number): AnnotationElement {
+  if (element.type !== 'room' || element.geometry.kind !== 'polygon') return element;
+  if (!scalePxPerFt || scalePxPerFt <= 0) return element;
+
+  const areaSqFt = polygonArea(element.geometry.points) / (scalePxPerFt * scalePxPerFt);
+  const bounds = polygonBounds(element.geometry.points);
+  const centroid = polygonCentroid(element.geometry.points);
+  const relations: Record<string, unknown> = {
+    ...(element.relations ?? {}),
+    areaSqFt: Number(areaSqFt.toFixed(4)),
+    quantityUnit: 'sqft',
+    extractionStatus: 'edited',
+    centroid: [Number(centroid.x.toFixed(3)), Number(centroid.y.toFixed(3))],
+    bbox: {
+      minX: Math.round(bounds.minX),
+      minY: Math.round(bounds.minY),
+      maxX: Math.round(bounds.maxX),
+      maxY: Math.round(bounds.maxY),
+    },
+  };
+  relations.quantityRequired = roomCountsInSchedule(relations) ? Number(areaSqFt.toFixed(4)) : 0;
+
+  return {
+    ...element,
+    relations,
+  } as AnnotationElement;
 }
 
 interface HistoryState {
@@ -289,30 +323,33 @@ export const useAnnotationEditorStore = create<AnnotationEditorState>((set, get)
     }
     next.attrs.status = 'edited';
     next.attrs.geometryEdited = isGeometryTrackedType(next.type) ? true : next.attrs.geometryEdited;
+    const after = withDerivedRoomArea(next, state.document?.baseImage.scalePxPerFt);
 
     const op: AnnotationOperation = {
       kind: 'update',
       elementId: id,
       before: element,
-      after: next,
+      after,
     };
     get().applyOperation(op, true);
   },
 
   updateElement: (element) => {
-    const current = get().entities.byId[element.id];
+    const state = get();
+    const current = state.entities.byId[element.id];
     if (!current) return;
     const next = safeClone(element);
     next.attrs.status = next.attrs.status === 'auto' ? 'edited' : next.attrs.status;
     if (isGeometryTrackedType(next.type) && geometryChanged(current, next)) {
       next.attrs.geometryEdited = true;
     }
+    const after = withDerivedRoomArea(next, state.document?.baseImage.scalePxPerFt);
 
     const op: AnnotationOperation = {
       kind: 'update',
       elementId: element.id,
       before: current,
-      after: next,
+      after,
     };
     get().applyOperation(op, true);
   },
