@@ -1060,6 +1060,8 @@ export default function AnnotationEditorShell({
           toolMode={toolMode}
           onToolChange={setToolMode}
           scaleSet={Boolean(document.baseImage.scalePxPerFt)}
+          showBaseImage={showBaseImage}
+          onShowBaseImageChange={setShowBaseImage}
         />
       </div>
 

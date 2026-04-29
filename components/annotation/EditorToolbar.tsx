@@ -1,6 +1,6 @@
 'use client';
 
-import { BrickWall, DoorOpen, Grid3x3, MousePointer2, Percent, Square, SquareDashed } from 'lucide-react';
+import { BrickWall, DoorOpen, FileImage, Grid3x3, MousePointer2, Percent, Square, SquareDashed, Waypoints } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { ToolMode } from '@/types/annotation';
@@ -9,6 +9,8 @@ interface EditorToolbarProps {
   toolMode: ToolMode;
   onToolChange: (mode: ToolMode) => void;
   scaleSet: boolean;
+  showBaseImage: boolean;
+  onShowBaseImageChange: (show: boolean) => void;
 }
 
 const PRIMARY_TOOLS: Array<{
@@ -28,6 +30,8 @@ export default function EditorToolbar({
   toolMode,
   onToolChange,
   scaleSet,
+  showBaseImage,
+  onShowBaseImageChange,
 }: EditorToolbarProps) {
   return (
     <div className="annotation-tool-palette">
@@ -57,6 +61,29 @@ export default function EditorToolbar({
         <SquareDashed size={14} />
         {scaleSet ? 'Scale Set' : 'Set Scale'}
       </span>
+
+      <div className="annotation-tool-divider" />
+
+      <div className="annotation-view-toggle" aria-label="Canvas view">
+        <button
+          type="button"
+          onClick={() => onShowBaseImageChange(true)}
+          aria-pressed={showBaseImage}
+          data-active={showBaseImage ? 'true' : undefined}
+        >
+          <FileImage size={15} />
+          <span>Plan</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onShowBaseImageChange(false)}
+          aria-pressed={!showBaseImage}
+          data-active={!showBaseImage ? 'true' : undefined}
+        >
+          <Waypoints size={15} />
+          <span>Vector</span>
+        </button>
+      </div>
     </div>
   );
 }
