@@ -568,54 +568,84 @@ body {
   }
 
   .workflow-stepper {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.55rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     margin-top: 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .workflow-stepper::-webkit-scrollbar {
+    display: none;
   }
 
   .workflow-step {
-    border: 1px solid var(--ws-border);
+    min-width: 0;
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    border: 1px solid transparent;
     border-radius: 0.8rem;
-    background: rgba(15, 23, 42, 0.55);
-    padding: 0.62rem 0.7rem;
+    background: transparent;
+    padding: 0.46rem 0.55rem;
     text-align: left;
-    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, color 160ms ease;
+  }
+
+  .workflow-step[data-state='upcoming'] {
+    border-color: rgba(148, 163, 184, 0.2);
+    background: rgba(15, 23, 42, 0.5);
   }
 
   .workflow-step:hover {
-    border-color: rgba(148, 163, 184, 0.28);
+    border-color: rgba(148, 163, 184, 0.32);
     background: rgba(30, 41, 59, 0.52);
     transform: translateY(-1px);
   }
 
-  .workflow-step[data-current='true'] {
+  .workflow-step[data-state='current'] {
     border-color: rgba(34, 211, 238, 0.45);
-    background: rgba(14, 116, 144, 0.2);
+    background: rgba(8, 47, 73, 0.34);
   }
 
-  .workflow-step-number {
-    color: var(--ws-text-muted);
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.11em;
-    text-transform: uppercase;
+  .workflow-step[data-state='complete'] {
+    background: rgba(14, 116, 144, 0.12);
   }
 
-  .workflow-step[data-current='true'] .workflow-step-number {
-    color: #a5f3fc;
+  .workflow-step-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .workflow-step-title {
-    margin-top: 0.12rem;
     color: #e2e8f0;
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 650;
     line-height: 1.2;
+    white-space: nowrap;
   }
 
-  .workflow-step[data-current='true'] .workflow-step-title {
+  .workflow-step[data-state='current'] .workflow-step-title {
     color: white;
+  }
+
+  .workflow-step-connector {
+    flex: 0 0 clamp(2rem, 3.6vw, 2.8rem);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(100, 116, 139, 0.72);
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    font-weight: 800;
+    line-height: 1;
+    transform: translateY(-1px);
+  }
+
+  .workflow-step-connector[data-state='complete'] {
+    color: rgba(103, 232, 249, 0.9);
   }
 
   .rail-input {

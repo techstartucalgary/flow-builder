@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Settings, Share2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -15,12 +15,6 @@ interface WorkflowWorkspaceShellProps {
   centerRail: ReactNode;
   rightRail: ReactNode;
 }
-
-const STEP_LABELS: Record<WorkflowStep, string> = {
-  'material-cost': 'Step 1 of 3',
-  'derived-materials': 'Step 2 of 3',
-  'rfq-scope': 'Step 3 of 3',
-};
 
 const STEP_ORDER: WorkflowStep[] = ['material-cost', 'derived-materials', 'rfq-scope'];
 const STEP_TITLES: Record<WorkflowStep, string> = {
@@ -44,6 +38,7 @@ export default function WorkflowWorkspaceShell({
 }: WorkflowWorkspaceShellProps) {
   const router = useRouter();
   const [projectName, setProjectName] = useState(`Project ${projectId.slice(0, 8)}`);
+  const currentStepIndex = STEP_ORDER.indexOf(currentStep);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +88,6 @@ export default function WorkflowWorkspaceShell({
                     Project: {projectName}
                   </h1>
                   <span className="ws-chip" data-tone="good">Saved</span>
-                  <span className="ws-chip" data-tone="accent">{STEP_LABELS[currentStep]}</span>
                 </div>
               </div>
             </div>
@@ -132,19 +126,35 @@ export default function WorkflowWorkspaceShell({
             </div>
           </div>
 
-          <div className="workflow-stepper">
-            {STEP_ORDER.map((step, index) => (
-              <button
-                key={step}
-                type="button"
-                data-current={step === currentStep ? 'true' : 'false'}
-                onClick={() => router.push(`/dashboard/projects/${projectId}/${STEP_ROUTES[step]}`)}
-                className="workflow-step"
-              >
-                <div className="workflow-step-number">Step {index + 1}</div>
-                <div className="workflow-step-title">{STEP_TITLES[step]}</div>
-              </button>
-            ))}
+          <div className="workflow-stepper" role="navigation" aria-label="Workflow path">
+            {STEP_ORDER.map((step, index) => {
+              const state = index < currentStepIndex ? 'complete' : index === currentStepIndex ? 'current' : 'upcoming';
+
+              return (
+                <Fragment key={step}>
+                  <button
+                    type="button"
+                    data-state={state}
+                    aria-current={state === 'current' ? 'step' : undefined}
+                    onClick={() => router.push(`/dashboard/projects/${projectId}/${STEP_ROUTES[step]}`)}
+                    className="workflow-step"
+                  >
+                    <span className="workflow-step-copy">
+                      <span className="workflow-step-title">{STEP_TITLES[step]}</span>
+                    </span>
+                  </button>
+                  {index < STEP_ORDER.length - 1 ? (
+                    <span
+                      className="workflow-step-connector"
+                      data-state={index < currentStepIndex ? 'complete' : 'upcoming'}
+                      aria-hidden="true"
+                    >
+                      ➜
+                    </span>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </div>
         </header>
 
