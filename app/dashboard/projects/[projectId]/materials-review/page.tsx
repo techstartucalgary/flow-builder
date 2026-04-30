@@ -200,16 +200,12 @@ export default function MaterialsReviewPage() {
               </div>
             </section>
 
-            <section className="mt-4 space-y-3">
-              <button type="button" onClick={handleContinueToRfq} className="primary-action-button">
+            <section className="mt-4 workflow-action-stack">
+              <div className="rounded-xl border border-cyan-300/18 bg-cyan-500/8 px-3 py-2 text-xs text-cyan-100">
+                Next: generate RFQ scope from these reviewed materials.
+              </div>
+              <button type="button" onClick={handleContinueToRfq} className="workflow-action-btn workflow-action-btn-primary">
                 Generate RFQ
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/dashboard/projects/${projectId}/material-cost-table`)}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-[var(--ws-border)] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-              >
-                Back to Cost
               </button>
             </section>
           </div>

@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts';
 import { supabase } from '@/lib/supabase';
 import {
+  calculateProjectTotal,
+  readSavedCostRows,
+  readSavedMaterials,
+  readSavedRfqSummary,
+} from '@/lib/mockWorkflowData';
+import {
   ArrowUpRight,
   Check,
   ChevronDown,
@@ -53,6 +59,14 @@ type DashboardProject = {
   source: 'supabase' | 'fallback';
   fileMime: string;
   recentActivity: ProjectActivityItem[];
+};
+
+type WorkflowSnapshot = {
+  estimatedValue: number | null;
+  revisions: number;
+  activeTakeoffs: number;
+  hasGenerated: boolean;
+  hasProgress: boolean;
 };
 
 type FallbackProjectSeed = {
@@ -251,11 +265,10 @@ function buildDashboardProject(params: {
   };
 }
 
-function buildProjectQuickStats(project: DashboardProject) {
-  const seed = hashString(project.id);
+function buildProjectQuickStats(project: DashboardProject, snapshot: WorkflowSnapshot | null) {
   const planFiles = project.fileMime === 'application/pdf' ? 1 : 1;
-  const activeTakeoffs = project.status === 'In Progress' ? 1 : 0;
-  const revisionCount = Math.max(1, project.recentActivity.length + (seed % 4));
+  const activeTakeoffs = snapshot ? snapshot.activeTakeoffs : project.status === 'In Progress' ? 1 : 0;
+  const revisionCount = snapshot ? Math.max(1, snapshot.revisions) : Math.max(1, project.recentActivity.length);
 
   return [
     { label: 'Plan Files', value: NUMBER_FORMAT.format(planFiles) },
@@ -263,6 +276,29 @@ function buildProjectQuickStats(project: DashboardProject) {
     { label: 'Revisions', value: NUMBER_FORMAT.format(revisionCount) },
     { label: 'Active Takeoffs', value: NUMBER_FORMAT.format(activeTakeoffs) },
   ];
+}
+
+function readWorkflowSnapshot(projectId: string): WorkflowSnapshot {
+  const costRows = readSavedCostRows(projectId);
+  const hasCostRows = Boolean(costRows?.length);
+  const hasMaterials = Boolean(readSavedMaterials(projectId)?.length);
+  const hasGenerated = Boolean(readSavedRfqSummary(projectId));
+
+  const estimatedValue = hasCostRows && costRows
+    ? Math.round(calculateProjectTotal(costRows))
+    : null;
+
+  const revisions = [hasCostRows, hasMaterials, hasGenerated].filter(Boolean).length;
+  const hasProgress = hasCostRows || hasMaterials || hasGenerated;
+  const activeTakeoffs = hasGenerated ? 0 : hasProgress ? 1 : 0;
+
+  return {
+    estimatedValue,
+    revisions,
+    activeTakeoffs,
+    hasGenerated,
+    hasProgress,
+  };
 }
 
 export default function ProjectsPage() {
@@ -280,6 +316,7 @@ export default function ProjectsPage() {
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [detailsProjectId, setDetailsProjectId] = useState<string | null>(null);
   const [launchingProjectId, setLaunchingProjectId] = useState<string | null>(null);
+  const [workflowRefreshToken, setWorkflowRefreshToken] = useState(0);
 
   const [projectOverrides, setProjectOverrides] = useState<
     Record<string, { buildingType: BuildingType; status: ProjectStatus; estimatedValue: number }>
@@ -298,6 +335,30 @@ export default function ProjectsPage() {
     if (!user?.id) return;
     void fetchProjects(user.id);
   }, [user?.id]);
+
+  useEffect(() => {
+    const refresh = () => setWorkflowRefreshToken((current) => current + 1);
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key.startsWith('flowbuildr:workflow:')) {
+        refresh();
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   const supabaseProjects = useMemo<DashboardProject[]>(() => {
     return projects.map((project) =>
@@ -340,8 +401,29 @@ export default function ProjectsPage() {
     return [...supabaseProjects, ...fallbackActive, ...fallbackStatic];
   }, [fallbackProjects, supabaseProjects]);
 
+  const workflowSnapshots = useMemo(() => {
+    const snapshots = new Map<string, WorkflowSnapshot>();
+    dashboardProjects.forEach((project) => {
+      snapshots.set(project.id, readWorkflowSnapshot(project.id));
+    });
+    return snapshots;
+  }, [dashboardProjects, workflowRefreshToken]);
+
+  const liveDashboardProjects = useMemo(() => {
+    return dashboardProjects.map((project) => {
+      const snapshot = workflowSnapshots.get(project.id);
+      if (!snapshot) return project;
+
+      return {
+        ...project,
+        estimatedValue: snapshot.estimatedValue ?? project.estimatedValue,
+        status: snapshot.hasGenerated ? 'Ready' : snapshot.hasProgress ? 'In Progress' : project.status,
+      };
+    });
+  }, [dashboardProjects, workflowSnapshots]);
+
   const filteredProjects = useMemo(() => {
-    return dashboardProjects
+    return liveDashboardProjects
       .filter((project) => project.bucket === scope)
       .filter((project) => {
         if (statusFilter === 'all') return true;
@@ -354,7 +436,7 @@ export default function ProjectsPage() {
         return project.estimatedValue >= 200000;
       })
       .filter((project) => project.name.toLowerCase().includes(query.trim().toLowerCase()));
-  }, [dashboardProjects, query, scope, statusFilter, valueFilter]);
+  }, [liveDashboardProjects, query, scope, statusFilter, valueFilter]);
 
   const selectedRowProject = useMemo(
     () => filteredProjects.find((project) => project.id === selectedRowId) ?? filteredProjects[0] ?? null,
@@ -362,12 +444,17 @@ export default function ProjectsPage() {
   );
 
   const detailsProject = useMemo(
-    () => dashboardProjects.find((project) => project.id === detailsProjectId) ?? null,
-    [dashboardProjects, detailsProjectId],
+    () => liveDashboardProjects.find((project) => project.id === detailsProjectId) ?? null,
+    [liveDashboardProjects, detailsProjectId],
+  );
+
+  const detailsSnapshot = useMemo(
+    () => (detailsProject ? workflowSnapshots.get(detailsProject.id) ?? null : null),
+    [detailsProject, workflowSnapshots],
   );
 
   const quickStats = useMemo(() => {
-    const activeProjects = dashboardProjects.filter((project) => project.bucket === 'active');
+    const activeProjects = liveDashboardProjects.filter((project) => project.bucket === 'active');
     const readyCount = activeProjects.filter((project) => project.status === 'Ready').length;
     const inProgressCount = activeProjects.filter((project) => project.status === 'In Progress').length;
     const totalValue = activeProjects.reduce((sum, project) => sum + project.estimatedValue, 0);
@@ -383,7 +470,7 @@ export default function ProjectsPage() {
       activeTakeoffs: Math.max(1, inProgressCount),
       recentUpdates,
     };
-  }, [dashboardProjects]);
+  }, [liveDashboardProjects]);
 
   const portfolioOverview = useMemo(() => {
     const totalProjects = filteredProjects.length;
@@ -400,8 +487,8 @@ export default function ProjectsPage() {
   }, [filteredProjects]);
 
   const detailsQuickStats = useMemo(
-    () => (detailsProject ? buildProjectQuickStats(detailsProject) : []),
-    [detailsProject],
+    () => (detailsProject ? buildProjectQuickStats(detailsProject, detailsSnapshot) : []),
+    [detailsProject, detailsSnapshot],
   );
 
   useEffect(() => {
@@ -415,11 +502,21 @@ export default function ProjectsPage() {
   }, [filteredProjects, selectedRowId]);
 
   useEffect(() => {
+    if (!selectedRowProject) {
+      setDetailsProjectId(null);
+      return;
+    }
+    if (detailsProjectId !== selectedRowProject.id) {
+      setDetailsProjectId(selectedRowProject.id);
+    }
+  }, [detailsProjectId, selectedRowProject]);
+
+  useEffect(() => {
     if (!detailsProjectId) return;
-    if (!dashboardProjects.some((project) => project.id === detailsProjectId)) {
+    if (!liveDashboardProjects.some((project) => project.id === detailsProjectId)) {
       setDetailsProjectId(null);
     }
-  }, [dashboardProjects, detailsProjectId]);
+  }, [detailsProjectId, liveDashboardProjects]);
 
   async function fetchProjects(userId: string) {
     try {
@@ -591,14 +688,14 @@ export default function ProjectsPage() {
             <SidebarItem
               label="Archived"
               icon={<FolderArchive size={16} />}
-              count={dashboardProjects.filter((project) => project.bucket === 'archived').length}
+              count={liveDashboardProjects.filter((project) => project.bucket === 'archived').length}
               active={scope === 'archived'}
               onClick={() => setScope('archived')}
             />
             <SidebarItem
               label="Templates"
               icon={<LayoutTemplate size={16} />}
-              count={dashboardProjects.filter((project) => project.bucket === 'templates').length}
+              count={liveDashboardProjects.filter((project) => project.bucket === 'templates').length}
               active={scope === 'templates'}
               onClick={() => setScope('templates')}
             />

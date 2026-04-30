@@ -22,6 +22,18 @@ const STEP_LABELS: Record<WorkflowStep, string> = {
   'rfq-scope': 'Step 3 of 3',
 };
 
+const STEP_ORDER: WorkflowStep[] = ['material-cost', 'derived-materials', 'rfq-scope'];
+const STEP_TITLES: Record<WorkflowStep, string> = {
+  'material-cost': 'Material Cost',
+  'derived-materials': 'Derived Materials',
+  'rfq-scope': 'RFQ Scope',
+};
+const STEP_ROUTES: Record<WorkflowStep, string> = {
+  'material-cost': 'material-cost-table',
+  'derived-materials': 'materials-review',
+  'rfq-scope': 'rfq-scope',
+};
+
 export default function WorkflowWorkspaceShell({
   projectId,
   currentStep,
@@ -118,6 +130,21 @@ export default function WorkflowWorkspaceShell({
                 </button>
               </div>
             </div>
+          </div>
+
+          <div className="workflow-stepper">
+            {STEP_ORDER.map((step, index) => (
+              <button
+                key={step}
+                type="button"
+                data-current={step === currentStep ? 'true' : 'false'}
+                onClick={() => router.push(`/dashboard/projects/${projectId}/${STEP_ROUTES[step]}`)}
+                className="workflow-step"
+              >
+                <div className="workflow-step-number">Step {index + 1}</div>
+                <div className="workflow-step-title">{STEP_TITLES[step]}</div>
+              </button>
+            ))}
           </div>
         </header>
 

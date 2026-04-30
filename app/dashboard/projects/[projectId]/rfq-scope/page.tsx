@@ -9,25 +9,20 @@ import {
   mockRfqScopeRows,
   mockSheets,
   readSavedMaterials,
+  readSavedRfqSummary,
   rfqScopeActions,
   rfqScopeColumns,
   rfqScopeFilters,
   rfqScopeSorts,
   type DerivedMaterialRow,
   type RfqScopeRow,
+  type SavedRfqSummary,
   type WorkflowSheet,
+  writeSavedRfqSummary,
 } from '@/lib/mockWorkflowData';
 
 type SortMode = (typeof rfqScopeSorts)[number];
 type FilterMode = (typeof rfqScopeFilters)[number];
-
-type RfqGenerationSummary = {
-  createdAt: string;
-  sheetCode: string;
-  sheetName: string;
-  lineItemCount: number;
-  quantityTotal: number;
-};
 
 function createDefaultSheets(): WorkflowSheet[] {
   return mockSheets.map((sheet) => ({ ...sheet }));
@@ -52,7 +47,7 @@ export default function RfqScopePage() {
   const [filterMode, setFilterMode] = useState<FilterMode>('All');
   const [sortMode, setSortMode] = useState<SortMode>('Default');
   const [showMorePanel, setShowMorePanel] = useState(false);
-  const [summary, setSummary] = useState<RfqGenerationSummary | null>(null);
+  const [summary, setSummary] = useState<SavedRfqSummary | null>(null);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [previewAt, setPreviewAt] = useState<string | null>(null);
 
@@ -60,6 +55,13 @@ export default function RfqScopePage() {
     const savedMaterials = readSavedMaterials(projectId);
     if (!savedMaterials?.length) return;
     setRows(buildRfqScopeFromMaterials(savedMaterials as DerivedMaterialRow[]));
+  }, [projectId]);
+
+  useEffect(() => {
+    const savedSummary = readSavedRfqSummary(projectId);
+    if (savedSummary) {
+      setSummary(savedSummary);
+    }
   }, [projectId]);
 
   const selectedSheet = useMemo(
@@ -113,13 +115,15 @@ export default function RfqScopePage() {
 
   const handleGenerateRfq = () => {
     const now = new Date();
-    setSummary({
+    const nextSummary: SavedRfqSummary = {
       createdAt: now.toLocaleString(),
       sheetCode: selectedSheet.code,
       sheetName: selectedSheet.name,
       lineItemCount: visibleRows.length,
       quantityTotal: totalQuantity,
-    });
+    };
+    setSummary(nextSummary);
+    writeSavedRfqSummary(projectId, nextSummary);
   };
 
   const cycleFilter = () => {
@@ -143,33 +147,19 @@ export default function RfqScopePage() {
         <>
           <div className="border-b border-[var(--ws-divider)] px-4 py-3">
             <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">RFQ Sections</h2>
-            <div className="mt-1 text-xs text-[var(--ws-text-muted)]">Sheets and scope buckets</div>
+            <div className="mt-1 text-xs text-[var(--ws-text-muted)]">Follow this order for clean output</div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-3 dark-scrollbar">
             <div className="space-y-2">
-              {sheets.map((sheet) => {
-                const selected = sheet.status === 'Selected';
-                return (
-                  <button
-                    key={sheet.id}
-                    type="button"
-                    onClick={() => updateSheet(sheet.id)}
-                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition ${
-                      selected
-                        ? 'border-cyan-300/45 bg-cyan-400/15'
-                        : 'border-[var(--ws-border)] bg-white/[0.04] hover:bg-white/[0.08]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-white">{sheet.code}</span>
-                      <span className="ws-chip" data-tone={selected ? 'accent' : 'good'}>
-                        {selected ? 'Selected' : 'Ready'}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-[var(--ws-text-secondary)]">{sheet.name}</div>
-                  </button>
-                );
-              })}
+              <div className="rounded-lg border border-[var(--ws-border)] bg-white/[0.04] px-3 py-2.5 text-sm text-white">
+                1. Select sheet
+              </div>
+              <div className="rounded-lg border border-[var(--ws-border)] bg-white/[0.04] px-3 py-2.5 text-sm text-white">
+                2. Review/edit scope rows
+              </div>
+              <div className="rounded-lg border border-[var(--ws-border)] bg-white/[0.04] px-3 py-2.5 text-sm text-white">
+                3. Preview then generate RFQ
+              </div>
             </div>
           </div>
         </>
@@ -366,32 +356,26 @@ export default function RfqScopePage() {
               </div>
             </section>
 
-            <section className="mt-4 space-y-3">
-              <button
-                type="button"
-                onClick={() => setDraftSavedAt(new Date().toLocaleString())}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-[var(--ws-border)] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-              >
-                Save Draft
-              </button>
+            <section className="mt-4 workflow-action-stack">
               <button
                 type="button"
                 onClick={() => setPreviewAt(new Date().toLocaleString())}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-[var(--ws-border)] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+                className="workflow-action-btn workflow-action-btn-secondary"
               >
                 Preview RFQ
               </button>
-              <button type="button" onClick={handleGenerateRfq} className="primary-action-button">
+              <button type="button" onClick={handleGenerateRfq} className="workflow-action-btn workflow-action-btn-primary">
                 Generate RFQ
               </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/dashboard/projects/${projectId}/materials-review`)}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-[var(--ws-border)] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-              >
-                Back to Materials
-              </button>
             </section>
+
+            <button
+              type="button"
+              onClick={() => setDraftSavedAt(new Date().toLocaleString())}
+              className="mt-2 w-full workflow-action-link"
+            >
+              Save Draft
+            </button>
 
             {draftSavedAt ? (
               <section className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-3 text-sm text-cyan-100">
@@ -416,4 +400,3 @@ export default function RfqScopePage() {
     />
   );
 }
-

@@ -34,6 +34,14 @@ export type WorkflowSheet = {
   status: 'Selected' | 'Ready';
 };
 
+export type SavedRfqSummary = {
+  createdAt: string;
+  sheetCode: string;
+  sheetName: string;
+  lineItemCount: number;
+  quantityTotal: number;
+};
+
 export const materialCostColumns = ['Item', 'Derived Quantity', 'Unit', 'Unit Cost', 'Labor Cost', 'Markup', 'Total'] as const;
 export const derivedMaterialColumns = ['Material Name', 'Derived Quantity', 'Unit', 'Source Measurement', 'Status'] as const;
 export const rfqScopeColumns = ['Item', 'Description', 'Quantity', 'Unit', 'Notes'] as const;
@@ -266,4 +274,14 @@ export function readSavedMaterials(projectId: string): DerivedMaterialRow[] | nu
 export function writeSavedMaterials(projectId: string, rows: DerivedMaterialRow[]): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(workflowStorageKey(projectId, 'materials'), JSON.stringify(rows));
+}
+
+export function readSavedRfqSummary(projectId: string): SavedRfqSummary | null {
+  if (typeof window === 'undefined') return null;
+  return safeParse<SavedRfqSummary>(window.localStorage.getItem(workflowStorageKey(projectId, 'rfqSummary')));
+}
+
+export function writeSavedRfqSummary(projectId: string, summary: SavedRfqSummary): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(workflowStorageKey(projectId, 'rfqSummary'), JSON.stringify(summary));
 }

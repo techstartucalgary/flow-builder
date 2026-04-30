@@ -228,19 +228,24 @@ export default function MaterialCostTablePage() {
             </section>
 
             <section className="mt-4">
-              <button type="button" onClick={handleSaveDraft} className="primary-action-button">
+              <div className="mb-3 rounded-xl border border-cyan-300/18 bg-cyan-500/8 px-3 py-2 text-xs text-cyan-100">
+                Next: review derived materials before generating RFQ scope.
+              </div>
+              <div className="workflow-action-stack">
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  className="workflow-action-btn workflow-action-btn-primary"
+                >
+                  Continue to Derived Materials
+                </button>
+              </div>
+              <button type="button" onClick={handleSaveDraft} className="mt-2 w-full workflow-action-link">
                 Save Draft
               </button>
               {savedAt ? (
                 <div className="mt-2 text-xs text-[var(--ws-text-secondary)]">Draft saved at {savedAt}</div>
               ) : null}
-              <button
-                type="button"
-                onClick={handleContinue}
-                className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-400/20 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/30"
-              >
-                Continue to Derived Materials
-              </button>
             </section>
           </div>
         </>

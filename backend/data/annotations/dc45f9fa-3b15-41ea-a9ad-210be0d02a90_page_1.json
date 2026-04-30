@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "latest_revision": 23,
+  "latest_revision": 24,
   "document": {
     "documentId": "dc45f9fa-3b15-41ea-a9ad-210be0d02a90_page_1",
     "projectId": "dc45f9fa-3b15-41ea-a9ad-210be0d02a90",
@@ -17,8 +17,8 @@
       "schemaVersion": 1,
       "source": "cv_takeoff",
       "createdAt": "2026-04-29T23:33:47.060Z",
-      "updatedAt": "2026-04-29T23:45:45.543Z",
-      "revision": 23,
+      "updatedAt": "2026-04-30T00:06:20.976Z",
+      "revision": 24,
       "coordinateSpaceId": "coord_fae705fdea2616aa",
       "hasManualGeometryEdits": false,
       "roomExtractionVersion": "2026-04-room-review-v2",
@@ -1354,53 +1354,6 @@
             ],
             "axisSpanPx": 186,
             "normalSpanPx": 12,
-            "rotationDeg": 90
-          }
-        }
-      },
-      {
-        "id": "window_OP-03",
-        "type": "window",
-        "attrs": {
-          "status": "auto",
-          "geometryEdited": false,
-          "locked": false,
-          "visible": true,
-          "confidence": 0.59
-        },
-        "geometry": {
-          "kind": "rect",
-          "x": 3649,
-          "y": 2126,
-          "width": 29,
-          "height": 63,
-          "rotationDeg": 0
-        },
-        "relations": {
-          "hostWallId": "wall_V-11",
-          "source": "fused",
-          "confidence": 0.59,
-          "tagIds": [
-            "W-03"
-          ],
-          "verification": {
-            "openingPixelsScore": 0.44,
-            "wallBreakScore": 0.28,
-            "classificationScore": 0.59,
-            "doorFeatureScore": 0,
-            "windowFeatureScore": 0.75,
-            "tagAlignmentScore": 0.55,
-            "verificationMode": "window_frame_recovered",
-            "hostGapId": null,
-            "hostScore": 0.62,
-            "symbolSource": "legend_calibrated",
-            "legendSymbolId": "legend_window_hex",
-            "projectedCenter": [
-              3663,
-              2157
-            ],
-            "axisSpanPx": 63,
-            "normalSpanPx": 29,
             "rotationDeg": 90
           }
         }
@@ -3551,6 +3504,66 @@
                 "space_kind": "counted_room",
                 "countable": true,
                 "space_classification_reason": "default_room"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "evt_1777507580976_at4kl",
+      "revisionId": 24,
+      "parentRevisionId": 23,
+      "actorId": "8bc94208-1215-427e-be1f-201ff4e9ab0a",
+      "timestamp": "2026-04-30T00:06:20.976Z",
+      "operations": [
+        {
+          "kind": "delete",
+          "elementId": "window_OP-03",
+          "element": {
+            "id": "window_OP-03",
+            "type": "window",
+            "attrs": {
+              "status": "auto",
+              "geometryEdited": false,
+              "locked": false,
+              "visible": true,
+              "confidence": 0.59
+            },
+            "geometry": {
+              "kind": "rect",
+              "x": 3649,
+              "y": 2126,
+              "width": 29,
+              "height": 63,
+              "rotationDeg": 0
+            },
+            "relations": {
+              "hostWallId": "wall_V-11",
+              "source": "fused",
+              "confidence": 0.59,
+              "tagIds": [
+                "W-03"
+              ],
+              "verification": {
+                "openingPixelsScore": 0.44,
+                "wallBreakScore": 0.28,
+                "classificationScore": 0.59,
+                "doorFeatureScore": 0,
+                "windowFeatureScore": 0.75,
+                "tagAlignmentScore": 0.55,
+                "verificationMode": "window_frame_recovered",
+                "hostGapId": null,
+                "hostScore": 0.62,
+                "symbolSource": "legend_calibrated",
+                "legendSymbolId": "legend_window_hex",
+                "projectedCenter": [
+                  3663,
+                  2157
+                ],
+                "axisSpanPx": 63,
+                "normalSpanPx": 29,
+                "rotationDeg": 90
               }
             }
           }
