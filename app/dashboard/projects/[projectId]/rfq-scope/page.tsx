@@ -5,11 +5,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowDownWideNarrow, Ellipsis, SlidersHorizontal } from 'lucide-react';
 import WorkflowWorkspaceShell from '@/components/project-workflow/WorkflowWorkspaceShell';
 import {
+  buildCostRowsFromTakeoff,
+  buildMaterialsFromCostRows,
   buildRfqScopeFromMaterials,
   mockRfqScopeRows,
   mockSheets,
+  readSavedCostRows,
   readSavedMaterials,
   readSavedRfqSummary,
+  readSavedTakeoffSnapshot,
   rfqScopeActions,
   rfqScopeColumns,
   rfqScopeFilters,
@@ -52,9 +56,30 @@ export default function RfqScopePage() {
   const [previewAt, setPreviewAt] = useState<string | null>(null);
 
   useEffect(() => {
+    // Priority 1: saved materials written by the materials-review step
     const savedMaterials = readSavedMaterials(projectId);
-    if (!savedMaterials?.length) return;
-    setRows(buildRfqScopeFromMaterials(savedMaterials as DerivedMaterialRow[]));
+    if (savedMaterials?.length) {
+      setRows(buildRfqScopeFromMaterials(savedMaterials as DerivedMaterialRow[]));
+      return;
+    }
+
+    // Priority 2: derive materials from saved cost rows
+    const savedCostRows = readSavedCostRows(projectId);
+    if (savedCostRows?.length) {
+      setRows(buildRfqScopeFromMaterials(buildMaterialsFromCostRows(savedCostRows)));
+      return;
+    }
+
+    // Priority 3: derive from takeoff snapshot
+    const snapshot = readSavedTakeoffSnapshot(projectId);
+    if (snapshot) {
+      const takeoffRows = buildCostRowsFromTakeoff(snapshot);
+      if (takeoffRows.length > 0) {
+        setRows(buildRfqScopeFromMaterials(buildMaterialsFromCostRows(takeoffRows)));
+        return;
+      }
+    }
+    // Priority 4: mock rows (already set as initial state)
   }, [projectId]);
 
   useEffect(() => {

@@ -26,6 +26,7 @@ import {
 import { sanitizeAnnotationDocument } from '@/lib/annotationSanitizer';
 import { parseTakeoff, mapStructuredTakeoff, EMPTY_TAKEOFF } from '@/lib/parseTakeoff';
 import type { TakeoffData } from '@/lib/parseTakeoff';
+import { syncTakeoffToCostTable } from '@/lib/mockWorkflowData';
 import TakeoffAnalyzingOverlay from '@/components/TakeoffAnalyzingOverlay';
 import PdfViewerClient from '@/components/pdf/PdfViewer';
 import AnnotationEditorShell from '@/components/annotation/AnnotationEditorShell';
@@ -893,12 +894,17 @@ export default function ProjectViewerPage() {
 
   const handleWorkspaceModeChange = useCallback((mode: WorkspaceMode) => {
     if (mode === 'review') {
+      // Persist takeoff quantities to localStorage so the cost table and
+      // downstream pages (materials, RFQ) receive real numbers.
+      if (generated) {
+        syncTakeoffToCostTable(projectId, takeoff);
+      }
       router.push(`/dashboard/projects/${projectId}/material-cost-table`);
       return;
     }
 
     setWorkspaceMode('annotate');
-  }, [projectId, router]);
+  }, [generated, projectId, router, takeoff]);
 
   if (loading) {
     return (

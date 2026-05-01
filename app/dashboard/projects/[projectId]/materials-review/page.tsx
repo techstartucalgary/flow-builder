@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { DoorOpen, House, Ruler, Square, type LucideIcon } from 'lucide-react';
 import WorkflowWorkspaceShell from '@/components/project-workflow/WorkflowWorkspaceShell';
 import {
+  buildCostRowsFromTakeoff,
   buildMaterialsFromCostRows,
   derivedMaterialColumns,
   mockCostRows,
@@ -13,6 +14,7 @@ import {
   type DerivedMaterialRow,
   readSavedCostRows,
   readSavedMaterials,
+  readSavedTakeoffSnapshot,
   writeSavedMaterials,
 } from '@/lib/mockWorkflowData';
 
@@ -47,8 +49,22 @@ export default function MaterialsReviewPage() {
     }
 
     const savedCostRows = readSavedCostRows(projectId);
-    const costRows: CostRow[] = savedCostRows?.length ? savedCostRows : mockCostRows;
-    setRows(buildMaterialsFromCostRows(costRows));
+    if (savedCostRows?.length) {
+      setRows(buildMaterialsFromCostRows(savedCostRows));
+      return;
+    }
+
+    // Fall back to takeoff snapshot before using mock data
+    const snapshot = readSavedTakeoffSnapshot(projectId);
+    if (snapshot) {
+      const takeoffRows = buildCostRowsFromTakeoff(snapshot);
+      if (takeoffRows.length > 0) {
+        setRows(buildMaterialsFromCostRows(takeoffRows));
+        return;
+      }
+    }
+
+    setRows(buildMaterialsFromCostRows(mockCostRows));
   }, [projectId]);
 
   useEffect(() => {

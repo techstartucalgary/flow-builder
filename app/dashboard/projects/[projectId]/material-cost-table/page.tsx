@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Database, DoorOpen, Paintbrush, Ruler, Square, House, type LucideIcon } from 'lucide-react';
 import WorkflowWorkspaceShell from '@/components/project-workflow/WorkflowWorkspaceShell';
 import {
+  buildCostRowsFromTakeoff,
   buildMaterialsFromCostRows,
   calculateCostRowTotal,
   calculateLaborSubtotal,
@@ -15,6 +16,7 @@ import {
   mockCostRows,
   type CostRow,
   readSavedCostRows,
+  readSavedTakeoffSnapshot,
   writeSavedCostRows,
   writeSavedMaterials,
 } from '@/lib/mockWorkflowData';
@@ -52,10 +54,23 @@ export default function MaterialCostTablePage() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
+    // Priority 1: user's previously saved cost rows
     const savedRows = readSavedCostRows(projectId);
     if (savedRows?.length) {
       setRows(savedRows);
+      return;
     }
+    // Priority 2: rows derived from the most recent takeoff snapshot
+    // (written by the project viewer when the builder clicks "Continue to Review")
+    const snapshot = readSavedTakeoffSnapshot(projectId);
+    if (snapshot) {
+      const takeoffRows = buildCostRowsFromTakeoff(snapshot);
+      if (takeoffRows.length > 0) {
+        setRows(takeoffRows);
+        return;
+      }
+    }
+    // Priority 3: mock data (already set as initial state via createDefaultRows)
   }, [projectId]);
 
   useEffect(() => {

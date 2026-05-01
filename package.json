@@ -7,20 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
-    
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
     "immer": "^10.1.1",
     "konva": "9.3.18",
-    "rbush": "^4.0.1",
-    "react-hook-form": "^7.62.0",
-    "react-konva": "18.2.10",
-    "@supabase/supabase-js": "^2.39.0",
     "lucide-react": "^0.555.0",
     "next": "^14.2.0",
     "pdfjs-dist": "3.11.174",
+    "rbush": "^4.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hook-form": "^7.62.0",
+    "react-konva": "18.2.10",
     "react-pdf": "^10.3.0",
     "react-zoom-pan-pinch": "^3.7.0",
     "zod": "^4.1.5",
@@ -35,13 +34,12 @@
     "eslint-config-next": "^14.2.0",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3"
   },
   "overrides": {
-  "react-pdf": {
+    "react-pdf": {
+      "pdfjs-dist": "3.11.174"
+    },
     "pdfjs-dist": "3.11.174"
-  },
-  "pdfjs-dist": "3.11.174"
-}
-
+  }
 }
