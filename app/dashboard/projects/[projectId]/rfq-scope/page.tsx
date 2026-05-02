@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowDownWideNarrow, Ellipsis, SlidersHorizontal } from 'lucide-react';
 import WorkflowWorkspaceShell from '@/components/project-workflow/WorkflowWorkspaceShell';
-import { downloadRfqPdf } from '@/lib/exportRfq';
+import { downloadRfqExcel } from '@/lib/exportRfq';
 import {
   buildCostRowsFromTakeoff,
   buildMaterialsFromCostRows,
@@ -150,7 +150,7 @@ export default function RfqScopePage() {
     };
     setSummary(nextSummary);
     writeSavedRfqSummary(projectId, nextSummary);
-    await downloadRfqPdf({
+    await downloadRfqExcel({
       projectId,
       sheetCode: selectedSheet.code,
       sheetName: selectedSheet.name,
