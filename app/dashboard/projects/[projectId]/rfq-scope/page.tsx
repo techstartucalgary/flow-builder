@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowDownWideNarrow, Ellipsis, SlidersHorizontal } from 'lucide-react';
 import WorkflowWorkspaceShell from '@/components/project-workflow/WorkflowWorkspaceShell';
+import { downloadRfqPdf } from '@/lib/exportRfq';
 import {
   buildCostRowsFromTakeoff,
   buildMaterialsFromCostRows,
@@ -138,7 +139,7 @@ export default function RfqScopePage() {
     setRows((previous) => previous.map((row) => (row.id === rowId ? { ...row, quantity: toNumber(value) } : row)));
   };
 
-  const handleGenerateRfq = () => {
+  const handleGenerateRfq = async () => {
     const now = new Date();
     const nextSummary: SavedRfqSummary = {
       createdAt: now.toLocaleString(),
@@ -149,6 +150,13 @@ export default function RfqScopePage() {
     };
     setSummary(nextSummary);
     writeSavedRfqSummary(projectId, nextSummary);
+    await downloadRfqPdf({
+      projectId,
+      sheetCode: selectedSheet.code,
+      sheetName: selectedSheet.name,
+      rows: visibleRows,
+      totalQuantity,
+    });
   };
 
   const cycleFilter = () => {

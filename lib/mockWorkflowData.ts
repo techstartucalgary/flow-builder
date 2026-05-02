@@ -17,6 +17,8 @@ export type DerivedMaterialRow = {
   unit: string;
   sourceMeasurement: string;
   status: 'Ready' | 'Draft';
+  /** ID of the CostRow this material was derived from (used for cost lookup in PDF export). */
+  costRowId?: string;
 };
 
 export type RfqScopeRow = {
@@ -27,6 +29,8 @@ export type RfqScopeRow = {
   unit: string;
   notes: string;
   category: 'wall' | 'door' | 'window' | 'floor';
+  /** ID of the source CostRow — used to look up unit/labor/markup in the PDF export. */
+  costRowId?: string;
 };
 
 export type WorkflowSheet = {
@@ -134,6 +138,7 @@ const MOCK_SOURCE_IDS = MOCK_COST_IDS;
 
 const materialBlueprints: Array<{
   id: string;
+  costRowId: string;
   materialName: string;
   unit: string;
   sourceMeasurement: string;
@@ -142,6 +147,7 @@ const materialBlueprints: Array<{
 }> = [
   {
     id: 'concrete-block-exterior',
+    costRowId: 'exterior-walls',
     materialName: 'Concrete Block - Exterior',
     unit: 'sq ft',
     sourceMeasurement: 'Exterior walls',
@@ -150,6 +156,7 @@ const materialBlueprints: Array<{
   },
   {
     id: 'drywall-sf-interior',
+    costRowId: 'interior-walls',
     materialName: 'Drywall SF - Interior',
     unit: 'sq ft',
     sourceMeasurement: 'Interior walls',
@@ -158,6 +165,7 @@ const materialBlueprints: Array<{
   },
   {
     id: 'linear-ft-interior-6',
+    costRowId: 'interior-walls',
     materialName: 'Linear Ft - Interior 6"',
     unit: 'lin ft',
     sourceMeasurement: 'Interior walls',
@@ -166,6 +174,7 @@ const materialBlueprints: Array<{
   },
   {
     id: 'door-units-swing',
+    costRowId: 'swing-doors',
     materialName: 'Door Units - Swing',
     unit: 'units',
     sourceMeasurement: 'Swing doors',
@@ -174,6 +183,7 @@ const materialBlueprints: Array<{
   },
   {
     id: 'window-units-type-a',
+    costRowId: 'type-a-windows',
     materialName: 'Window Units - Type A',
     unit: 'units',
     sourceMeasurement: 'Type A windows',
@@ -182,6 +192,7 @@ const materialBlueprints: Array<{
   },
   {
     id: 'flooring-sf-bedrooms',
+    costRowId: 'bedrooms',
     materialName: 'Flooring SF - Bedrooms',
     unit: 'sq ft',
     sourceMeasurement: 'Bedrooms',
@@ -190,6 +201,7 @@ const materialBlueprints: Array<{
   },
   {
     id: 'flooring-sf-interior',
+    costRowId: 'living-kitchen',
     materialName: 'Flooring SF - Interior',
     unit: 'sq ft',
     sourceMeasurement: 'Living/Kitchen + Bathrooms',
@@ -377,6 +389,7 @@ export function buildMaterialsFromCostRows(rows: CostRow[]): DerivedMaterialRow[
   const blueprintRows: DerivedMaterialRow[] = hasMockData
     ? materialBlueprints.map((bp) => ({
         id: bp.id,
+        costRowId: bp.costRowId,
         materialName: bp.materialName,
         unit: bp.unit,
         sourceMeasurement: bp.sourceMeasurement,
@@ -389,6 +402,7 @@ export function buildMaterialsFromCostRows(rows: CostRow[]): DerivedMaterialRow[
     .filter((row) => !MOCK_SOURCE_IDS.has(row.id) && row.derivedQuantity > 0)
     .map((row) => ({
       id: row.id,
+      costRowId: row.id,
       materialName: row.item,
       unit: row.unit,
       sourceMeasurement: row.item,
@@ -427,6 +441,7 @@ export function buildRfqScopeFromMaterials(materials: DerivedMaterialRow[]): Rfq
       unit: m.unit,
       notes: '',
       category: inferRfqCategory(m.id, m.materialName),
+      costRowId: m.costRowId ?? m.id,
     }));
 }
 
