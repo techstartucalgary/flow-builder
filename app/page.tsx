@@ -449,58 +449,27 @@ function MockAppScreen({ variant }: { variant: 'rooms' | 'cross-ref' | 'reports'
 
   if (variant === 'cross-ref') {
     return (
-      <div className="h-full min-h-[210px] rounded-xl border border-white/[0.05] bg-[#060d1b] overflow-hidden">
-        <div className="flex items-center px-4 py-2 border-b border-white/[0.05]">
-          <span className="text-[10px] text-gray-600 tracking-wide">Estimate Board — LIVE</span>
-        </div>
-        <div className="p-3.5 grid grid-cols-[1fr_128px] gap-3">
-          <div className="rounded-md border border-white/[0.05] bg-[#0a1428] p-2.5 space-y-2">
-            <div className="h-2.5 w-1/2 rounded-sm bg-white/[0.05]" />
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-[1fr_56px] gap-2 items-center py-1 border-b border-white/[0.03]">
-                <div className="h-2 rounded-sm bg-white/[0.05]" style={{ width: `${75 - (i % 3) * 9}%` }} />
-                <div className="h-2 rounded-sm bg-blue-500/[0.10]" />
-              </div>
-            ))}
-          </div>
-          <div className="rounded-md border border-white/[0.05] bg-[#0a1428] p-2.5">
-            <div className="h-2.5 w-2/3 rounded-sm bg-white/[0.05] mb-2.5" />
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-4 rounded-sm bg-white/[0.04]" />
-              ))}
-            </div>
-          </div>
-        </div>
+      <div className="relative h-full min-h-[210px] rounded-xl border border-white/[0.05] bg-[#060d1b] overflow-hidden">
+        <Image
+          src="/images/cross-reference-preview.png"
+          alt="Cross-Reference Intelligence UI preview"
+          fill
+          className="object-contain object-center"
+          sizes="(min-width: 1024px) 700px, 100vw"
+        />
       </div>
     );
   }
 
   return (
-      <div className="h-full min-h-[300px] rounded-lg border border-white/[0.04] bg-[#060d1b] overflow-hidden">
-      <div className="flex items-center px-4 py-2 border-b border-white/[0.04]">
-        <span className="text-[10px] text-gray-600 tracking-wide">Project Report — Export Preview</span>
-      </div>
-      <div className="p-5 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-7 w-24 rounded-md bg-blue-500/[0.08] border border-blue-500/[0.12]" />
-          <div className="h-7 w-24 rounded-md bg-white/[0.03]" />
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-md border border-white/[0.05] bg-white/[0.015] p-3">
-              <div className="h-2 w-3/4 rounded-sm bg-white/[0.05] mb-2.5" />
-              <div className="h-6 w-1/2 rounded-sm bg-white/[0.03]" />
-              <div className="h-1.5 w-full rounded-sm bg-white/[0.025] mt-2.5" />
-            </div>
-          ))}
-        </div>
-        <div className="space-y-1.5 pt-1">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-2.5 rounded-sm bg-white/[0.03]" style={{ width: `${80 - i * 10}%` }} />
-          ))}
-        </div>
-      </div>
+    <div className="relative h-full min-h-[300px] rounded-lg border border-white/[0.04] bg-[#060d1b] overflow-hidden">
+      <Image
+        src="/images/reports-preview.png"
+        alt="Project Reports UI preview"
+        fill
+        className="object-contain object-center"
+        sizes="(min-width: 1024px) 700px, 100vw"
+      />
     </div>
   );
 }
