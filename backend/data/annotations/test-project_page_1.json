@@ -1,0 +1,20 @@
+{
+  "status": "ok",
+  "latest_revision": 2,
+  "document": {
+    "meta": {
+      "revision": 2
+    },
+    "elements": []
+  },
+  "events": [
+    {
+      "id": "evt1",
+      "revisionId": 2,
+      "parentRevisionId": 1,
+      "actorId": "u1",
+      "timestamp": "2026-02-27T00:00:00Z",
+      "operations": []
+    }
+  ]
+}

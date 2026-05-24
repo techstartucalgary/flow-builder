@@ -1,28 +1,50 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts';
+import { getSupabaseConfigErrorMessage, supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import Image from 'next/image';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
-
-export default function SignIn() {
+/*
+ * ── Sign In Page ─────────────────────────────────────────────────────
+ *
+ * Tweak points:
+ *   - Input height      → h-12  (48 px)
+ *   - Input radius      → rounded-xl  (12 px)
+ *   - Card radius       → rounded-2xl (16 px)
+ *   - Card shadow       → shadow-sm
+ *   - Button gradient   → from-blue-600 to-indigo-600 (matches landing CTA)
+ *   - Focus ring color  → var(--auth-ring)  /  border-[#0099FC]
+ */
+function SignInContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [forgotMsg, setForgotMsg] = useState<string>('');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const resetSuccess = searchParams.get('reset') === 'success';
+  const supabaseConfigError = getSupabaseConfigErrorMessage();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
+
+    if (supabaseConfigError) {
+      setLocalError(supabaseConfigError);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await signIn(email, password);
-      router.push('/dashboard');
+      router.push('/dashboard/projects');
     } catch (error: any) {
       setLocalError(error.message || 'An error occurred during sign in');
     } finally {
@@ -30,88 +52,216 @@ export default function SignIn() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    setLocalError('');
+    setForgotMsg('');
+
+    if (supabaseConfigError) {
+      setLocalError(supabaseConfigError);
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setLocalError('Enter your email first, then click Forgot password.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
+      setForgotMsg('Password reset email sent. Check your inbox.');
+    } catch (error: any) {
+      const rawMessage = error?.message || '';
+      const friendlyMessage =
+        /failed to fetch|networkerror|load failed|fetch failed/i.test(rawMessage)
+          ? 'Unable to reach Supabase Auth. Check your internet connection and Supabase URL configuration.'
+          : rawMessage || 'Failed to send password reset email.';
+      setLocalError(friendlyMessage);
+    }
+  };
+
+  /* ── shared input classes ── */
+  const inputBase =
+    'w-full h-12 rounded-xl border border-[var(--auth-border)] bg-white text-sm text-gray-900 ' +
+    'placeholder:text-gray-400 ' +
+    'focus:outline-none focus:border-[#0099FC] focus:ring-2 focus:ring-[var(--auth-ring)] ' +
+    'transition-all duration-150';
+
   return (
-    <div className="min-h-screen bg-[#030712] text-white selection:bg-blue-500/30">
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-6">
-        <div className="absolute top-0 left-1/2 w-full -translate-x-1/2 h-full z-0 pointer-events-none">
-          <div className="absolute top-1/4 left-10 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] opacity-50"></div>
-          <div className="absolute bottom-1/4 right-10 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] opacity-50"></div>
-        </div>
-
-        <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-[500px_300px] gap-12 items-center justify-center">
-          <div className="w-full">
-            <div className="w-full h-[400px] bg-[#d9d9d9] rounded-xl relative">
-              <div className="absolute left-[50px] top-[75px] text-[#192027] text-xl font-semibold">
-                Start designing
-              </div>
-              <div className="absolute left-0 right-0 top-[200px] h-[200px] bg-[#b91c1c] rounded-b-xl flex items-center justify-center">
-                <Image
-                  src="/images/FlowBuildr%20Icon.png"
-                  alt="FlowBuildr icon"
-                  width={120}
-                  height={120}
-                  className="h-24 w-24"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full h-[400px] bg-white text-black rounded-xl border border-[#d9d9d9] p-6 flex flex-col">
-            <h2 className="text-2xl font-bold mb-6">Login</h2>
-
-            {localError && (
-              <div className="mb-4 p-3 rounded-md bg-red-100 border border-red-200 text-red-700 text-sm text-center">
-                {localError}
-              </div>
-            )}
-
-            <form onSubmit={handleSignIn} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="designerOne@flowbuildr.com"
-                  className="w-full h-10 border border-[#d9d9d9] rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0099FC]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="*******"
-                  className="w-full h-10 border border-[#d9d9d9] rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#0099FC]"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="mt-4 inline-flex rounded-md bg-gradient-to-r from-[#4DD0FF] to-[#118CD9] p-[1px] disabled:opacity-60"
-              >
-                <span className="flex h-10 w-full items-center justify-center rounded-md bg-[#0099FC] text-sm font-semibold text-white">
-                  {isLoading ? 'Signing In...' : 'Login'}
-                </span>
-              </button>
-            </form>
-
-            <button className="mt-3 text-sm text-[#0099FC]">Forgot password?</button>
-
-            <div className="mt-auto pt-6 text-sm">
-              <span className="text-black/60">Need an account?</span>{' '}
-              <Link href="/auth/signup" className="text-[#0099FC] font-semibold">
-                Sign Up
-              </Link>
-            </div>
-          </div>
-        </div>
+    <>
+      {/* ── Header ──────────────────────────────────────────────── */}
+      <div className="mb-8">
+        <h2 className="text-[1.65rem] font-bold text-gray-900 tracking-tight leading-tight">
+          Welcome back
+        </h2>
+        <p className="mt-1.5 text-sm text-gray-500">
+          Sign in to your FlowBuildr account
+        </p>
       </div>
-    </div>
+
+      {/* ── Card ────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-[var(--auth-border)] shadow-sm p-7 sm:p-8">
+        {resetSuccess && (
+          <div className="mb-5 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm text-center auth-fade-in">
+            Password updated successfully. Please sign in.
+          </div>
+        )}
+
+        {/* Error banner */}
+        {localError && (
+          <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm text-center auth-fade-in">
+            {localError}
+          </div>
+        )}
+
+        {!localError && supabaseConfigError && (
+          <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-sm text-center auth-fade-in">
+            {supabaseConfigError}
+          </div>
+        )}
+
+        <form onSubmit={handleSignIn} className="space-y-5">
+          {/* ── Email ── */}
+          <div>
+            <label
+              htmlFor="signin-email"
+              className="block text-sm font-medium text-gray-700 mb-1.5"
+            >
+              Email address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-gray-400 pointer-events-none" />
+              <input
+                id="signin-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className={`${inputBase} pl-11 pr-4`}
+                required
+              />
+            </div>
+          </div>
+
+          {/* ── Password ── */}
+          <div>
+            <label
+              htmlFor="signin-password"
+              className="block text-sm font-medium text-gray-700 mb-1.5"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-gray-400 pointer-events-none" />
+              <input
+                id="signin-password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className={`${inputBase} pl-11 pr-12`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-[18px] w-[18px]" />
+                ) : (
+                  <Eye className="h-[18px] w-[18px]" />
+                )}
+              </button>
+            </div>
+
+            {/* Forgot password stub */}
+            <div className="mt-2 flex items-center justify-end min-h-[20px]">
+              {forgotMsg ? (
+                <span className="text-xs text-gray-500 auth-fade-in">
+                  {forgotMsg}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-xs font-medium text-[#0099FC] hover:text-[#0077cc] transition-colors"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ── Submit ── */}
+          <button
+            type="submit"
+            disabled={isLoading || !!supabaseConfigError}
+            className="w-full h-12 rounded-xl font-semibold text-sm text-white
+                       bg-gradient-to-r from-blue-600 to-indigo-600
+                       hover:from-blue-500 hover:to-indigo-500
+                       shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30
+                       disabled:opacity-60 disabled:cursor-not-allowed
+                       active:scale-[0.98]
+                       transition-all duration-150
+                       flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Signing in…
+              </>
+            ) : (
+              <>
+                Sign In
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+
+      {/* ── Footer link ─────────────────────────────────────────── */}
+      <p className="mt-7 text-center text-sm text-gray-500">
+        Don&apos;t have an account?{' '}
+        <Link
+          href="/auth/signup"
+          className="text-[#0099FC] hover:text-[#0077cc] font-semibold transition-colors"
+        >
+          Sign Up
+        </Link>
+      </p>
+    </>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={null}>
+      <SignInContent />
+    </Suspense>
   );
 }

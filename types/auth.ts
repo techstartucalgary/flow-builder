@@ -13,7 +13,10 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<{
+    requiresEmailConfirmation: boolean;
+    userAlreadyExists: boolean;
+  }>;
   signOut: () => Promise<void>;
   error: string | null;
 }

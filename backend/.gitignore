@@ -1,0 +1,19 @@
+# Environment
+.env
+.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Data / generated artifacts
+data/*.png
+data/*.jpg
+
+# OS
+.DS_Store
